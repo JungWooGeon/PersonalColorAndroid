@@ -10,11 +10,13 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.google.firebase.analytics.FirebaseAnalytics
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -70,4 +72,8 @@ fun PersonalColorTheme(
         typography = Typography,
         content = content
     )
+}
+
+val LocalFirebaseAnalytics = compositionLocalOf<FirebaseAnalytics> {
+    error("Firebase Analytics not provided")
 }

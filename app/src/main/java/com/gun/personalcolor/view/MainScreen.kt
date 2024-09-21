@@ -12,6 +12,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +24,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import com.gun.personalcolor.state.MainState
+import com.gun.personalcolor.ui.theme.LocalFirebaseAnalytics
 
 @Composable
 fun MainScreen() {
@@ -87,11 +91,23 @@ fun BottomNavigationBar(
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
+    val firebaseAnalytics = LocalFirebaseAnalytics.current
+
     NavHost(navController = navController, startDestination = MainState.AiTest.screenRoute) {
         composable(MainState.AiTest.screenRoute) {
+            LaunchedEffect(Unit) {
+                firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW) {
+                    param(FirebaseAnalytics.Param.SCREEN_NAME, "AI Test Screen")
+                }
+            }
             WebViewScreen(MainState.AiTest.screenRoute)
         }
         composable(MainState.SelfTest.screenRoute) {
+            LaunchedEffect(Unit) {
+                firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW) {
+                    param(FirebaseAnalytics.Param.SCREEN_NAME, "Self Test Screen")
+                }
+            }
             WebViewScreen(MainState.SelfTest.screenRoute)
         }
     }
