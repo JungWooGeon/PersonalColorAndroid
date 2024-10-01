@@ -8,8 +8,16 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -80,6 +89,7 @@ fun AiTestScreen() {
                 override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                     Log.e(TAG, "Ad failed to show fullscreen content.")
                     rewardedAd = null
+                    adState = AdState.Error(adError.message)
                 }
 
                 override fun onAdImpression() {
@@ -99,10 +109,11 @@ fun AiTestScreen() {
                 val adRequest = AdRequest.Builder().build()
                 RewardedAd.load(
                     context,
-                    "ca-app-pub-3940256099942544/5224354917",
+                    AD_UNIT_ID,
                     adRequest,
                     object : RewardedAdLoadCallback() {
                         override fun onAdFailedToLoad(adError: LoadAdError) {
+                            Log.e(TAG, "Ad failed to load")
                             isAdLoading = false
                             adState = AdState.Error(adError.message)
                         }
@@ -125,6 +136,7 @@ fun AiTestScreen() {
 
     AiTestScreen(
         adState = adState,
+        onRefresh = { onLoadAd?.let { it() } },
         onShowFileChooser = { callback ->
             filePathCallback = callback
             rewardedAd?.let { ad ->
@@ -147,6 +159,7 @@ fun AiTestScreen() {
 @Composable
 fun AiTestScreen(
     adState: AdState,
+    onRefresh: () -> Unit,
     onShowFileChooser: ((ValueCallback<Array<Uri>>) -> Unit)? = null
 ) {
     when (adState) {
@@ -157,12 +170,40 @@ fun AiTestScreen(
             )
         }
 
-        else -> {
+        is AdState.Idle -> {
             Box(modifier = Modifier.fillMaxSize()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+        }
+
+        is AdState.Error -> {
+            Log.e(TAG, adState.message)
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "오류가 발생하였습니다.",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "네트워크 확인 후 다시 시도해주세요.",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    IconButton(onClick = onRefresh) {
+                        Icon(
+                            modifier = Modifier.size(50.dp),
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh"
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+private const val AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
 private const val TAG = "AiTestScreen"
