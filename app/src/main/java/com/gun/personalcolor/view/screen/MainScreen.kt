@@ -5,9 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -35,8 +34,11 @@ import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.logEvent
+import com.gun.personalcolor.BuildConfig.BANNER_AD_UNIT_ID
+import com.gun.personalcolor.R
 import com.gun.personalcolor.state.MainState
 import com.gun.personalcolor.ui.theme.LocalFirebaseAnalytics
+import com.gun.personalcolor.view.Constants.BANNER_AD_WIDTH
 import com.gun.personalcolor.view.composable.AdAlertDialog
 
 @Composable
@@ -50,8 +52,8 @@ fun MainScreen() {
     val adView = remember {
         AdView(context).apply {
             // https://developers.google.com/admob/android/banner/inline-adaptive?hl=ko#kotlin
-            setAdSize(AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(context, 320))
-            adUnitId = AD_UNIT_ID
+            setAdSize(AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(context, BANNER_AD_WIDTH))
+            adUnitId = BANNER_AD_UNIT_ID
             loadAd(AdRequest.Builder().build())
         }
     }
@@ -94,7 +96,7 @@ fun MainScreen(
     if (isAlertDialog) {
         AdAlertDialog(
             adView = adView,
-            title = "퍼스널 컬러 테스트를 종료하시겠습니까??",
+            title = stringResource(id = R.string.are_you_sure_end_personal_color_test),
             onConfirm = onFinishActivity,
             onDismiss = onDismissExitDialog
         )
@@ -120,9 +122,7 @@ fun BottomNavigationBar(
                     Icon(
                         imageVector = item.icon,
                         contentDescription = stringResource(id = item.title),
-                        modifier = Modifier
-                            .width(26.dp)
-                            .height(26.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 },
                 label = { Text(stringResource(id = item.title), fontSize = 9.sp) },
@@ -165,5 +165,3 @@ fun NavigationGraph(navController: NavHostController) {
         }
     }
 }
-
-private const val AD_UNIT_ID = "ca-app-pub-2864408286392678/6539953300"

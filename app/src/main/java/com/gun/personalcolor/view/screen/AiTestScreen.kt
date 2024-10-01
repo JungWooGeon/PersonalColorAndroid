@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
@@ -34,6 +35,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.gun.personalcolor.BuildConfig.REWARD_AD_UNIT_ID
+import com.gun.personalcolor.R
 import com.gun.personalcolor.state.AdState
 import com.gun.personalcolor.state.MainState
 import com.gun.personalcolor.view.composable.WebView
@@ -47,9 +50,7 @@ fun AiTestScreen() {
     var isRewardEarned by remember { mutableStateOf(false) }
     var setupAdCallbacks by remember { mutableStateOf<((RewardedAd) -> Unit)?>(null) }
     var onLoadAd by remember { mutableStateOf<(() -> Unit)?>(null) }
-
     var filePathCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
-
     val fileChooserCallback = remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     val fileChooserLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -82,7 +83,7 @@ fun AiTestScreen() {
                     } else {
                         adState = AdState.Idle
                         onLoadAd?.let { it() }
-                        Toast.makeText(context, "광고 시청을 취소하였습니다.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.cancel_watching_the_ad), Toast.LENGTH_SHORT).show()
                     }
                 }
 
@@ -109,7 +110,7 @@ fun AiTestScreen() {
                 val adRequest = AdRequest.Builder().build()
                 RewardedAd.load(
                     context,
-                    AD_UNIT_ID,
+                    REWARD_AD_UNIT_ID,
                     adRequest,
                     object : RewardedAdLoadCallback() {
                         override fun onAdFailedToLoad(adError: LoadAdError) {
@@ -149,7 +150,7 @@ fun AiTestScreen() {
                 }
             } ?: run {
                 Log.d(TAG, "The rewarded ad wasn't ready yet.")
-                Toast.makeText(context, "광고를 불러오는 중입니다. 잠시 후 시도해주세요.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.loading_ad_please_retry_later), Toast.LENGTH_SHORT).show()
                 onLoadAd?.let { it() }
             }
         }
@@ -184,11 +185,11 @@ fun AiTestScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "오류가 발생하였습니다.",
+                        text = stringResource(id = R.string.an_error_occurred),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = "네트워크 확인 후 다시 시도해주세요.",
+                        text = stringResource(id = R.string.please_check_the_network_and_try_again),
                         style = MaterialTheme.typography.titleMedium
                     )
 
@@ -196,7 +197,7 @@ fun AiTestScreen(
                         Icon(
                             modifier = Modifier.size(50.dp),
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = stringResource(id = R.string.refresh)
                         )
                     }
                 }
@@ -205,5 +206,4 @@ fun AiTestScreen(
     }
 }
 
-private const val AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
 private const val TAG = "AiTestScreen"

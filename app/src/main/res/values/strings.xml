@@ -3,4 +3,14 @@
 
     <string name="ai_test">AI 테스트</string>
     <string name="self_test">자가 진단</string>
+
+    <string name="confirm">확인</string>
+    <string name="cancel">취소</string>
+    <string name="refresh">새로 고침</string>
+
+    <string name="are_you_sure_end_personal_color_test">퍼스널 컬러 테스트를 종료하시겠습니까?</string>
+    <string name="cancel_watching_the_ad">광고 시청을 취소하였습니다.</string>
+    <string name="loading_ad_please_retry_later">광고를 불러오는 중입니다. 잠시 후 시도해주세요.</string>
+    <string name="an_error_occurred">오류가 발생하였습니다</string>
+    <string name="please_check_the_network_and_try_again">네트워크 확인 후 다시 시도해주세요.</string>
 </resources>

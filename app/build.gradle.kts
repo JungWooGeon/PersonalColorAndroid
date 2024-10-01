@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.konan.properties.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -22,6 +24,22 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Build Config
+        val localProperties = Properties().apply {
+            load(File("local.properties").inputStream())
+        }
+
+        val bannerAdUnitId: String? = localProperties["banner_ad_unit_id"] as String?
+        val rewardAdUnitId: String? = localProperties["reward_ad_unit_id"] as String?
+
+        bannerAdUnitId?.let {
+            buildConfigField("String", "BANNER_AD_UNIT_ID", bannerAdUnitId)
+        }
+
+        rewardAdUnitId?.let {
+            buildConfigField("String", "REWARD_AD_UNIT_ID", rewardAdUnitId)
+        }
     }
 
     buildTypes {
@@ -42,6 +60,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"

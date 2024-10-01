@@ -14,9 +14,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdView
+import com.gun.personalcolor.R
+import com.gun.personalcolor.view.Constants.BANNER_AD_WIDTH
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +32,7 @@ fun AdAlertDialog(
     BasicAlertDialog(
         onDismissRequest = onDismiss,
         content = {
-            Surface(modifier = Modifier.width(320.dp)) {
+            Surface(modifier = Modifier.width(BANNER_AD_WIDTH.dp)) {
                 Column(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -49,11 +52,11 @@ fun AdAlertDialog(
                             horizontalArrangement = Arrangement.SpaceAround
                         ) {
                             TextButton(onClick = { onDismiss() }) {
-                                Text(text = "취소")
+                                Text(text = stringResource(id = R.string.cancel))
                             }
 
                             TextButton(onClick = { onConfirm() }) {
-                                Text(text = "확인")
+                                Text(text = stringResource(id = R.string.confirm))
                             }
                         }
                     }
