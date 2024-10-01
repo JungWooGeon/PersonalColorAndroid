@@ -6,6 +6,9 @@
 
 ### 💡 나의 컬러는? - 퍼스널 컬러
 인공지능 퍼스널 컬러 테스트 앱
+<br>
+
+이전 버전 (React Native) : https://github.com/JungWooGeon/personal_color_app
 
 <br><br>
 
