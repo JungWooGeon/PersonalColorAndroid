@@ -50,10 +50,11 @@ data class ClosetAddUiState(
     val nameEdited: Boolean = false,
     val verdict: ColorVerdict? = null,
     val error: String? = null,
+    val saving: Boolean = false,           // writing the photo + item; the screen closes when [saved]
     val saved: Boolean = false,
 ) {
     val color: Rgb? get() = if (mode == AddMode.PHOTO) photoColor else manualColor
-    val canSave: Boolean get() = color != null && kind != null && !processing && !saved
+    val canSave: Boolean get() = color != null && kind != null && !processing && !saving && !saved
 }
 
 @HiltViewModel
@@ -150,20 +151,27 @@ class ClosetAddViewModel @Inject constructor(
         val color = s.color ?: return
         val kind = s.kind ?: return
         if (!s.canSave) return
-        _state.update { it.copy(saved = true) }
+        _state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             val id = System.currentTimeMillis()
-            // The screen has already closed; a failed photo write still keeps the color item.
-            val file = if (s.mode == AddMode.PHOTO) s.photo?.let { runCatching { closet.saveImage(it, id) }.onFailure { e -> Log.w(TAG, "image save failed", e) }.getOrNull() } else null
             val v = s.verdict
-            try { closet.add(
-                ClosetItem(
-                    id = id, hex = color.toHex(), name = s.name.trim().ifBlank { defaultName(s) },
-                    category = CLOTHING_KINDS[kind]?.second ?: "기타", toneId = s.tone?.id.orEmpty(),
-                    verdict = v?.level?.verdict ?: Verdict.OK, score = v?.score ?: 50,
-                    imageFile = file, kind = kind,
-                ),
-            ) } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w(TAG, "closet add failed", e) }
+            // Full disk or a recycled bitmap: stay on the form with a quiet error so the user can retry.
+            try {
+                val file = if (s.mode == AddMode.PHOTO) s.photo?.let { closet.saveImage(it, id) } else null
+                closet.add(
+                    ClosetItem(
+                        id = id, hex = color.toHex(), name = s.name.trim().ifBlank { defaultName(s) },
+                        category = CLOTHING_KINDS[kind]?.second ?: "기타", toneId = s.tone?.id.orEmpty(),
+                        verdict = v?.level?.verdict ?: Verdict.OK, score = v?.score ?: 50,
+                        imageFile = file, kind = kind,
+                    ),
+                )
+                // Only if this form is still the one saving (closed and reopened meanwhile → reset() cleared it).
+                _state.update { if (it.saving) it.copy(saving = false, saved = true) else it }
+            } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                Log.w(TAG, "closet save failed", e)
+                _state.update { if (!it.saving) it else it.copy(saving = false, error = "저장하지 못했어요. 저장 공간을 확인하고 다시 시도해 주세요.") }
+            }
         }
     }
 
