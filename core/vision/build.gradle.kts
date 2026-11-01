@@ -12,4 +12,6 @@ dependencies {
     // On-device face landmarks. Pinned: 0.10.33+ SIGILLs in XNNPACK SME kernels on Apple M4/M5 emulators
     // (real-device impact unverified). 0.10.32 is the newest that runs there and is 16KB-page aligned.
     implementation(libs.mediapipe.tasks.vision)
+    // Garment cut-out for 내 옷장 (unbundled model, delivered by Play services; runs on device).
+    implementation(libs.mlkit.subject.segmentation)
 }

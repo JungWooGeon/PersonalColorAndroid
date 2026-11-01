@@ -80,4 +80,41 @@ class OutfitEngineTest {
         assertEquals("내 옷장의 '카멜 니트'", top.item)
         assertNotEquals("핑크 셔츠", top.color.name)
     }
+
+    @Test fun kindOfEveryEngineItem() {
+        val expected = mapOf(
+            "트렌치코트" to "trench", "자켓" to "jacket", "블레이저" to "jacket", "코트" to "coat", "트위드 자켓" to "jacket",
+            "울코트" to "coat", "무스탕" to "jacket", "롱패딩" to "padding", "숏패딩" to "padding", "방수 바람막이" to "jacket",
+            "방수 트렌치코트" to "trench",
+            "민소매 탑" to "sleeveless", "린넨 반팔 셔츠" to "shirt", "반팔 티셔츠" to "tee", "반팔 블라우스" to "shirt",
+            "폴로 셔츠" to "tee", "얇은 긴팔 티" to "tee", "셔츠" to "shirt", "블라우스" to "shirt", "니트" to "knit",
+            "가디건" to "cardigan", "맨투맨" to "sweatshirt", "얇은 니트" to "knit", "터틀넥" to "knit", "두꺼운 니트" to "knit",
+            "터틀넥 니트" to "knit",
+            "린넨 와이드 팬츠" to "pants", "쇼츠" to "shorts", "플리츠 스커트" to "skirt", "코튼 팬츠" to "pants",
+            "미디 스커트" to "skirt", "데님 팬츠" to "jeans", "슬랙스" to "pants", "롱스커트" to "skirt",
+            "코듀로이 스커트" to "skirt", "울 슬랙스" to "pants", "기모 슬랙스" to "pants", "울 스커트" to "skirt", "기모 팬츠" to "pants",
+            "셔츠 원피스" to "dress", "니트 원피스" to "dress", "플레어 원피스" to "dress",
+            "스카프" to "scarf", "가방" to "bag", "양말" to "socks", "우산" to "umbrella",
+        )
+        expected.forEach { (text, kind) -> assertEquals(text, kind, kindOf("카멜 $text", "")) }
+        assertEquals(null, kindOf("헤어 액세서리", "포인트"))
+        assertEquals("knit", kindOf("내 옷장의 '카멜 니트'", "상의"))
+        assertEquals("tee", kindOf("최애 상의", "상의"))
+    }
+
+    @Test fun everyGeneratedSlotHasKind() {
+        for (feels in -5..32 step 3) for (rain in listOf(0, 80)) for (v in 0..12) {
+            OutfitEngine.build(tone, weather(feels.toDouble(), rain), date, moods, variant = v).slots.forEach {
+                assertTrue(it.item, it.kind != null || it.item.endsWith("헤어 액세서리"))
+            }
+        }
+    }
+
+    @Test fun closetSlotCarriesKindAndPhoto() {
+        val closet = listOf(ClosetItem(1, "#C19A6B", "최애 상의", "상의", "autumn_true", Verdict.GOOD, 90, imageFile = "1.png", kind = "sweatshirt"))
+        val top = (0..10).map { OutfitEngine.build(tone, weather(18.0), date, moods, closet, it) }
+            .firstNotNullOf { o -> o.slots.firstOrNull { it.label == "상의" } }
+        assertEquals("sweatshirt", top.kind)
+        assertEquals("1.png", top.imageFile)
+    }
 }

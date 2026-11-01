@@ -487,7 +487,7 @@ private fun PhotoPicker(photo: Bitmap, fx: Float, fy: Float, picked: Rgb?, onPic
 // ---- Manual picker ----
 
 @Composable
-private fun ManualPicker(hsv: List<Float>, onHsv: (List<Float>, Boolean) -> Unit) {
+internal fun ManualPicker(hsv: List<Float>, onHsv: (List<Float>, Boolean) -> Unit) {
     val (h, s, v) = hsv
     fun hsvColor(h: Float, s: Float, v: Float) = Color.hsv(h.coerceIn(0f, 360f), s, v)
     SectionCard("직접 색 고르기") {

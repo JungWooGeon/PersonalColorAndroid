@@ -1,7 +1,5 @@
 package com.gun.personalcolor.feature.drape
 
-import android.graphics.BlurMaskFilter
-import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,22 +45,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -122,10 +115,6 @@ class DrapeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, Cutout(true))
 }
 
-// MediaPipe face-mesh lip contours: outer edge of the lips and the mouth opening.
-private val LIP_OUTER = listOf(61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146)
-private val LIP_INNER = listOf(78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95)
-
 /** Virtual draping (BEST vs WORST side by side) and lip try-on (reward-gated) on the diagnosis photo. Tool screen: no ads. */
 @Composable
 internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()) {
@@ -147,6 +136,15 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
     var lipGroup by rememberSaveable { mutableIntStateOf(0) }
     var lipColor by remember(top) { mutableStateOf(top.makeup.lipColors.firstOrNull()) }
     var intensity by rememberSaveable { mutableFloatStateOf(0.65f) }
+    var glossy by rememberSaveable { mutableStateOf(false) }
+    // Lipstick is rendered into the photo's own pixels off the main thread; the last patch stays up while the next renders.
+    val makeup by produceState<LipMakeup?>(null, photo, lip) {
+        if (lip) value = withContext(Dispatchers.Default) { LipMakeup.of(photo) }
+    }
+    val lipPatch by produceState<LipPatch?>(null, makeup, lipColor, intensity, glossy) {
+        val m = makeup ?: return@produceState
+        value = lipColor?.let { c -> withContext(Dispatchers.Default) { m.render(c.hex, intensity, glossy) } }
+    }
     val gate = rememberRewardGate()
     val analytics = LocalAnalytics.current
 
@@ -218,15 +216,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
         }
 
         val lipPanel: @Composable (Modifier) -> Unit = { m ->
-            panel("", lipColor, false, m) { r ->
-                val c = lipColor ?: return@panel
-                fun pt(i: Int) = photo.point(i, r)
-                val path = Path().apply {
-                    smoothLoop(LIP_OUTER.map(::pt)); smoothLoop(LIP_INNER.map(::pt))
-                    fillType = PathFillType.EvenOdd
-                }
-                drawLip(path, hexColor(c.hex), intensity, feather = (pt(291) - pt(61)).getDistance() * 0.025f)
-            }
+            panel("", lipColor, false, m) { r -> lipPatch?.draw(this, r) }
         }
         val lipControls: @Composable () -> Unit = {
             Text("생기 있어 보이는 색이 잘 어울려요", style = Muted)
@@ -239,6 +229,16 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
             DotRow(lipGroups[lipGroup].second, lipColor) { c ->
                 lipColor = c
                 analytics?.log("lip_tryon", "color" to c.name)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("질감", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                SingleChoiceSegmentedButtonRow {
+                    listOf("매트", "글로시").forEachIndexed { i, label ->
+                        SegmentedButton(selected = glossy == (i == 1), onClick = { glossy = i == 1 },
+                            shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(label, maxLines = 1) }
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("연하게", style = Muted, maxLines = 1)
@@ -341,33 +341,3 @@ private fun Dot(c: NamedColor, selected: Boolean, onClick: () -> Unit) {
         CircleShape,
     )
 }
-
-/** Closed curve through the midpoints of [p], using each landmark as a control point, so the contour has no corners. */
-private fun Path.smoothLoop(p: List<Offset>) {
-    fun mid(i: Int) = (p[i % p.size] + p[(i + 1) % p.size]) / 2f
-    moveTo(mid(0).x, mid(0).y)
-    for (i in 1..p.size) p[i % p.size].let { c -> mid(i).let { e -> quadraticTo(c.x, c.y, e.x, e.y) } }
-    close()
-}
-
-/**
- * Lipstick that keeps the lip texture: a hue/saturation pass (Color blend keeps the photo's luminance, so highlights and
- * creases stay) plus a light multiply for depth, both with a blurred edge so it fades into the skin.
- */
-private fun DrawScope.drawLip(path: Path, color: Color, intensity: Float, feather: Float) {
-    // Color/Multiply blends need API 29 (pre-Q MULTIPLY is PorterDuff modulate, which eats alpha); Overlay alone below that.
-    val passes = if (Build.VERSION.SDK_INT >= 29) listOf(BlendMode.Color to 0.85f, BlendMode.Multiply to 0.35f) else listOf(BlendMode.Overlay to 0.9f)
-    // ponytail: BlurMaskFilter is ignored on hardware canvases before API 28, edge is just un-feathered there.
-    val blur = BlurMaskFilter(feather.coerceAtLeast(1f), BlurMaskFilter.Blur.NORMAL)
-    drawIntoCanvas { canvas ->
-        passes.forEach { (mode, a) ->
-            val paint = Paint().apply {
-                this.color = color.copy(alpha = intensity * a)
-                blendMode = mode
-                asFrameworkPaint().apply { isAntiAlias = true; maskFilter = blur }
-            }
-            canvas.drawPath(path, paint)
-        }
-    }
-}
-

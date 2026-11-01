@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/my_live_wallpaper_description"
+    android:thumbnail="@drawable/my_live_wallpaper_thumb" />

@@ -2,7 +2,7 @@ package com.gun.personalcolor.feature.my
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.util.DisplayMetrics
@@ -31,13 +31,13 @@ import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 /** "HOME" | "LOCK" | "BOTH", stored in UserPreferences.autoWallpaperTarget. */
-enum class WallpaperTarget(val label: String, val flags: Int) {
-    HOME("홈 화면", WallpaperManager.FLAG_SYSTEM),
-    LOCK("잠금 화면", WallpaperManager.FLAG_LOCK),
-    BOTH("둘 다", WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK),
+enum class WallpaperTarget(val label: String, val short: String, val flags: Int) {
+    HOME("홈 화면", "홈", WallpaperManager.FLAG_SYSTEM),
+    LOCK("잠금 화면", "잠금", WallpaperManager.FLAG_LOCK),
+    BOTH("홈과 잠금 화면 모두", "둘 다", WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK),
 }
 
-/** Daily "today's color" wallpaper, shortly after midnight. WorkManager persists it across reboots. */
+/** Daily wallpaper in the chosen style with that day's color, shortly after midnight. WorkManager persists it across reboots. */
 object AutoWallpaperScheduler {
     private const val WORK = "auto_wallpaper_daily"
 
@@ -54,22 +54,33 @@ object AutoWallpaperScheduler {
         WorkManager.getInstance(context).cancelUniqueWork(WORK)
     }
 
-    /** Renders today's color wallpaper at full screen size and sets it. False if unsupported or it failed. */
-    internal suspend fun apply(context: Context, tone: Tone, style: WallpaperRenderer.Style, target: WallpaperTarget, dark: Boolean): Boolean =
-        withContext(Dispatchers.Default) {
-            val wm = WallpaperManager.getInstance(context)
-            if (!canSetWallpaper(context)) return@withContext false
-            try {
-                val (w, h) = screenSizePx(context)
-                val bmp = WallpaperRenderer.render(tone, style, w, h, dark, todayColor = WallpaperRenderer.todayColor(tone))
-                wm.setBitmap(bmp, null, true, target.flags)
-                bmp.recycle()
-                true
-            } catch (e: Exception) {
-                false
-            }
-        }
+    /** Renders today's wallpaper at full screen size and sets it. False if unsupported or it failed. */
+    internal suspend fun apply(context: Context, tone: Tone, style: WallpaperRenderer.Style, dark: Boolean, target: WallpaperTarget): Boolean =
+        setWallpaper(context, target) { w, h -> WallpaperRenderer.render(tone, style, w, h, dark) }
 }
+
+/** Stored in UserPreferences.autoWallpaperStyle: "GLOW" or "GLOW_DARK". */
+internal fun encodeStyle(style: WallpaperRenderer.Style, dark: Boolean) =
+    if (dark && style.supportsDark) "${style.name}_DARK" else style.name
+
+internal fun decodeStyle(value: String): Pair<WallpaperRenderer.Style, Boolean> =
+    (WallpaperRenderer.Style.entries.firstOrNull { it.name == value.removeSuffix("_DARK") } ?: WallpaperRenderer.Style.AURORA) to
+        value.endsWith("_DARK")
+
+/** Renders at full screen size off the main thread and sets it. False if unsupported or it failed. */
+internal suspend fun setWallpaper(context: Context, target: WallpaperTarget, render: (w: Int, h: Int) -> Bitmap): Boolean =
+    withContext(Dispatchers.Default) {
+        if (!canSetWallpaper(context)) return@withContext false
+        try {
+            val (w, h) = screenSizePx(context)
+            val bmp = render(w, h)
+            WallpaperManager.getInstance(context).setBitmap(bmp, null, true, target.flags)
+            bmp.recycle()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 
 internal fun canSetWallpaper(context: Context): Boolean =
     WallpaperManager.getInstance(context).let { it.isWallpaperSupported && it.isSetWallpaperAllowed }
@@ -93,17 +104,21 @@ interface AutoWallpaperEntryPoint {
     fun content(): ContentRepository
 }
 
-/** Light: reads prefs, draws one bitmap, sets it. No network. */
+/** Light: reads prefs, draws one bitmap, sets it. No network. With our live wallpaper on, it only refreshes the lock screen still. */
 class AutoWallpaperWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        if (isLiveWallpaperActive(applicationContext)) {
+            val choice = LiveWallpaperPrefs.read(applicationContext)
+            val tone = liveTone(applicationContext, choice) ?: return Result.success()
+            return if (setLiveLockFrame(applicationContext, tone, choice)) Result.success() else Result.failure()
+        }
         val entry = EntryPointAccessors.fromApplication(applicationContext, AutoWallpaperEntryPoint::class.java)
         val prefs = entry.preferences().preferences.first()
         val tone = entry.content().toneOrNull(prefs.myToneId)
         if (!prefs.autoWallpaper || tone == null) return Result.success()
-        val style = WallpaperRenderer.Style.entries.firstOrNull { it.name == prefs.autoWallpaperStyle } ?: WallpaperRenderer.Style.TODAY
+        val (style, dark) = decodeStyle(prefs.autoWallpaperStyle)
         val target = WallpaperTarget.entries.firstOrNull { it.name == prefs.autoWallpaperTarget } ?: WallpaperTarget.BOTH
-        val night = applicationContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-        val ok = AutoWallpaperScheduler.apply(applicationContext, tone, style, target, night)
+        val ok = AutoWallpaperScheduler.apply(applicationContext, tone, style, dark, target)
         return if (ok) Result.success() else Result.failure()
     }
 }

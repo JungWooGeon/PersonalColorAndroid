@@ -1,5 +1,7 @@
 package com.gun.personalcolor
 
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import android.content.Intent
 import android.os.Bundle
 import android.graphics.Color
@@ -94,5 +96,11 @@ class MainActivity : ComponentActivity() {
             is DeepLink.ToneLink -> ToneRoute(link.id)
             null -> return
         }
+    }
+
+    /** Leaving the app (e.g. after watching an ad or buying premium): bring the home-screen widget up to date. */
+    override fun onStop() {
+        super.onStop()
+        lifecycleScope.launch { runCatching { TodayColorWidgets.refresh(applicationContext) } }
     }
 }

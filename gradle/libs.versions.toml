@@ -32,6 +32,7 @@ androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-com
 kotlinx-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0"
 kotlinx-coroutines-test = "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0"
 mediapipe-tasks-vision = "com.google.mediapipe:tasks-vision:0.10.32"
+mlkit-subject-segmentation = "com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1"
 play-services-ads = "com.google.android.gms:play-services-ads:25.5.0"
 ump = "com.google.android.ump:user-messaging-platform:4.0.0"
 play-review = "com.google.android.play:review-ktx:2.0.2"

@@ -27,15 +27,6 @@ import kotlin.math.roundToInt
 // MediaPipe face-oval landmarks from one jaw angle (288) round the chin (152) to the other (58).
 private val JAW = listOf(288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58)
 
-/** Draws [image] fitted (letterboxed) into the canvas and returns where it landed. */
-internal fun DrawScope.drawFitted(image: ImageBitmap): Rect {
-    val scale = min(size.width / image.width, size.height / image.height)
-    val w = image.width * scale; val h = image.height * scale
-    val left = (size.width - w) / 2; val top = (size.height - h) / 2
-    drawImage(image, dstOffset = IntOffset(left.roundToInt(), top.roundToInt()), dstSize = IntSize(w.roundToInt(), h.roundToInt()))
-    return Rect(left, top, left + w, top + h)
-}
-
 /** Photo-space landmark [i] → canvas point inside [r]. */
 internal fun FacePhoto.point(i: Int, r: Rect) = landmarks[i].let { Offset(r.left + it.x * r.width, r.top + it.y * r.height) }
 

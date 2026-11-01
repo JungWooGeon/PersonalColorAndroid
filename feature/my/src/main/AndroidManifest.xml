@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Optional: the app still installs on devices without live wallpapers. -->
+    <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
+
+    <application>
+        <service
+            android:name="com.gun.personalcolor.feature.my.PersonalColorLiveWallpaper"
+            android:exported="true"
+            android:label="@string/my_live_wallpaper_name"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/live_wallpaper" />
+        </service>
+    </application>
 </manifest>

@@ -37,7 +37,7 @@ dependencies {
     listOf(
         ":core:model", ":core:data", ":core:designsystem", ":core:ui", ":core:ads", ":core:analytics",
         ":feature:onboarding", ":feature:home", ":feature:analyze", ":feature:result", ":feature:drape",
-        ":feature:quiz", ":feature:tones", ":feature:colormatch", ":feature:learn", ":feature:my", ":feature:settings", ":feature:widget", ":feature:coordi", ":core:share",
+        ":feature:quiz", ":feature:tones", ":feature:colormatch", ":feature:learn", ":feature:my", ":feature:settings", ":feature:widget", ":feature:coordi", ":core:share", ":core:weather",
     ).forEach { implementation(project(it)) }
 
     implementation(libs.androidx.core.ktx)

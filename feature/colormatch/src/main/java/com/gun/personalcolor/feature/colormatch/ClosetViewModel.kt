@@ -45,6 +45,7 @@ class ClosetViewModel @Inject constructor(
     fun update(item: ClosetItem) { viewModelScope.launch { closet.update(item) } }
     fun delete(id: Long) { viewModelScope.launch { closet.delete(id) } }
     fun clear() { viewModelScope.launch { closet.clear() } }
+    fun imageFile(name: String) = closet.imageFile(name)
 }
 
 internal fun entryFor(item: ClosetItem, tones: List<Tone>, myToneId: String?): ClosetEntry {

@@ -1,39 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Static widget-picker preview (API 31+) of the 4x2 layout: color card + mini flat-lay. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_preview_bg"
-    android:padding="10dp">
+    android:orientation="horizontal"
+    android:padding="12dp">
 
-    <FrameLayout
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="match_parent"
+        android:layout_weight="0.8"
         android:background="@drawable/widget_preview_swatch"
+        android:orientation="vertical"
         android:padding="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="@string/widget_today_color_label"
+            android:textColor="#1D1B1A"
+            android:textSize="11sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_name"
+            android:textColor="#1D1B1A"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="vertical">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_preview_surface"
+            android:gravity="center"
+            android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:maxLines="1"
-                android:text="@string/widget_today_color_label"
-                android:textColor="#1D1B1A"
-                android:textSize="11sp" />
+            <FrameLayout
+                android:layout_width="26dp"
+                android:layout_height="40dp"
+                android:background="@drawable/widget_preview_trench" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="@string/widget_preview_name"
-                android:textColor="#1D1B1A"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+            <FrameLayout
+                android:layout_width="30dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/widget_preview_knit" />
+
+            <FrameLayout
+                android:layout_width="18dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/widget_preview_pants" />
         </LinearLayout>
-    </FrameLayout>
-</FrameLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_headline"
+            android:textColor="@color/widget_ink"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="@string/widget_preview_weather"
+            android:textColor="@color/widget_muted"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -14,7 +14,51 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /** One piece of today's outfit, e.g. 아우터 · 카멜 트렌치코트. */
-data class OutfitSlot(val label: String, val color: NamedColor, val item: String, val fromCloset: Boolean = false)
+data class OutfitSlot(
+    val label: String,
+    val color: NamedColor,
+    val item: String,
+    val fromCloset: Boolean = false,
+    /** CLOTHING_KINDS key for the illustration; null = no fitting kind (shown as a color chip). */
+    val kind: String? = null,
+    /** Closet cut-out photo under filesDir/closet/, when [fromCloset]. */
+    val imageFile: String? = null,
+)
+
+/** Maps an outfit item text ("카멜 트렌치코트", "셔츠 원피스", a closet name …) to a CLOTHING_KINDS key, falling back by slot label. */
+internal fun kindOf(itemText: String, slot: String): String? {
+    val t = itemText
+    return when {
+        "원피스" in t -> "dress"
+        "트렌치" in t -> "trench"
+        "패딩" in t || "다운" in t -> "padding"
+        "코트" in t -> "coat"
+        "자켓" in t || "재킷" in t || "블레이저" in t || "무스탕" in t || "바람막이" in t -> "jacket"
+        "가디건" in t -> "cardigan"
+        "맨투맨" in t || "후드" in t -> "sweatshirt"
+        "민소매" in t || "나시" in t -> "sleeveless"
+        "폴로" in t || "티" in t -> "tee"
+        "셔츠" in t || "블라우스" in t -> "shirt"
+        "니트" in t || "터틀넥" in t || "스웨터" in t -> "knit"
+        "데님" in t || "청바지" in t || "진 " in "$t " -> "jeans"
+        "쇼츠" in t || "반바지" in t -> "shorts"
+        "스커트" in t || "치마" in t -> "skirt"
+        "팬츠" in t || "슬랙스" in t || "바지" in t -> "pants"
+        "스카프" in t || "머플러" in t || "목도리" in t -> "scarf"
+        "가방" in t || "토트" in t || "숄더백" in t -> "bag"
+        "모자" in t || "캡" in t || "비니" in t -> "hat"
+        "신발" in t || "스니커즈" in t || "로퍼" in t || "구두" in t -> "shoes"
+        "양말" in t -> "socks"
+        "우산" in t -> "umbrella"
+        else -> when (slot) {
+            "아우터" -> "jacket"
+            "상의" -> "tee"
+            "하의" -> "pants"
+            "원피스" -> "dress"
+            else -> null // e.g. 헤어 액세서리: no honest illustration
+        }
+    }
+}
 
 data class Outfit(
     /** "체감 14°C · 자켓·트렌치 날씨" or the season-based fallback line. */
@@ -85,9 +129,10 @@ object OutfitEngine {
         val mine = closet.filter { it.toneId == tone.id && it.verdict != Verdict.AVOID }
         fun slot(label: String, category: String, color: NamedColor, noun: String): OutfitSlot {
             val owned = mine.filter { it.category == category }
-            if (owned.isEmpty()) return OutfitSlot(label, color, "${color.name} $noun")
+            if (owned.isEmpty()) return OutfitSlot(label, color, "${color.name} $noun", kind = kindOf(noun, label))
             val item = owned[rnd.nextInt(owned.size)]
-            return OutfitSlot(label, NamedColor(item.name, item.hex), "내 옷장의 '${item.name}'", fromCloset = true)
+            return OutfitSlot(label, NamedColor(item.name, item.hex), "내 옷장의 '${item.name}'", fromCloset = true,
+                kind = item.kind ?: kindOf(item.name, label), imageFile = item.imageFile)
         }
 
         val slots = buildList {
@@ -104,7 +149,7 @@ object OutfitEngine {
                 add(slot("상의", "상의", main, band.top[rnd.nextInt(band.top.size)]))
                 add(slot("하의", "하의", bottomColor, band.bottom[rnd.nextInt(band.bottom.size)]))
             }
-            if (rainy) add(OutfitSlot("포인트", bright, "${bright.name} 우산"))
+            if (rainy) add(OutfitSlot("포인트", bright, "${bright.name} 우산", kind = "umbrella"))
             else add(slot("포인트", "액세서리", mood, points[rnd.nextInt(points.size)]))
         }
 

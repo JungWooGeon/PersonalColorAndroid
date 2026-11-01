@@ -2,6 +2,13 @@ package com.gun.personalcolor.feature.colormatch
 
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.ExtendedFloatingActionButton
+import com.gun.personalcolor.core.model.CLOTHING_KINDS
+import java.io.File
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,7 +92,13 @@ import com.gun.personalcolor.core.ui.temperatureKo
 fun ClosetRoute(onBack: () -> Unit, onColorMatch: () -> Unit, vm: ClosetViewModel = hiltViewModel()) {
     TrackScreen("closet")
     val state by vm.state.collectAsStateWithLifecycle()
-    ClosetScreen(state, onBack, onColorMatch, onUpdate = vm::update, onDelete = vm::delete, onClear = vm::clear)
+    // The add flow is a full-screen state over the closet (no extra route, so the app's nav graph stays as is).
+    var adding by rememberSaveable { mutableStateOf(false) }
+    if (adding) ClosetAddRoute(onClose = { adding = false })
+    else ClosetScreen(
+        state, onBack, onColorMatch, onAdd = { adding = true }, imageFile = vm::imageFile,
+        onUpdate = vm::update, onDelete = vm::delete, onClear = vm::clear,
+    )
 }
 
 @Composable
@@ -93,6 +106,8 @@ fun ClosetScreen(
     state: ClosetUiState,
     onBack: () -> Unit,
     onColorMatch: () -> Unit,
+    onAdd: () -> Unit,
+    imageFile: (String) -> File,
     onUpdate: (ClosetItem) -> Unit,
     onDelete: (Long) -> Unit,
     onClear: () -> Unit,
@@ -114,11 +129,16 @@ fun ClosetScreen(
         when {
             state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
             state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-                EmptyState(Icons.Rounded.Checkroom, "옷장이 비어 있어요", "컬러 체크에서 저장한 옷이 여기 모여요", action = {
-                    PcButton("컬러 체크하기", onColorMatch, icon = Icons.Rounded.Colorize)
+                EmptyState(Icons.Rounded.Checkroom, "옷장이 비어 있어요", "내 옷을 찍어 두면 어울리는지 한눈에 볼 수 있어요", action = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        PcButton("옷 추가", onAdd, icon = Icons.Rounded.Add)
+                        TextButton(onColorMatch, Modifier.heightIn(min = 48.dp)) {
+                            Icon(Icons.Rounded.Colorize, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("컬러 체크하기", maxLines = 1)
+                        }
+                    }
                 })
             }
-            else -> {
+            else -> Box(Modifier.fillMaxSize()) {
                 val categories = CLOSET_CATEGORIES.filter { c -> state.entries.any { it.item.category == c } }
                 val shown = state.entries.filter {
                     (levelFilter == null || it.level == levelFilter) && (categoryFilter == null || it.item.category == categoryFilter)
@@ -131,7 +151,7 @@ fun ClosetScreen(
                         start = pad.calculateStartPadding(dir) + ScreenPadding,
                         end = pad.calculateEndPadding(dir) + ScreenPadding,
                         top = pad.calculateTopPadding(),
-                        bottom = pad.calculateBottomPadding() + 24.dp,
+                        bottom = pad.calculateBottomPadding() + 96.dp, // room for the FAB
                     ),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -161,17 +181,25 @@ fun ClosetScreen(
                         Text("조건에 맞는 옷이 없어요", style = Muted, modifier = Modifier.padding(vertical = 32.dp).fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                     // One in-feed ad after the first 6 tiles (or after all of them if fewer).
-                    items(shown.take(6), key = { it.item.id }) { e -> ClosetTile(e) { selectedId = e.item.id } }
+                    items(shown.take(6), key = { it.item.id }) { e -> ClosetTile(e, imageFile) { selectedId = e.item.id } }
                     if (shown.isNotEmpty()) item(key = "ad", span = { GridItemSpan(maxLineSpan) }) { NativeAdCard() }
-                    items(shown.drop(6), key = { it.item.id }) { e -> ClosetTile(e) { selectedId = e.item.id } }
+                    items(shown.drop(6), key = { it.item.id }) { e -> ClosetTile(e, imageFile) { selectedId = e.item.id } }
                 }
+                ExtendedFloatingActionButton(
+                    onClick = onAdd,
+                    icon = { Icon(Icons.Rounded.Add, null) },
+                    text = { Text("옷 추가", maxLines = 1) },
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(end = pad.calculateEndPadding(dir) + ScreenPadding, bottom = pad.calculateBottomPadding() + 16.dp)
+                        .navigationBarsPadding(),
+                )
             }
         }
     }
 
     state.entries.firstOrNull { it.item.id == selectedId }?.let { e ->
         ItemSheet(
-            e,
+            e, imageFile,
             onUpdate = onUpdate,
             onDelete = { onDelete(e.item.id); selectedId = null },
             onDismiss = { selectedId = null },
@@ -193,7 +221,7 @@ private fun ChipRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ClosetTile(e: ClosetEntry, onClick: () -> Unit) {
+private fun ClosetTile(e: ClosetEntry, imageFile: (String) -> File, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
@@ -201,11 +229,20 @@ private fun ClosetTile(e: ClosetEntry, onClick: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Swatch(e.item.hex, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(14.dp))
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                Alignment.Center,
+            ) {
+                val photo = e.item.imageFile?.let(imageFile)
+                GarmentThumb(e.item, photo, if (photo != null) Modifier.fillMaxSize().padding(10.dp) else Modifier.fillMaxSize())
+            }
             Spacer(Modifier.height(2.dp))
             Text(e.item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(e.item.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Swatch(e.item.hex, Modifier.size(12.dp), CircleShape)
+                Spacer(Modifier.width(6.dp))
+                Text(kindLabel(e.item), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text("${e.score}점", style = MaterialTheme.typography.labelLarge, color = levelColors(e.level).accent, maxLines = 1)
             }
@@ -217,26 +254,40 @@ private fun ClosetTile(e: ClosetEntry, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun ItemSheet(e: ClosetEntry, onUpdate: (ClosetItem) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+private fun ItemSheet(e: ClosetEntry, imageFile: (String) -> File, onUpdate: (ClosetItem) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
     val item = e.item
     var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
-    var category by rememberSaveable(item.id) { mutableStateOf(item.category) }
+    var kind by rememberSaveable(item.id) { mutableStateOf(item.kind) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val changed = name.isNotBlank() && (name.trim() != item.name || category != item.category)
+    val changed = name.isNotBlank() && (name.trim() != item.name || kind != item.kind)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier.readableWidth().verticalScroll(rememberScrollState()).padding(horizontal = ScreenPadding).padding(bottom = 24.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Swatch(item.hex, Modifier.fillMaxWidth().height(140.dp), RoundedCornerShape(20.dp))
+            val photo = item.imageFile?.let(imageFile)
+            if (photo != null) Box(
+                Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                Alignment.Center,
+            ) { GarmentThumb(item, photo, Modifier.fillMaxSize().padding(16.dp), maxSide = 1024) }
+            else GarmentThumb(item, null, Modifier.fillMaxWidth().height(140.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Swatch(item.hex, Modifier.size(28.dp), CircleShape)
+                Spacer(Modifier.width(10.dp))
                 Text(item.hex, style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f))
                 Text("${e.score}점", style = MaterialTheme.typography.titleMedium, color = levelColors(e.level).accent, maxLines = 1)
             }
 
-            ClosetFields(name, { name = it }, category, { category = it })
-            if (changed) PcButton("변경 저장", { onUpdate(item.copy(name = name.trim(), category = category)) }, Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = name, onValueChange = { name = it.take(30) }, label = { Text("이름") },
+                singleLine = true, modifier = Modifier.fillMaxWidth(),
+            )
+            Text("종류", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            KindChips(kind) { kind = it }
+            if (changed) PcButton("변경 저장", {
+                onUpdate(item.copy(name = name.trim(), kind = kind, category = kind?.let { CLOTHING_KINDS[it]?.second } ?: item.category))
+            }, Modifier.fillMaxWidth())
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -271,7 +322,7 @@ private fun ItemSheet(e: ClosetEntry, onUpdate: (ClosetItem) -> Unit, onDelete: 
 
     if (confirmDelete) ConfirmDialog(
         title = "삭제할까요?",
-        message = "'${item.name}' 항목이 옷장에서 지워져요.",
+        message = if (item.imageFile != null) "'${item.name}' 항목과 사진이 옷장에서 지워져요." else "'${item.name}' 항목이 옷장에서 지워져요.",
         confirm = "삭제",
         onConfirm = { confirmDelete = false; onDelete() },
         onDismiss = { confirmDelete = false },
@@ -294,6 +345,8 @@ internal fun ClosetFields(name: String, onName: (String) -> Unit, category: Stri
     }
 }
 
+private fun kindLabel(item: ClosetItem) = item.kind?.let { CLOTHING_KINDS[it]?.first } ?: item.category
+
 @Composable
 private fun ConfirmDialog(title: String, message: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -309,12 +362,12 @@ private fun ConfirmDialog(title: String, message: String, confirm: String, onCon
 @Composable
 private fun ClosetPreview() = PcTheme {
     val items = listOf(
-        ClosetItem(1, "#C0603A", "테라코타 상의", "상의", "autumn_mute", Verdict.GOOD, 88),
+        ClosetItem(1, "#C0603A", "테라코타 니트", "상의", "autumn_mute", Verdict.GOOD, 88, kind = "knit"),
         ClosetItem(2, "#8A7650", "올리브 하의", "하의", "autumn_mute", Verdict.OK, 55),
         ClosetItem(3, "#FF2D95", "핫핑크 립·메이크업", "립·메이크업", "autumn_mute", Verdict.AVOID, 20),
     )
     ClosetScreen(
         ClosetUiState(false, items.map { ClosetEntry(it, MatchLevel.of(it.verdict), it.score, it.id == 2L, null, null) }),
-        onBack = {}, onColorMatch = {}, onUpdate = {}, onDelete = {}, onClear = {},
+        onBack = {}, onColorMatch = {}, onAdd = {}, imageFile = { File(it) }, onUpdate = {}, onDelete = {}, onClear = {},
     )
 }
