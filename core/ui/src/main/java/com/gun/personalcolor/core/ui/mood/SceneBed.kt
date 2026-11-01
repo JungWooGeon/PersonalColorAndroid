@@ -126,6 +126,7 @@ object SceneBed {
         wPx: Int, hPx: Int, phase: Int, locked: Boolean, mini: Boolean, pill: String? = if (locked) "광고 보고 열기" else null,
         rounded: Boolean = true,
         hero: Boolean = false,
+        bgAlpha: Float = 1f, // < 1: the scene shows the wallpaper through; garments and text stay solid
     ): Bitmap {
         val d = ctx.resources.displayMetrics.density
         if (ko == null) ko = runCatching { ResourcesCompat.getFont(ctx, DsR.font.nanum_myeongjo) }.getOrNull() ?: Typeface.SERIF
@@ -151,6 +152,10 @@ object SceneBed {
         val filter = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
         base(ctx, w)?.let { c.drawBitmap(it, null, RectF(0f, 0f, bw, bh), filter) }
 
+        // Coverage mask: background alpha everywhere, full under garments (and their soft contact shadows).
+        val mask = if (bgAlpha < 1f) Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888) else null
+        val mc = mask?.let { Canvas(it).apply { drawColor(Color.argb((255 * bgAlpha).toInt(), 0, 0, 0)); concat(m); if (cropped) translate(region.left, region.top) } }
+
         // Garments (+ their contact shadows).
         val drawPieces = if (locked) TEASER else pieces
         if (drawPieces.isNotEmpty() && L != null) {
@@ -168,7 +173,9 @@ object SceneBed {
                 for ((role, p, slot) in drawn) {
                     val art = garment(p.first, p.second) ?: continue
                     // The rim only on shoes and bags: on a coat it reads as a sticker outline.
-                    placeGarment(gc, art, role, slot, shadow, grade, role in setOf("shoes", "bag") && lum(p.second) < .12f)
+                    val rim = role in setOf("shoes", "bag") && lum(p.second) < .12f
+                    placeGarment(gc, art, role, slot, shadow, grade, rim)
+                    mc?.let { placeGarment(it, art, role, slot, shadow, grade, rim) }
                 }
                 if (cropped) gc.restore()
                 if (layer != null) frost(c, layer)
@@ -201,6 +208,8 @@ object SceneBed {
             shader = RadialGradient(wPx / 2f, hPx / 2f, kotlin.math.hypot(wPx / 2f, hPx / 2f),
                 intArrayOf(0, 0, Color.argb((255 * v).toInt(), 0, 0, 0)), floatArrayOf(0f, .45f, 1f), Shader.TileMode.CLAMP)
         })
+
+        mask?.let { c.drawBitmap(it, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }); it.recycle() }
 
         // Text, in base px through the same matrix.
         c.save(); c.concat(m)
@@ -298,6 +307,14 @@ object SceneBed {
         return RectF(r.left, r.top, r.right, y - lh + p.descent())
     }
 
+    internal fun oneLine(s: String, p: Paint, maxW: Float, minScale: Float = .8f): String {
+        val full = p.textSize
+        var t = s.trim()
+        if (p.measureText(t) * minScale > maxW && ", " in t) t = t.substringAfter(", ")
+        if (p.measureText(t) > maxW) p.textSize = full * maxW / p.measureText(t)
+        return t
+    }
+
     private fun drawCaption(c: Canvas, s: String, t: JSONObject, w: String) {
         val r = t.optJSONArray("rect")?.let(::rect) ?: return
         val p = paint(en, t.optDouble("size", 24.0).toFloat(), colorOf(t.opt("color"), w, Color.rgb(0x6B, 0x5A, 0x4A)), t)
@@ -312,13 +329,8 @@ object SceneBed {
 
     private fun x(r: RectF, p: Paint, t: JSONObject) = when (p.textAlign) { Paint.Align.RIGHT -> r.right; Paint.Align.CENTER -> r.centerX(); else -> r.left }
 
-    internal fun wrap(s: String, p: Paint, maxW: Float): List<String> {
-        val i = s.indexOf(", ")
-        if (i > 0) return listOf(s.substring(0, i + 1), s.substring(i + 2))
-        if (s.length <= 8 && p.measureText(s) <= maxW) return listOf(s)
-        val cut = s.indices.filter { s[it] == ' ' }.minByOrNull { kotlin.math.abs(it - s.length / 2f) } ?: return listOf(s)
-        return listOf(s.substring(0, cut), s.substring(cut + 1))
-    }
+    /** Always one line: shrink to fit; if it would get too small, drop the lead-in before ", " (the caption says the weather). */
+    internal fun wrap(s: String, p: Paint, maxW: Float): List<String> = listOf(oneLine(s, p, maxW))
 
     /** The quiet pill: milk glass, myeongjo label, under the line (or bottom center on the 1x1). */
     private fun drawPill(c: Canvas, label: String, under: RectF?, region: RectF, size: Float, ink: Int, night: Boolean) {

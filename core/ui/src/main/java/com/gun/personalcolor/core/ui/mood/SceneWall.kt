@@ -57,6 +57,7 @@ object SceneWall {
         hPx: Int,
         phase: Int, // 0..2 light phase
         locked: Boolean,
+        bgAlpha: Float = 1f, // < 1: the scene shows the wallpaper through; garments, hangers and text stay solid
     ): Bitmap = synchronized(this) {
         val ctx = context.applicationContext
         val wx = weather.takeIf { it in setOf("sunny", "cloudy", "rain", "night") } ?: "cloudy"
@@ -84,10 +85,14 @@ object SceneWall {
         val cs = L.getJSONObject("contactShadow")
         val rim = L.getJSONObject("darkRim")
         val hung = ArrayList<JSONObject>()
+        // Coverage mask: background alpha everywhere, full under garments (and their soft contact shadows).
+        val mask = if (bgAlpha < 1f) Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888) else null
+        val mc = mask?.let { Canvas(it).apply { drawColor(Color.argb((255 * bgAlpha).toInt(), 0, 0, 0)); concat(m) } }
         lay.keys().asSequence().map { it to lay.getJSONObject(it) }.sortedBy { it.second.getInt("z") }.forEach { (role, slot) ->
             val (kind, argb) = look[role] ?: return@forEach
             val art = garment(kind, argb, gradeFilter, rim) ?: return@forEach
             place(c, art, slot, cs)
+            mc?.let { place(it, art, slot, cs) }
             art.recycle()
             if (slot.optString("hanger") in setOf("hanger", "clip")) hung += slot
         }
@@ -98,6 +103,7 @@ object SceneWall {
             val img = hangers.getOrPut(def.getString("file")) { ctx.assets.open("$DIR/${def.getString("file")}").use(BitmapFactory::decodeStream) }
             val hook = slot.getJSONArray("hook"); val anc = def.getJSONArray("anchor")
             c.drawBitmap(img, (hook.getInt(0) - anc.getInt(0)).toFloat(), (hook.getInt(1) - anc.getInt(1)).toFloat(), hp)
+            mc?.drawBitmap(img, (hook.getInt(0) - anc.getInt(0)).toFloat(), (hook.getInt(1) - anc.getInt(1)).toFloat(), hp)
         }
 
         // 5. light: shade (alpha as black), then warm light (screen)
@@ -119,6 +125,8 @@ object SceneWall {
         c.drawRect(0f, 0f, wPx.toFloat(), hPx.toFloat(), Paint().apply {
             shader = RadialGradient(wPx / 2f, hPx / 2f, hypot(wPx / 2f, hPx / 2f), intArrayOf(0, 0, Color.argb(vig, 0, 0, 0)), floatArrayOf(0f, .45f, 1f), Shader.TileMode.CLAMP)
         })
+
+        mask?.let { c.drawBitmap(it, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }); it.recycle() }
 
         // Locked: soft frosted veil over the generic pieces (the text column stays readable).
         if (locked) frost(out)
@@ -264,8 +272,7 @@ object SceneWall {
         val lineInk = Color.parseColor(ls.getJSONObject("color").getString(wx))
         val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply { typeface = koFace; color = lineInk; textSize = ls.getDouble("size").toFloat() }
         val maxW = lr.getInt(2).toFloat()
-        val lines = wrap(line, ls.optString("breakAfter", ", "), p, maxW)
-        lines.maxOfOrNull { p.measureText(it) }?.takeIf { it > maxW }?.let { p.textSize *= maxW / it }
+        val lines = listOf(SceneBed.oneLine(line, p, maxW)) // always one line
         val step = p.textSize * ls.getDouble("lineSpacing").toFloat()
         var y = lr.getInt(1) - p.fontMetrics.ascent
         for (ln in lines) { c.drawText(ln, lr.getInt(0).toFloat(), y, p); y += step }
@@ -298,17 +305,4 @@ object SceneWall {
         }
     }
 
-    /** Breaks after the layout's breakAfter (", "), then greedily at spaces to fit maxW. */
-    private fun wrap(line: String, breakAfter: String, p: Paint, maxW: Float): List<String> {
-        if (line.isBlank()) return emptyList()
-        val parts = if ('\n' in line) line.split('\n') else line.replace(breakAfter, breakAfter.trimEnd() + "\n").split('\n')
-        return parts.flatMap { part ->
-            val out = ArrayList<String>(); var cur = ""
-            for (w in part.trim().split(' ')) {
-                val t = if (cur.isEmpty()) w else "$cur $w"
-                if (cur.isNotEmpty() && p.measureText(t) > maxW) { out += cur; cur = w } else cur = t
-            }
-            out += cur; out
-        }
-    }
 }

@@ -1,5 +1,8 @@
 package com.gun.personalcolor.feature.coordi
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.BasicText
 import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.designsystem.TintyEmptyState
 import com.gun.personalcolor.core.designsystem.TintyLoading
@@ -370,8 +373,9 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTon
                             Column(Modifier.weight(1f)) {
                                 Text(remember { todayLabel() }, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.height(4.dp))
-                                Text(outfit.headline, style = MaterialTheme.typography.titleLarge.copy(fontFamily = Myeongjo, fontWeight = FontWeight.Normal),
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                // One line, same type as the rest of the app; long looks shrink instead of wrapping.
+                                BasicText(outfit.headline, style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                                    maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 13.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize))
                             }
                             Text("내 톤 · ${tone.nameKo}", Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone).padding(horizontal = 6.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -402,7 +406,6 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTon
     }
 }
 
-private val Myeongjo = FontFamily(Font(com.gun.personalcolor.core.designsystem.R.font.nanum_myeongjo))
 
 private fun todayLabel(): String = java.time.LocalDate.now().let { "${it.monthValue}월 ${it.dayOfMonth}일 코디" }
 

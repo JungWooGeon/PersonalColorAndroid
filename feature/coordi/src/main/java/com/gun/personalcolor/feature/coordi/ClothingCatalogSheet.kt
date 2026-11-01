@@ -37,7 +37,6 @@ import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.NamedColor
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.hexColor
-import com.gun.personalcolor.core.ui.mood.Myeongjo
 import com.gun.personalcolor.core.ui.mood.ShadowedGarment
 import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import com.gun.personalcolor.core.ui.tintyColors
@@ -94,7 +93,7 @@ internal fun ClothingCatalogSheet(tone: Tone?, onDismiss: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         ShadowedGarment(kind, hexColor(color.hex), Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.large)
                             .moodBackdrop(kind.hashCode()).padding(14.dp))
-                        Text(label, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelLarge.copy(fontFamily = Myeongjo),
+                        Text(label, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelLarge,
                             maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                         Text(color.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)

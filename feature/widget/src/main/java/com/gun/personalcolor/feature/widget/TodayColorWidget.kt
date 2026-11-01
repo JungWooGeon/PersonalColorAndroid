@@ -99,6 +99,9 @@ class TodayColorWidgetReceiver : LookWidgetProvider(WidgetSize.Wide)
 class TodayLookSquareReceiver : LookWidgetProvider(WidgetSize.Square)
 class TodayLookMiniReceiver : LookWidgetProvider(WidgetSize.Mini)
 
+/** How much of the scene background covers the wallpaper; garments and text stay solid. */
+private const val SCENE_ALPHA = 0.55f
+
 private const val TAG = "LookWidget"
 
 internal enum class WidgetSize { Mini, Square, Wide }
@@ -241,11 +244,11 @@ internal object LookWidgets {
         val w = (wDp * d).toInt(); val h = (hDp * d).toInt()
         return when (val size = sizeOf(wDp, hDp)) {
             WidgetSize.Wide -> SceneWall.render(context, if (look.locked) emptyList() else look.pieces.orEmpty(),
-                look.weather, look.line, look.caption, w, h, phase, look.locked)
+                look.weather, look.line, look.caption, w, h, phase, look.locked, bgAlpha = SCENE_ALPHA)
             else -> {
                 val mini = size == WidgetSize.Mini
                 SceneBed.render(context, if (look.locked) emptyList() else look.pieces.orEmpty(), look.weather, look.line,
-                    if (mini) look.miniCaption else look.caption, w, h, phase, look.locked, mini, look.pill)
+                    if (mini) look.miniCaption else look.caption, w, h, phase, look.locked, mini, look.pill, bgAlpha = SCENE_ALPHA)
             }
         }
     }
