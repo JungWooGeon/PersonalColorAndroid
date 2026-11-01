@@ -107,7 +107,8 @@ class OutfitEngineTest {
         expected.forEach { (text, kind) -> assertEquals(text, kind, kindOf("카멜 $text", "")) }
         assertEquals("knit", kindOf("내 옷장의 '카멜 니트'", "상의"))
         assertEquals("tee", kindOf("최애 상의", "상의"))
-        assertEquals(null, kindOf("최애 소품", "포인트"))
+        assertEquals("crossbody", kindOf("최애 소품", "포인트")) // unknown accessories still get a picture
+        assertEquals(null, kindOf("최애 소품", ""))
     }
 
     @Test fun everyGeneratedSlotHasKnownKind() {
@@ -137,5 +138,16 @@ class OutfitEngineTest {
             .firstNotNullOf { o -> o.slots.firstOrNull { it.label == "상의" } }
         assertEquals("sweatshirt", top.kind)
         assertEquals("1.png", top.imageFile)
+    }
+
+    @Test fun everySlotHasArtAndRainyColorsDiffer() {
+        val closet = listOf(ClosetItem(id = 1, name = "진주 반지", hex = "#EDE6DA", category = "액세서리", toneId = tone.id, verdict = Verdict.GOOD, score = 90))
+        for (feels in listOf(-5.0, 3.0, 7.0, 10.0, 14.0, 18.0, 21.0, 25.0, 30.0)) for (rain in listOf(0, 80)) for (v in 0..11) {
+            listOf(emptyList(), closet).forEach { items ->
+                val o = OutfitEngine.build(tone, weather(feels, rain), date.plusDays(v.toLong()), moods, items, v)
+                o.slots.forEach { assertTrue("${it.item} has no art", it.kind != null && it.kind in CLOTHING_KINDS) }
+                if (rain > 0) assertNotEquals(o.slots.first { it.label == "신발" }.color, o.slots.first { it.label == "포인트" }.color)
+            }
+        }
     }
 }

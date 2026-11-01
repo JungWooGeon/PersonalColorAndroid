@@ -83,6 +83,7 @@ private val BIG_POINTS = setOf("bag", "shoulder_bag", "crossbody", "backpack", "
 internal fun lookLayout(slots: List<OutfitSlot>, bounds: (OutfitSlot) -> Rect = { Rect(0.1f, 0.1f, 0.9f, 0.9f) }): List<Placement> {
     val labels = slots.map { it.label }.toSet()
     val outer = "아우터" in labels
+    val umbrella = slots.any { it.label == "포인트" && it.kind == "umbrella" }
     val spots: Map<String, Spot> = when {
         "원피스" in labels && outer -> mapOf(
             "아우터" to Spot(.32f, .37f, .66f, -5f, 3), "원피스" to Spot(.67f, .50f, .76f, 3f, 2),
@@ -90,6 +91,11 @@ internal fun lookLayout(slots: List<OutfitSlot>, bounds: (OutfitSlot) -> Rect = 
         )
         "원피스" in labels -> mapOf(
             "원피스" to Spot(.40f, .52f, .86f, -3f, 2), "신발" to Spot(.76f, .90f, .42f, -6f, 4), "포인트" to Spot(.80f, .22f, .30f, 8f, 5),
+        )
+        // Rainy: the bottom steps left and the open umbrella lies in the clear space beside it, under the clothes.
+        outer && umbrella && "원피스" !in labels -> mapOf(
+            "아우터" to Spot(.32f, .37f, .68f, -4f, 3), "상의" to Spot(.70f, .28f, .54f, 5f, 2), "하의" to Spot(.60f, .71f, .62f, -2f, 1),
+            "신발" to Spot(.27f, .90f, .40f, -5f, 4), "포인트" to Spot(.83f, .66f, .38f, 22f, 0),
         )
         outer -> mapOf(
             "아우터" to Spot(.32f, .37f, .68f, -4f, 3), "상의" to Spot(.70f, .28f, .54f, 5f, 2), "하의" to Spot(.67f, .71f, .62f, -2f, 1),
@@ -106,7 +112,7 @@ internal fun lookLayout(slots: List<OutfitSlot>, bounds: (OutfitSlot) -> Rect = 
         var size = spot.size
         var rotation = spot.rotation
         if (slot.label == "포인트") when (slot.kind) {
-            "umbrella" -> { size *= 1.45f; rotation -= 40f }
+            "umbrella" -> if (!outer || "원피스" in labels) { size *= 1.45f; rotation -= 40f }
             in BIG_POINTS -> size *= 1.25f
         }
         // Keep the drawn part (not the empty box) inside the board.
@@ -185,23 +191,21 @@ internal fun DrawScope.drawPiece(slot: OutfitSlot, photo: LookPhoto?, shadow: Co
             }
             drawImage(img, dstOffset = androidx.compose.ui.unit.IntOffset(topLeft.x.toInt(), topLeft.y.toInt()), dstSize = IntSize(w.toInt(), h.toInt()))
         }
-        slot.kind != null -> {
-            translate(drop.x, drop.y) { drawClothingShadow(slot.kind, shadow, blur = 3.2f) }
-            drawClothing(slot.kind, hexColor(slot.color.hex))
-        }
         else -> {
-            val r = side * 0.3f
-            drawCircle(shadow, r, center + drop)
-            drawCircle(hexColor(slot.color.hex), r)
+            // Never a bare chip: an unknown kind is drawn as a small bag in its color.
+            val kind = slot.kind ?: FALLBACK_KIND
+            translate(drop.x, drop.y) { drawClothingShadow(kind, shadow, blur = 3.2f) }
+            drawClothing(kind, hexColor(slot.color.hex))
         }
     }
 }
 
+private const val FALLBACK_KIND = "crossbody"
+
 /** Where the drawn part sits in the piece box (0..1), for [lookLayout]. */
 internal fun pieceBounds(slot: OutfitSlot, photo: LookPhoto?): Rect = when {
     photo != null -> Rect(0.07f, 0.07f, 0.93f, 0.93f)
-    slot.kind != null -> clothingBounds(slot.kind).let { Rect(it.left / 100, it.top / 100, it.right / 100, it.bottom / 100) }
-    else -> Rect(0.2f, 0.2f, 0.8f, 0.8f)
+    else -> clothingBounds(slot.kind ?: FALLBACK_KIND).let { Rect(it.left / 100, it.top / 100, it.right / 100, it.bottom / 100) }
 }
 
 // --- Backdrop ---

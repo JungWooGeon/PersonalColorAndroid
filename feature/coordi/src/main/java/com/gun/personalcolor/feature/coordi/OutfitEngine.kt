@@ -70,6 +70,8 @@ internal fun kindOf(itemText: String, slot: String): String? {
         "하의" -> "pants"
         "원피스" -> "dress"
         "신발" -> "shoes"
+        // Unknown accessories (a closet "진주 반지"…) still need a picture on the board: a small bag reads as "an accessory".
+        "포인트", "액세서리" -> "crossbody"
         else -> null
     }
 }
@@ -184,6 +186,8 @@ object OutfitEngine {
         val bottomColor = (neutrals - outerColor).maxByOrNull { kotlin.math.abs(lab(it.hex).l - lab(main.hex).l) } ?: outerColor
         val shoeColor = neutrals[rnd.nextInt(neutrals.size)]
         val bright = mains.maxBy { lab(it.hex).l + lab(it.hex).chroma / 2 }
+        // Rain boots get their own color: the next brightest that isn't the umbrella or the top, else a neutral.
+        val rainBoots = mains.filter { it != bright && it != main }.maxByOrNull { lab(it.hex).l + lab(it.hex).chroma / 2 } ?: shoeColor
         val mood = closestMood(moods, tone, variant) ?: main
 
         val mine = closet.filter { it.toneId == tone.id && it.verdict != Verdict.AVOID }
@@ -215,7 +219,7 @@ object OutfitEngine {
                 add(slot("상의", "상의", main, pick(band.top)))
                 add(slot("하의", "하의", bottomColor, pick(band.bottom)))
             }
-            add(slot("신발", "신발", if (rainy) bright else shoeColor, if (rainy && feels < 28) "레인부츠" else pick(band.shoes)))
+            add(slot("신발", "신발", if (rainy) rainBoots else shoeColor, if (rainy && feels < 28) "레인부츠" else pick(band.shoes)))
             if (rainy) add(OutfitSlot("포인트", bright, "${bright.name} 우산", kind = "umbrella"))
             else add(slot("포인트", "액세서리", mood, pick(band.points)))
         }

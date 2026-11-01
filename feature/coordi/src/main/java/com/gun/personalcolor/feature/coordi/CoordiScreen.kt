@@ -8,6 +8,12 @@ import com.gun.personalcolor.core.designsystem.TintyColors
 import com.gun.personalcolor.core.designsystem.PcCard
 import com.gun.personalcolor.core.ui.tintyColors
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.runtime.remember
@@ -348,21 +354,30 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: (
         Column {
             LookBoard(outfit.slots, tinty)
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Eyebrow(remember { todayLabel() })
-                        Spacer(Modifier.height(2.dp))
-                        Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                    Tag(tone.nameKo, Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone), color = MaterialTheme.colorScheme.primaryContainer)
-                }
-                StylistNote(stylingNote(outfit.slots, outfit.headline.hashCode()), tinty)
-                Legend(outfit.slots)
-                if (outfit.extras.isNotEmpty()) {
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text("챙길 것", style = Muted, maxLines = 1)
-                        outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
+                // The text follows the board: the old look fades out, the new one fades in as its pieces land.
+                AnimatedContent(
+                    outfit,
+                    transitionSpec = { fadeIn(tween(320, delayMillis = 220)) togetherWith fadeOut(tween(160)) using SizeTransform(clip = false) },
+                    label = "lookText",
+                ) { outfit ->
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Eyebrow(remember { todayLabel() })
+                                Spacer(Modifier.height(2.dp))
+                                Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                            Tag("내 톤 · ${tone.nameKo}", Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone), color = MaterialTheme.colorScheme.primaryContainer)
+                        }
+                        StylistNote(stylingNote(outfit.slots, outfit.headline.hashCode()), tinty)
+                        Legend(outfit.slots)
+                        if (outfit.extras.isNotEmpty()) {
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text("챙길 것", style = Muted, maxLines = 1)
+                                outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
+                            }
+                        }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
