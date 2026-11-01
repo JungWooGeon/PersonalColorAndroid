@@ -1,7 +1,9 @@
 package com.gun.personalcolor.feature.learn
 
+import com.gun.personalcolor.core.ui.icon
+
+
 import com.gun.personalcolor.core.ads.NativeAdCard
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +19,15 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import com.gun.personalcolor.core.designsystem.Eyebrow
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.Muted
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.aurora
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -112,9 +121,9 @@ fun ArticleScreen(state: ArticleUiState, onBack: () -> Unit, onArticle: (String)
 
 @Composable
 private fun Header(article: Article) = Column {
-    EmojiTile(article, 64)
+    IconTile(article.icon, size = 56.dp, drop = true)
     Spacer(Modifier.height(16.dp))
-    Text("${article.category} · ${article.readMinutes}분 읽기", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    Eyebrow("${article.category} · ${article.readMinutes}분 읽기")
     Spacer(Modifier.height(6.dp))
     Text(article.title, style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(10.dp))
@@ -124,7 +133,7 @@ private fun Header(article: Article) = Column {
 @Composable
 private fun Section(section: ArticleSection) = Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Text(section.heading, style = MaterialTheme.typography.titleLarge)
-    val body = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.65.em)
+    val body = MaterialTheme.typography.bodyLarge
     section.body.split("\n\n").filter { it.isNotBlank() }.forEach { Text(it.trim(), style = body) }
     if (section.bullets.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { section.bullets.forEach { Bullet(it) } }
@@ -132,17 +141,18 @@ private fun Section(section: ArticleSection) = Column(verticalArrangement = Arra
     if (section.colors.isNotEmpty()) SwatchGrid(section.colors, Modifier.padding(top = 4.dp), maxColumns = 6)
 }
 
+/** Brand aurora card that hands off to diagnosis (brand 틴티: no tone yet assumed). */
 @Composable
 private fun CtaCard(onAnalyze: () -> Unit, onQuiz: () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("내 퍼스널컬러가 궁금하다면", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text("사진이나 질문으로 바로 알 수 있어요", style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer)
+    PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, elevation = 2) {
+        Column(Modifier.aurora(PcTheme.colors).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("내 퍼스널컬러가 궁금하다면", style = MaterialTheme.typography.titleLarge)
+                    Text("사진이나 질문으로 바로 알 수 있어요", style = Muted)
+                }
+                Tinty(Modifier.size(72.dp), expression = TintyExpression.Default, animated = false)
+            }
             val analyze: @Composable (Modifier) -> Unit = { PcButton("사진으로 진단하기", onAnalyze, it, Icons.Outlined.CameraAlt) }
             val quiz: @Composable (Modifier) -> Unit = { PcOutlinedButton("질문으로 셀프 진단", onQuiz, it, Icons.Outlined.Quiz) }
             if (isWideWindow()) {

@@ -55,7 +55,6 @@ import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.Thunderstorm
@@ -93,7 +92,13 @@ import com.gun.personalcolor.core.ads.RewardRequest
 import com.gun.personalcolor.core.ads.rememberRewardGate
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
-import com.gun.personalcolor.core.designsystem.EmptyState
+import com.gun.personalcolor.core.designsystem.Eyebrow
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.PcTonalButton
+import com.gun.personalcolor.core.ui.softBrush
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.outlined.Diamond
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
@@ -194,8 +199,7 @@ private fun Content(
         WeatherCard(state.weather, state.outfit?.layerLine)
         if (!state.weather.hasPermission && !state.weather.loading) LocationCard(onLocationResult)
         if (showTrial && state.trialDaysLeft != null) {
-            Text("무료 체험 ${state.trialDaysLeft}일 남음", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+            Tag("무료 체험 ${state.trialDaysLeft}일 남음", color = MaterialTheme.colorScheme.primaryContainer)
         }
     }
     val board: @Composable ColumnScope.() -> Unit = {
@@ -258,11 +262,8 @@ private fun WeatherCard(ws: WeatherState, layerLine: String?) {
     val w = ws.weather
     SectionCard(null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                val icon = w?.let { weatherIcon(it.icon) } ?: Icons.Outlined.Thermostat
-                Icon(icon, null, Modifier.padding(12.dp).size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            Spacer(Modifier.width(16.dp))
+            IconTile(w?.let { weatherIcon(it.icon) } ?: Icons.Outlined.Thermostat, size = 52.dp, drop = true)
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     w?.placeLabel ?: if (w != null) "내 주변 날씨" else "오늘의 날씨",
@@ -280,7 +281,7 @@ private fun WeatherCard(ws: WeatherState, layerLine: String?) {
             if (ws.loading) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
             else if (w != null) {
                 Spacer(Modifier.width(12.dp))
-                Text("${w.temp.roundToInt()}°", style = MaterialTheme.typography.displaySmall, maxLines = 1)
+                Text("${w.temp.roundToInt()}°", style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"), maxLines = 1)
             }
         }
         if (w != null) {
@@ -291,7 +292,7 @@ private fun WeatherCard(ws: WeatherState, layerLine: String?) {
                 w.uv?.let { Tag("자외선 ${uvLabel(it)}") }
             }
         }
-        if (layerLine != null) Text(layerLine, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (layerLine != null) Text(layerLine, style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -316,16 +317,16 @@ private fun LocationCard(onResult: () -> Unit) {
         !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_COARSE_LOCATION)
     SectionCard(null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+            IconTile(Icons.Outlined.LocationOn, size = 36.dp)
             Spacer(Modifier.width(12.dp))
-            Text("내 위치 날씨로 추천받기", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("내 위치 날씨로 추천받기", style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Text(
             if (denied) "지금은 계절 기준으로 추천하고 있어요."
             else "대략적인 위치로 오늘 날씨에 맞는 코디를 골라요.",
             style = Muted,
         )
-        PcOutlinedButton(
+        PcTonalButton(
             if (blocked) "설정에서 위치 허용" else "위치 허용하기",
             onClick = {
                 if (blocked) {
@@ -341,14 +342,18 @@ private fun LocationCard(onResult: () -> Unit) {
 
 @Composable
 private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit) {
-    SectionCard("오늘의 코디", action = { TextButton(onTone) { Text(tone.nameKo, maxLines = 1, overflow = TextOverflow.Ellipsis) } }) {
+    SectionCard(null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow("오늘의 코디", Modifier.weight(1f))
+            TextButton(onTone) { Text(tone.nameKo, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
         Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        OutfitBoard(outfit.slots)
+        OutfitBoard(outfit.slots, tone.softBrush())
         if (outfit.extras.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("챙길 것", style = Muted, maxLines = 1)
-                outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.secondaryContainer) }
+                outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
             }
         }
     }
@@ -359,12 +364,13 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit) {
  * Closet pieces show the user's cut-out photo (or the illustration in the item's color) with a "내 옷" tag.
  */
 @Composable
-private fun OutfitBoard(slots: List<OutfitSlot>) {
+private fun OutfitBoard(slots: List<OutfitSlot>, background: Brush) {
     val smalls = slots.filter { it.label == "신발" || it.label == "포인트" }
     val clothes = slots - smalls.toSet()
     val first = clothes.firstOrNull() ?: return
     val rest = clothes.drop(1)
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+    // Tone pastel wash so the garments sit on "my" colors.
+    Box(Modifier.clip(MaterialTheme.shapes.large).background(background)) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
             val col = (maxWidth - 16.dp) / 2
             val big = (col * 0.86f).coerceAtMost(200.dp)
@@ -465,9 +471,7 @@ private fun PointCard(outfit: Outfit) {
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                Icon(Icons.Outlined.Palette, null, Modifier.padding(10.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            IconTile(Icons.Outlined.Diamond, size = 40.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text("액세서리", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -479,13 +483,13 @@ private fun PointCard(outfit: Outfit) {
 
 @Composable
 private fun TipCard(tip: String) {
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
-            Icon(Icons.Outlined.Lightbulb, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Icon(Icons.Outlined.Lightbulb, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("오늘의 팁", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                Text(tip, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                Text("오늘의 팁", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(tip, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
     }
@@ -494,7 +498,9 @@ private fun TipCard(tip: String) {
 @Composable
 private fun LoadingCard() {
     SectionCard(null) {
-        Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) { TintyLoading(size = 120.dp) }
+        Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+            TintyLoading(message = "날씨에 맞춰 고르고 있어요", size = 112.dp)
+        }
     }
 }
 
@@ -506,20 +512,18 @@ private fun LockedCard(onUnlock: () -> Unit) {
             Column(Modifier.blur(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 repeat(3) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp)))
+                        Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small))
                         Spacer(Modifier.width(16.dp))
-                        Box(Modifier.fillMaxWidth(0.6f).height(16.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)))
+                        Box(Modifier.fillMaxWidth(0.6f).height(16.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp)))
                     }
                 }
             }
-            Surface(Modifier.align(Alignment.Center), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(Icons.Outlined.Lock, null, Modifier.padding(14.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
+            IconTile(Icons.Outlined.Lock, Modifier.align(Alignment.Center), size = 56.dp, drop = true)
         }
         Text("오늘의 코디가 준비됐어요", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text("짧은 광고 하나만 보면 무료예요.", style = Muted)
         PcButton("광고 보고 오늘의 코디 보기", onUnlock, Modifier.fillMaxWidth())
-        Text("프리미엄은 광고 없이 무제한", style = MaterialTheme.typography.labelMedium,
+        Text("프리미엄이면 광고 없이 무제한이에요", style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterHorizontally),
             textAlign = TextAlign.Center)
     }

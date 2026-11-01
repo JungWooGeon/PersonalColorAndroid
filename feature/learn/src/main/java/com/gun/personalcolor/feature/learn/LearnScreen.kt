@@ -1,17 +1,16 @@
 package com.gun.personalcolor.feature.learn
 
+import com.gun.personalcolor.core.ui.icon
+
 import com.gun.personalcolor.core.ads.NativeAdCard
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,16 +18,18 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.PcCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,6 +88,13 @@ fun LearnScreen(state: LearnUiState, onBack: () -> Unit, onCategory: (String?) -
                             selected = state.category == c,
                             onClick = { onCategory(c) },
                             label = { Text(c ?: "전체", maxLines = 1) },
+                            shape = RoundedCornerShape(50),
+                            border = if (state.category == c) null else FilterChipDefaults.filterChipBorder(true, false, borderColor = MaterialTheme.colorScheme.outlineVariant),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
                         )
                     }
                 }
@@ -103,15 +111,9 @@ fun LearnScreen(state: LearnUiState, onBack: () -> Unit, onCategory: (String?) -
 /** Card used in the list and in "다른 가이드". */
 @Composable
 internal fun ArticleCard(article: Article, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            EmojiTile(article, 56)
+    PcCard(modifier.fillMaxWidth(), onClick = onClick) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconTile(article.icon, size = 48.dp)
             Column(Modifier.weight(1f)) {
                 Text(
                     "${article.category} · ${article.readMinutes}분",
@@ -124,19 +126,6 @@ internal fun ArticleCard(article: Article, onClick: () -> Unit, modifier: Modifi
                     maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
             }
         }
-    }
-}
-
-/** Emoji in a soft rounded square, tinted per category. */
-@Composable
-internal fun EmojiTile(article: Article, sizeDp: Int) {
-    val color = when (article.category) {
-        "기초" -> MaterialTheme.colorScheme.primaryContainer
-        "진단 팁" -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.secondaryContainer
-    }
-    Surface(Modifier.size(sizeDp.dp), shape = MaterialTheme.shapes.medium, color = color) {
-        Box(contentAlignment = Alignment.Center) { Text(article.emoji, fontSize = (sizeDp * 0.48f).sp) }
     }
 }
 

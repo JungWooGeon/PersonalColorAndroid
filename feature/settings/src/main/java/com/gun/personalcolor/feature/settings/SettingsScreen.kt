@@ -18,7 +18,6 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,16 +57,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,7 +87,17 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.HistoryRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
+import com.gun.personalcolor.core.designsystem.DropShape
+import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.ListRow
+import com.gun.personalcolor.core.designsystem.PcButton
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.PcSnackbarHost
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.aurora
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.Check
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.PcTheme
@@ -288,7 +293,7 @@ internal fun SettingsScreen(
                     }
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
+            PcSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
         }
     }
 
@@ -341,19 +346,12 @@ private val ThemeMode.label get() = when (this) {
     ThemeMode.DARK -> "다크"
 }
 
-/** Small label + rounded card holding a group of rows. */
+/** Eyebrow label + white card holding a group of rows. */
 @Composable
 private fun Group(label: String, content: @Composable () -> Unit) {
-    Column(Modifier.padding(horizontal = ScreenPadding).padding(top = 20.dp)) {
-        Text(
-            label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-        )
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) { Column(Modifier.padding(vertical = 4.dp)) { content() } }
+    Column(Modifier.padding(horizontal = ScreenPadding).padding(top = 24.dp)) {
+        Eyebrow(label, Modifier.padding(start = 4.dp, bottom = 8.dp))
+        PcCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(vertical = 6.dp)) { content() } }
     }
 }
 
@@ -473,25 +471,58 @@ private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
     val adFree by billing.adFree.collectAsStateWithLifecycle()
     val price by billing.price.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    Group("프리미엄") {
-        if (adFree) {
-            ListRow("프리미엄 이용 중", subtitle = "광고 없음 · 오늘의 코디 무제한", icon = Icons.Outlined.CheckCircle,
-                iconTint = MaterialTheme.colorScheme.primary)
-        } else {
-            ListRow(
-                "프리미엄", subtitle = (price?.let { "$it · " } ?: "") + "광고 제거 · 오늘의 코디 무제한",
-                icon = Icons.Outlined.Block,
-                onClick = {
-                    val started = activity != null && billing.purchase(activity)
-                    if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
-                },
-            )
-            ListRow("구매 복원", subtitle = "앱을 다시 설치했다면 눌러 주세요", icon = Icons.Outlined.Restore, onClick = {
-                billing.restore()
-                scope.launch { snackbar.showSnackbar("구매 내역을 확인했어요") }
-            })
+    PremiumCard(
+        adFree, price,
+        onPurchase = {
+            val started = activity != null && billing.purchase(activity)
+            if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
+        },
+        onRestore = {
+            billing.restore()
+            scope.launch { snackbar.showSnackbar("구매 내역을 확인했어요") }
+        },
+    )
+}
+
+/** Soft aurora card with the drop corner: benefits + one-time purchase, or 틴티 cheering once it's bought. */
+@Composable
+private fun PremiumCard(adFree: Boolean, price: String?, onPurchase: () -> Unit, onRestore: () -> Unit) {
+    Column(Modifier.padding(horizontal = ScreenPadding).padding(top = 12.dp)) {
+        PcCard(Modifier.fillMaxWidth(), shape = DropShape, elevation = 2) {
+            Box(Modifier.aurora(PcTheme.colors)) {
+                if (adFree) {
+                    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Tinty(Modifier.size(80.dp), expression = TintyExpression.Cheer, animated = false)
+                        Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                            Eyebrow("프리미엄")
+                            Text("프리미엄 이용 중", style = MaterialTheme.typography.titleLarge)
+                            Text("광고 없이 모든 기능을 쓰고 있어요", style = Muted)
+                        }
+                    }
+                } else {
+                    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column {
+                            Eyebrow("프리미엄")
+                            Text("광고 없이 더 편하게", style = MaterialTheme.typography.titleLarge)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf("광고 없이 보기", "오늘의 코디 무제한", "립 체험·리포트 바로 보기").forEach { Benefit(it) }
+                        }
+                        Text((price?.let { "$it · " } ?: "") + "한 번만 결제하면 계속 써요", style = Muted)
+                        PcButton("프리미엄 시작하기", onPurchase, Modifier.fillMaxWidth())
+                        TextButton(onRestore, Modifier.align(Alignment.CenterHorizontally)) { Text("구매 복원") }
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun Benefit(text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Icon(Icons.Rounded.Check, null, Modifier.size(18.dp), tint = PcTheme.colors.best)
+    Spacer(Modifier.width(8.dp))
+    Text(text, style = MaterialTheme.typography.bodyMedium)
 }
 
 /** "알림": daily 오늘의 컬러·코디 notification switch + time. Asks for POST_NOTIFICATIONS on API 33+ when turning on. */
@@ -542,3 +573,9 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
 
 private fun timeLabel(hour: Int, minute: Int) =
     "${if (hour < 12) "오전" else "오후"} ${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
+
+@Preview
+@Composable
+private fun PremiumPreview() = PcTheme {
+    Column { PremiumCard(false, "₩3,900", {}, {}); PremiumCard(true, null, {}, {}) }
+}
