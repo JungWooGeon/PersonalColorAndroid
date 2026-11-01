@@ -18,7 +18,7 @@ MYEONG = REPO / 'core/designsystem/src/main/res/font/nanum_myeongjo.ttf'
 SERIF_IT = ('/System/Library/Fonts/Supplemental/PTSerif.ttc', 1)  # stand-in for Noto Serif Italic
 W, H, Q = 760, 1088, 4
 WEATHERS = ('sunny', 'cloudy', 'rain', 'night')
-PHASES = (0.0, 0.35, 0.7)
+PHASES = (0.0, 0.5, 1.0)
 RIM_D, RIM_COLOR, RIM_ALPHA = 4, (176, 168, 158), 0.75
 
 # ---------------------------------------------------------------- layout (the JSON contract) ----
@@ -36,7 +36,7 @@ SHOES = lambda cx=.40, cy=.93, r=-5: slot(cx, cy, 78, 3.6, r, 5)
 LAYOUT = {
     'size': [W, H], 'lightScale': Q,
     'shadeMax': {'sunny': 0.38, 'cloudy': 0.22, 'rain': 0.26, 'night': 0.30},
-    'lightMax': {'sunny': 0.24, 'cloudy': 0.10, 'rain': 0.14, 'night': 0.22},
+    'lightMax': {'sunny': 0.24, 'cloudy': 0.10, 'rain': 0.22, 'night': 0.28},
     'grainAlpha': 0.22, 'vignette': 0.30,
     'garmentGrade': {'sunny': {'multiply': '#FFEFDC', 'saturation': 0.90},
                      'cloudy': {'multiply': '#F2EEE8', 'saturation': 0.84},
@@ -60,7 +60,7 @@ LAYOUT = {
              'layouts': {'top_bottom': {'bottom': mslot(.62, .56, 370, .52, -4, 1), 'top': mslot(.42, .38, 245, 1.06, -12, 2),
                                         'shoes': mslot(.66, .90, 52, 3.6, -6, 3)},
                          'dress': {'dress': mslot(.52, .52, 450, .62, -4, 1), 'shoes': mslot(.66, .90, 52, 3.6, -6, 2)}},
-             'text': {'caption': {'rect': [44, 616, 400, 56], 'size': 40,
+             'text': {'caption': {'rect': [36, 28, 400, 56], 'size': 40,
                                   'color': {'sunny': '#6E5848', 'cloudy': '#625A53', 'rain': '#4E4D57', 'night': '#CFC6B8'}}}},
 }
 
@@ -112,19 +112,19 @@ def light_field(t, rain, soft, seed=7):
     for i in range(260):
         s_ = rng.random()
         px, py = bx - s_ * w * 1.3 + rng.normal(0, w * .16), by + s_ * h * 1.0 + rng.normal(0, h * .14)
-        sway = t * 3 * s_  # leaves farther from the branch sway a bit more
+        sway = t * 14 * s_  # leaves farther from the branch sway a bit more
         px, py = px + sway, py + sway * .5
-        L_ = (rng.random() * .5 + .6) * h * .042; th = rng.random() * math.pi + t * .3
+        L_ = (rng.random() * .5 + .6) * h * .042; th = rng.random() * math.pi + t * .9
         pts = [(px + math.cos(th + k * math.pi / 8) * L_ * (1 if k % 8 == 0 else .5) * abs(math.cos(k * math.pi / 16)) ** .3,
                 py + math.sin(th + k * math.pi / 8) * L_ * .45 * abs(math.cos(k * math.pi / 16)) ** .3) for k in range(16)]
         dr.ellipse((px - L_, py - L_ * .38, px + L_, py + L_ * .38), fill=255) if i % 2 else dr.polygon(pts, fill=255)
-    lf = np.asarray(leaf.rotate(rng.random() * 20 + t * 2, Image.BICUBIC).resize((w, h), Image.LANCZOS)
+    lf = np.asarray(leaf.rotate(rng.random() * 20 + t * 5, Image.BICUBIC).resize((w, h), Image.LANCZOS)
                     .filter(ImageFilter.GaussianBlur(1.6 * soft if not rain else 3 * soft))) / 255
     lit = blur(lit, h * .010 * soft) * (1 - .55 * lf)
     if rain:
         drops = np.zeros((h, w), np.float32); core = np.zeros_like(drops)
         for _ in range(int(w * h / 260)):
-            x, y = rng.random() * w, (rng.random() + t * .35 * (1 + rng.random())) % 1 * h
+            x, y = rng.random() * w, (rng.random() + t * .6 * (1 + rng.random())) % 1 * h
             r = rng.random() ** 2.5 * 3.6 + 1.0; y0i, x0i = int(y), int(x)
             y0, y1, x0, x1 = max(y0i - 8, 0), min(y0i + 9, h), max(x0i - 8, 0), min(x0i + 9, w)
             Y, X = np.mgrid[y0:y1, x0:x1]; dd = ((X - x) ** 2 + ((Y - y) * .85) ** 2) ** .5
@@ -171,7 +171,12 @@ def build_light(wx, t):
     shade = np.clip(1 - lf, 0, 1)
     glow = .3 * np.clip(lf, 0, 1) ** 2 + .7 * blur(np.clip(lf - .6, 0, 1), 5)
     # shaded areas get a faint rosy bounce so a black shade never reads olive on the warm sheet
-    rgb = np.clip(glow[..., None] * np.array(p['lightcol']) + shade[..., None] * np.array(p['bounce']), 0, 1)
+    rgb = glow[..., None] * np.array(p['lightcol']) + shade[..., None] * np.array(p['bounce'])
+    if p['lamp']:  # the lamp pool breathes across the phases
+        col, _, (cx, cy, rx, ry) = p['lamp']; yy, xx = np.mgrid[0:H // Q, 0:W // Q].astype(np.float32)
+        pool = np.exp(-(((xx * Q / W - cx) / rx) ** 2 + ((yy * Q / H - cy) / ry) ** 2))
+        rgb = rgb + (.25 + .75 * t) * pool[..., None] * np.array(col)
+    rgb = np.clip(rgb, 0, 1)
     return Image.fromarray((np.dstack([rgb, shade[..., None]]) * 255 + .5).astype(np.uint8), 'RGBA')
 
 def build_grain(seed=1):

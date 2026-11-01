@@ -13,8 +13,8 @@
  "lightMax": {
   "sunny": 0.24,
   "cloudy": 0.1,
-  "rain": 0.14,
-  "night": 0.22
+  "rain": 0.22,
+  "night": 0.28
  },
  "grainAlpha": 0.22,
  "vignette": 0.3,
@@ -401,8 +401,8 @@
   "text": {
    "caption": {
     "rect": [
-     44,
-     616,
+     36,
+     28,
      400,
      56
     ],
