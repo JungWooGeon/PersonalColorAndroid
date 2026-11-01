@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.Display
 import android.view.WindowManager
 import androidx.work.CoroutineWorker
@@ -21,6 +22,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -71,30 +73,44 @@ internal fun decodeStyle(value: String): Pair<WallpaperRenderer.Style, Boolean> 
 internal suspend fun setWallpaper(context: Context, target: WallpaperTarget, render: (w: Int, h: Int) -> Bitmap): Boolean =
     withContext(Dispatchers.Default) {
         if (!canSetWallpaper(context)) return@withContext false
+        var bmp: Bitmap? = null
         try {
             val (w, h) = screenSizePx(context)
-            val bmp = render(w, h)
+            bmp = render(w, h)
             WallpaperManager.getInstance(context).setBitmap(bmp, null, true, target.flags)
-            bmp.recycle()
             true
-        } catch (e: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) { // incl. OutOfMemoryError for a full-screen bitmap on low-memory phones
+            Log.w("PcWallpaper", "set failed", e)
             false
+        } finally {
+            bmp?.recycle()
         }
     }
 
 internal fun canSetWallpaper(context: Context): Boolean =
-    WallpaperManager.getInstance(context).let { it.isWallpaperSupported && it.isSetWallpaperAllowed }
+    runCatching { WallpaperManager.getInstance(context).let { it.isWallpaperSupported && it.isSetWallpaperAllowed } }.getOrDefault(false)
 
 /** Physical screen size in px, portrait. */
 internal fun screenSizePx(context: Context): Pair<Int, Int> {
-    val (w, h) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds.let { it.width() to it.height() }
-    } else {
-        @Suppress("DEPRECATION")
-        DisplayMetrics().also { context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY).getRealMetrics(it) }
-            .let { it.widthPixels to it.heightPixels }
-    }
-    return minOf(w, h) to maxOf(w, h)
+    val (w, h) = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds.let { it.width() to it.height() }
+        } else {
+            @Suppress("DEPRECATION")
+            DisplayMetrics().also { context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY).getRealMetrics(it) }
+                .let { it.widthPixels to it.heightPixels }
+        }
+    }.getOrNull()?.takeIf { (w, h) -> w > 0 && h > 0 }
+        ?: context.resources.displayMetrics.let { it.widthPixels to it.heightPixels }
+    return portrait(w, h)
+}
+
+/** Portrait (short, long), never 0: the preview's aspect ratio and bitmap sizes divide by these. */
+internal fun portrait(w: Int, h: Int): Pair<Int, Int> {
+    val a = w.coerceAtLeast(1); val b = h.coerceAtLeast(1)
+    return minOf(a, b) to maxOf(a, b)
 }
 
 @EntryPoint

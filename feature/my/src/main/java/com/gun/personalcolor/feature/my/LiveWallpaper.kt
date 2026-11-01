@@ -21,6 +21,7 @@ import android.view.SurfaceHolder
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.WallpaperRenderer
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -47,19 +48,22 @@ internal object LiveWallpaperPrefs {
         sp(context).edit().putString("style", encodeStyle(choice.style, choice.dark)).putString("tone", choice.toneId).apply()
 }
 
-internal fun isLiveWallpaperActive(context: Context): Boolean =
+internal fun isLiveWallpaperActive(context: Context): Boolean = runCatching {
     WallpaperManager.getInstance(context).wallpaperInfo?.component == ComponentName(context, PersonalColorLiveWallpaper::class.java)
+}.getOrDefault(false)
 
 /**
  * The home-screen widget hides its 틴티 while our live wallpaper shows one (one 틴티 per screen), so it redraws when
  * the wallpaper comes and goes. Explicit update broadcast: feature modules don't depend on each other.
  */
 internal fun refreshWidgets(context: Context) {
-    val receiver = ComponentName(context.packageName, "com.gun.personalcolor.feature.widget.TodayColorWidgetReceiver")
-    val ids = runCatching { AppWidgetManager.getInstance(context).getAppWidgetIds(receiver) }.getOrNull()
-    if (ids == null || ids.isEmpty()) return
-    context.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(receiver)
-        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))
+    runCatching {
+        val receiver = ComponentName(context.packageName, "com.gun.personalcolor.feature.widget.TodayColorWidgetReceiver")
+        val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(receiver)
+        if (ids == null || ids.isEmpty()) return
+        context.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(receiver)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))
+    }
 }
 
 /** Opens the system preview of our live wallpaper (it has the apply button). */
@@ -150,6 +154,7 @@ class PersonalColorLiveWallpaper : WallpaperService() {
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             this.width = width; this.height = height
+            if (isVisible) start() // a surface recreated while visible: keep animating
             drawFrame()
         }
 
@@ -161,12 +166,7 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                 // Back after a while (screen off / unlock): 틴티 wakes up. A quick app switch doesn't replay it.
                 val now = SystemClock.uptimeMillis()
                 if (!running && now - hiddenAt > WAKE_AFTER_MS) wakeAt = now
-                if (!running) {
-                    running = true
-                    choreographer.postFrameCallback(this)
-                    rest = null
-                    rotationSensor?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
-                }
+                start()
             } else {
                 if (running) hiddenAt = SystemClock.uptimeMillis()
                 stop()
@@ -185,6 +185,14 @@ class PersonalColorLiveWallpaper : WallpaperService() {
             pageX = xOffset
         }
 
+        private fun start() {
+            if (running) return
+            running = true
+            choreographer.postFrameCallback(this)
+            rest = null
+            rotationSensor?.let { runCatching { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) } }
+        }
+
         private fun stop() {
             running = false
             choreographer.removeFrameCallback(this)
@@ -193,9 +201,15 @@ class PersonalColorLiveWallpaper : WallpaperService() {
 
         private fun load() {
             scope.launch {
-                choice = LiveWallpaperPrefs.read(applicationContext)
-                tone = liveTone(applicationContext, choice)
-                drawFrame()
+                try {
+                    choice = LiveWallpaperPrefs.read(applicationContext)
+                    tone = liveTone(applicationContext, choice)
+                    drawFrame()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "load failed", e) // keeps the last tone (or draws nothing) instead of killing the process
+                }
             }
         }
 
@@ -210,7 +224,8 @@ class PersonalColorLiveWallpaper : WallpaperService() {
             val holder = surfaceHolder
             if (width == 0 || !holder.surface.isValid) return
             val begin = System.nanoTime()
-            val canvas = try { holder.lockHardwareCanvas() } catch (e: Exception) { null } ?: return
+            // Some API 26/27 wallpaper surfaces refuse a hardware canvas; fall back to software. Null = surface going away.
+            val canvas = (runCatching { holder.lockHardwareCanvas() }.getOrNull() ?: runCatching { holder.lockCanvas() }.getOrNull()) ?: return
             try {
                 shownX += (tiltX - shownX) * .15f; shownY += (tiltY - shownY) * .15f // smooth the ~16 Hz sensor
                 val tilt = width * .02f
@@ -222,8 +237,11 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                 WallpaperRenderer.draw(canvas, tone, choice.style, width, height, choice.dark, LocalDate.now(), t,
                     dx = (.5f - pageX) * width * .08f - shownX * tilt, dy = -shownY * tilt,
                     night = LocalTime.now().hour.let { it >= 22 || it < 6 }, live = live) // slower, sleepy 틴티 at night
+            } catch (e: Exception) {
+                Log.w(TAG, "draw failed", e)
             } finally {
-                holder.unlockCanvasAndPost(canvas)
+                // Throws if the surface was destroyed mid-draw; the next surface redraws anyway.
+                runCatching { holder.unlockCanvasAndPost(canvas) }
             }
             // adb shell setprop log.tag.PcLiveWallpaper DEBUG → average CPU time per frame.
             frameNs += System.nanoTime() - begin

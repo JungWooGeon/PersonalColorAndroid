@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.my
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.data.ContentRepository
@@ -8,6 +9,7 @@ import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.model.HistoryEntry
 import com.gun.personalcolor.core.model.Tone
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -37,10 +39,23 @@ class MyViewModel @Inject constructor(
             tones = tones,
             myTone = tones[p.myToneId],
             favorites = content.tones.filter { it.id in p.favoriteToneIds },
-            entries = e.filter { it.toneId in tones }.sortedByDescending { it.timeMillis },
+            entries = visibleEntries(e, tones.keys),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyUiState())
 
-    fun delete(timeMillis: Long) { viewModelScope.launch { history.delete(timeMillis) } }
-    fun clear() { viewModelScope.launch { history.clear() } }
+    // A failed disk write leaves the list as it was; the user can retry.
+    fun delete(timeMillis: Long) { viewModelScope.launch { runCatching { history.delete(timeMillis) }.onFailure(::logWriteFailure) } }
+    fun clear() { viewModelScope.launch { runCatching { history.clear() }.onFailure(::logWriteFailure) } }
+
+    private fun logWriteFailure(e: Throwable) {
+        if (e is CancellationException) throw e
+        Log.w("MyViewModel", "history write failed", e)
+    }
 }
+
+/**
+ * Newest first, entries of removed tones dropped, one per timestamp: the history list keys rows by time and
+ * LazyColumn crashes on a duplicate key.
+ */
+internal fun visibleEntries(entries: List<HistoryEntry>, toneIds: Set<String>): List<HistoryEntry> =
+    entries.filter { it.toneId in toneIds }.distinctBy { it.timeMillis }.sortedByDescending { it.timeMillis }

@@ -1,7 +1,6 @@
 package com.gun.personalcolor.feature.my
 
 import android.app.WallpaperManager
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -175,21 +174,21 @@ class WallpaperViewModel @Inject constructor(
         val s = _state.value
         val choice = LiveChoice(s.style, s.showDark, s.tone?.id?.takeIf { it != s.myTone?.id })
         LiveWallpaperPrefs.write(context, choice)
-        if (s.autoEnabled) viewModelScope.launch { prefs.setAutoWallpaper(false, encodeStyle(s.style, s.dark), s.autoTarget.name) }
+        if (s.autoEnabled) viewModelScope.launch { runCatching { prefs.setAutoWallpaper(false, encodeStyle(s.style, s.dark), s.autoTarget.name) } }
         return choice
     }
     fun setStyle(style: Style) = change { it.copy(style = style) }
     fun setDark(dark: Boolean) = change { it.copy(dark = dark) }
     fun setAuto(enabled: Boolean, target: WallpaperTarget) = viewModelScope.launch {
         val s = _state.value
-        prefs.setAutoWallpaper(enabled, encodeStyle(s.style, s.dark), target.name)
+        runCatching { prefs.setAutoWallpaper(enabled, encodeStyle(s.style, s.dark), target.name) }
     }
 
     /** The daily wallpaper follows the chosen look from the next change on. */
     private fun change(block: (WallpaperUiState) -> WallpaperUiState) {
         _state.update(block)
         val s = _state.value
-        if (s.autoEnabled && !s.live) viewModelScope.launch { prefs.setAutoWallpaper(true, encodeStyle(s.style, s.dark), s.autoTarget.name) }
+        if (s.autoEnabled && !s.live) viewModelScope.launch { runCatching { prefs.setAutoWallpaper(true, encodeStyle(s.style, s.dark), s.autoTarget.name) } }
     }
 }
 
@@ -275,7 +274,7 @@ internal fun WallpaperRoute(onBack: () -> Unit, vm: WallpaperViewModel = hiltVie
             if (isLiveWallpaperActive(context)) return@live finishLive(tone, choice) // already ours: it redraws with the new look
             pending = tone to choice
             val launched = listOf(liveWallpaperIntent(context), Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)).any {
-                try { liveLauncher.launch(it); true } catch (e: ActivityNotFoundException) { false }
+                try { liveLauncher.launch(it); true } catch (e: Exception) { false } // ActivityNotFound, or a SecurityException on some OEMs
             }
             if (!launched) {
                 pending = null
@@ -389,7 +388,9 @@ internal fun WallpaperScreen(
 private fun rememberRender(tone: Tone?, style: Style, dark: Boolean, width: Int, ratio: Float): ImageBitmap? =
     produceState<ImageBitmap?>(null, tone, style, dark, width, ratio) {
         if (tone == null) return@produceState
-        value = withContext(Dispatchers.Default) { WallpaperRenderer.render(tone, style, width, (width / ratio).toInt(), dark).asImageBitmap() }
+        value = withContext(Dispatchers.Default) {
+            runCatching { WallpaperRenderer.render(tone, style, width, (width / ratio).toInt().coerceAtLeast(1), dark).asImageBitmap() }.getOrNull()
+        }
     }.value
 
 /** Live render inside a phone-shaped frame, with a mock clock showing the calm area. */
