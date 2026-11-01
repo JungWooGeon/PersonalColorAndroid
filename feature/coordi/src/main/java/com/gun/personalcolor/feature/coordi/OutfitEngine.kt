@@ -149,8 +149,8 @@ object OutfitEngine {
             listOf(nc("화이트", "#F4F4F2"), nc("그레이", "#9A9DA4"), nc("블랙", "#26272B")),
             listOf(lightDenim, midDenim)),
         "winter" to Neutrals(
-            listOf(nc("블랙", "#1C1C1E"), nc("화이트", "#FFFFFF"), nc("차콜", "#3A3C42"), nc("그레이", "#A3A6AD"), nc("네이비", "#1C2541")),
-            listOf(nc("블랙", "#1C1C1E"), nc("화이트", "#F5F5F5"), nc("그레이", "#9FA2A8")),
+            listOf(nc("블랙", "#1C1C1E"), nc("오프 화이트", "#F4F3EF"), nc("차콜", "#3A3C42"), nc("그레이", "#A3A6AD"), nc("네이비", "#1C2541")),
+            listOf(nc("블랙", "#1C1C1E"), nc("오프 화이트", "#F4F3EF"), nc("그레이", "#9FA2A8")),
             listOf(darkDenim, nc("흑청", "#2A2C33"))),
     )
 
@@ -286,12 +286,15 @@ object OutfitEngine {
             else -> mainLabel
         }
         val used = mutableListOf<NamedColor>()
+        val big = linkedMapOf<String, NamedColor>()
         fun neutralFor(label: String, kind: String): NamedColor {
             var from = if (kind in DENIM) neutrals.denim + neutrals.base.filter { lab(it.hex).l > 90 || lab(it.hex).l < 25 } else neutrals.base
             if (label == "아우터") from = from.map { if (lab(it.hex).l > 96) COAT_IVORY else it }
+            // Rain: dark, mid or denim bottoms and dresses (no white / ivory). At most one white or off-white big piece.
+            if (rainy && (label == "하의" || label == "원피스")) from = from.filter { lab(it.hex).l < 75 || it in neutrals.denim }
+            if (big.values.any { lab(it.hex).l > 90 }) from = from.filter { lab(it.hex).l <= 90 }.ifEmpty { from }
             return pickOf(from.filter { it !in used }.ifEmpty { from }).also { used += it }
         }
-        val big = linkedMapOf<String, NamedColor>()
         if (outerKind != null) big["아우터"] = if (accentOn == "아우터") accent else neutralFor("아우터", outerKind)
         if (dressKind != null) big["원피스"] = if (accentOn == "원피스") accent else neutralFor("원피스", dressKind)
         if (topKind != null) big["상의"] = if (accentOn == "상의") accent else neutralFor("상의", topKind)
@@ -301,12 +304,15 @@ object OutfitEngine {
         if (accentOn != mainLabel && darkLabel != null && big.values.none { lab(it.hex).l >= 50 }) {
             val label = darkLabel
             val kind = mapOf("상의" to topKind, "하의" to bottomKind, "원피스" to dressKind, "아우터" to outerKind).getValue(label)!!
-            val light = (if (kind in DENIM) neutrals.denim + neutrals.base else neutrals.base).maxBy { lab(it.hex).l }
+            val light = (if (kind in DENIM) neutrals.denim + neutrals.base else neutrals.base)
+                .filter { !rainy || (label != "하의" && label != "원피스") || lab(it.hex).l < 75 }.maxBy { lab(it.hex).l }
             big[label] = if (label == "아우터" && lab(light.hex).l > 96) COAT_IVORY else light
         }
         val shoeColor = when {
             shoeKind == "rain_boots" -> pickOf(neutrals.rainBoots)
             rainy -> BLACK
+            // Long boots and uggs never in white / ivory (they show dirt).
+            shoeKind == "long_boots" || shoeKind == "winter_boots" -> pickOf(neutrals.leather.filter { lab(it.hex).l <= 85 })
             else -> pickOf(neutrals.leather)
         }
         val bagColor = if (accentOn == "가방") accent else pickOf(neutrals.leather)

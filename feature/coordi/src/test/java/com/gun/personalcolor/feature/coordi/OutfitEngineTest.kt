@@ -201,12 +201,18 @@ class OutfitEngineTest {
                 assertTrue("never all dark: $desc", big.any { OutfitEngine.lab(it.color.hex).l >= 50 } ||
                     o.slots.single { it.label == "상의" || it.label == "원피스" }.color.hex !in neutral)
                 o.slots.firstOrNull { it.label == "아우터" }?.let { assertNotEquals("no pure white coat: $desc", "#FFFFFF", it.color.hex.uppercase()) }
+                assertTrue("no pure white: $desc", o.slots.none { it.color.hex.uppercase() == "#FFFFFF" })
+                assertTrue("≤1 white big piece: $desc", big.count { OutfitEngine.lab(it.color.hex).l > 90 } <= 1)
+                if (shoes.kind in setOf("long_boots", "winter_boots")) assertTrue("no white boots: $desc", OutfitEngine.lab(shoes.color.hex).l <= 85)
                 if (rain > 0) {
+                    o.slots.filter { it.label == "하의" || it.label == "원피스" }.forEach {
+                        assertTrue("rain: no white/ivory bottoms: $desc", it.color.hex !in neutral || it.color.name in setOf("연청", "중청", "진청", "흑청") || OutfitEngine.lab(it.color.hex).l < 75)
+                    }
                     assertEquals("umbrella: $desc", "umbrella", acc?.kind)
                     assertTrue("rainy shoes: $desc", shoes.kind == "rain_boots" || (shoes.kind == "loafers" && shoes.item.startsWith("블랙")))
                     assertTrue("no colored boots: $desc", shoes.color.hex in neutral)
                     assertTrue("umbrella black/ivory or the accent: $desc", acc!!.color.hex !in neutral ||
-                        acc.color.name in setOf("블랙", "아이보리", "화이트"))
+                        acc.color.name in setOf("블랙", "아이보리", "화이트", "오프 화이트"))
                     assertNotEquals("umbrella ≠ shoes: $desc", shoes.color.hex, acc.color.hex)
                 } else if (feels < 9) assertTrue("muffler or beanie when cold: $desc", acc?.kind in setOf("muffler", "beanie"))
                 else assertEquals("no 소품: $desc", null, acc)
