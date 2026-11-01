@@ -42,14 +42,32 @@ import com.gun.personalcolor.core.ui.mood.ShadowedGarment
 import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import com.gun.personalcolor.core.ui.tintyColors
 
-/** Reference only: every garment kind 오늘의 코디 can pick from, laid on the same tone paper as the look, in the user's best colors. */
+private val DENIM_KINDS = setOf("jeans", "bootcut", "denim_skirt", "denim_jacket", "shorts", "overall")
+
+/**
+ * A styled, wearable color per kind (deterministic by catalog index): the tone's neutrals like OutfitEngine — denim kinds in
+ * denim, shoes / bags in leather, coats never white — and every 5th non-shoe tile one of the tone's softer accents.
+ */
+private fun catalogColor(tone: Tone?, i: Int, kind: String, group: String): NamedColor {
+    tone ?: return listOf("#F1E6CF" to "아이보리", "#B5844F" to "카멜", "#6E4A30" to "브라운", "#3A3C42" to "차콜")
+        .let { it[i % it.size] }.let { (hex, name) -> NamedColor(name, hex) }
+    val n = OutfitEngine.neutralsOf(tone)
+    val soft = OutfitEngine.accentsOf(tone).let { it.take((it.size + 1) / 2) }
+    val list = when {
+        i % 5 == 2 && group != "신발" && kind !in DENIM_KINDS && soft.isNotEmpty() -> return soft[(i / 5) % soft.size]
+        kind in DENIM_KINDS -> n.denim
+        group == "신발" || group == "가방" -> n.leather
+        group == "아우터" -> n.base.filter { it.name != "화이트" }
+        else -> n.base
+    }
+    return list[i % list.size]
+}
+
+/** Reference only: every garment kind 오늘의 코디 can pick from, on the mood backdrop, in styled neutrals with a few soft accents. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ClothingCatalogSheet(tone: Tone?, onDismiss: () -> Unit) {
-    val colors = tone?.bestColors?.takeIf { it.isNotEmpty() }
-        ?: listOf("#C19A6B", "#708238", "#1F2A44", "#F3E9D2").map { NamedColor("", it) }
-    // (kind, label, color): colors rotate through the palette in list order.
-    val groups = CLOTHING_KINDS.entries.mapIndexed { i, e -> Triple(e.key, e.value.first, colors[i % colors.size]) to e.value.second }
+    val groups = CLOTHING_KINDS.entries.mapIndexed { i, e -> Triple(e.key, e.value.first, catalogColor(tone, i, e.key, e.value.second)) to e.value.second }
         .groupBy({ it.second }, { it.first })
     val tinty = remember(tone) { tone?.tintyColors ?: TintyColors.Brand }
     ModalBottomSheet(onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {

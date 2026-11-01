@@ -53,20 +53,20 @@ fun Modifier.moodBackdrop(seed: Int = 0): Modifier {
     val base by produceState(bases[night], night) { if (value == null) value = withContext(Dispatchers.IO) { loadBase(ctx, night) } }
     val w = windows[Math.floorMod(seed, windows.size)]
     return drawBehind {
+        val aspect = size.width / size.height
         drawRect(if (night) Color(0xFF2E2826) else Color(0xFFF4E9DC))
         base?.let {
             // Same aspect as the tile (wide previews get a wider window), kept inside the bitmap.
-            val aspect = size.width / size.height
             val sw = (w[2] * maxOf(1f, aspect)).toInt().coerceAtMost(it.width)
             val sh = (sw / aspect).toInt().coerceAtMost(it.height)
             val src = IntOffset(w[0].coerceAtMost(it.width - sw), w[1].coerceAtMost(it.height - sh))
             drawImage(it, src, IntSize(sw, sh), dstSize = IntSize(size.width.toInt() + 1, size.height.toInt() + 1))
         }
         if (night) {
-            drawRect(Color(0xFFC9A288), blendMode = BlendMode.Multiply) // cool lavender → warm lamp-lit dusk
-            drawRect(Color.Black.copy(alpha = 0.18f))
+            drawRect(Color(0xFFB9ADA5), blendMode = BlendMode.Multiply) // cool lavender → dim, low-saturation warm night
+            drawRect(Color(0xFF3A2E28).copy(alpha = 0.28f), blendMode = BlendMode.Saturation)
         } else {
-            drawRect(Color(0xFFF8F1E8).copy(alpha = 0.42f)) // soften the sun so the garment leads
+            drawRect(Color(0xFFF8F1E8).copy(alpha = if (aspect > 1.3f) 0.55f else 0.42f)) // soften the sun so the garment leads; wide crops catch more streaks
         }
         // Gentle warm light from the window (top-left), settling a touch darker toward the bottom.
         drawRect(Brush.radialGradient(listOf(Color(if (night) 0x26FFC89A else 0x40FFF6E6), Color.Transparent), Offset(size.width * 0.15f, 0f), size.maxDimension * 1.1f))
