@@ -28,6 +28,7 @@ import com.gun.personalcolor.core.ui.hexColor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
@@ -131,8 +132,10 @@ internal fun ResultRoute(
     TrackScreen("result")
     val d by vm.diagnosis.collectAsStateWithLifecycle()
     val myToneId by vm.myToneId.collectAsStateWithLifecycle()
-    val diagnosis = d ?: run { LaunchedEffect(Unit) { onBack() }; return }
-    val tone = vm.content.tone(diagnosis.top.toneId)
+    // No diagnosis (process death) or an unknown/empty result: go back instead of crashing.
+    val diagnosis = d
+    val tone = diagnosis?.scores?.firstOrNull()?.let { vm.content.toneOrNull(it.toneId) }
+    if (diagnosis == null || tone == null) { LaunchedEffect(Unit) { onBack() }; return }
     val context = LocalContext.current
     val analytics = LocalAnalytics.current
     val gate = rememberRewardGate()
@@ -311,7 +314,7 @@ private class Confetto(val vx: Float, val vy: Float, val size: Float, val color:
 
 private fun confettiOf(tone: Tone): List<Confetto> {
     val rnd = java.util.Random(tone.id.hashCode().toLong())
-    val colors = tone.bestColors.map { hexColor(it.hex) }
+    val colors = tone.bestColors.map { hexColor(it.hex) }.ifEmpty { return emptyList() }
     return List(26) { i ->
         val a = Math.toRadians(-160.0 + 140.0 * rnd.nextDouble()) // upward fan
         val speed = 0.55f + 0.6f * rnd.nextFloat()
@@ -355,16 +358,19 @@ private fun rememberReveal(alreadyPlayed: Boolean, onDone: () -> Unit): Reveal {
     val haptic = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(Unit) {
-        if (clock.value >= END) return@LaunchedEffect
-        // The interstitial before the result covers this screen: start only once it's actually visible.
-        lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-        delay(250)
-        launch {
-            // Taps of haptics on the landing and the cheer (skipped if the user skipped ahead).
-            snapshotFlow { clock.value >= LAND }.first { it }; if (clock.value < CHEER) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            snapshotFlow { clock.value >= CHEER }.first { it }; if (clock.value < END) haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+        // The interstitial is shown right *after* navigating here, so the screen can be resumed for a moment and then
+        // covered. Play only while resumed; if it gets covered before the cheer, start over once it's visible again.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (clock.value >= END) return@repeatOnLifecycle
+            if (clock.value < CHEER) clock.snapTo(0f)
+            delay(250)
+            launch {
+                // Taps of haptics on the landing and the cheer (skipped if the user skipped ahead).
+                snapshotFlow { clock.value >= LAND }.first { it }; if (clock.value < CHEER) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                snapshotFlow { clock.value >= CHEER }.first { it }; if (clock.value < END) haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+            }
+            clock.animateTo(END, tween((END - clock.value).toInt(), easing = LinearEasing))
         }
-        clock.animateTo(END, tween(END.toInt(), easing = LinearEasing))
     }
     LaunchedEffect(Unit) { snapshotFlow { clock.value >= END }.first { it }; onDone() }
     return remember { Reveal(clock, scope) }
@@ -394,7 +400,7 @@ private fun ActionRow(title: String, subtitle: String, prop: TintyProp, colors: 
 /** Runner-up tones by name only — never a score or percentage. */
 @Composable
 private fun Similar(d: Diagnosis, content: ContentRepository, onTone: (String) -> Unit) {
-    val others = d.scores.drop(1).take(2).map { content.tone(it.toneId) }
+    val others = d.scores.drop(1).take(2).mapNotNull { content.toneOrNull(it.toneId) }
     if (others.isEmpty()) return
     SectionCard("비슷한 톤") {
         Column {

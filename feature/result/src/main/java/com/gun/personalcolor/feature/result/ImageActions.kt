@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Shares a generated image through the app's FileProvider (cache dir). */
-internal fun shareImage(context: Context, bitmap: Bitmap, name: String, text: String? = null) {
+internal fun shareImage(context: Context, bitmap: Bitmap, name: String, text: String? = null, chooserTitle: String = "공유") {
     val file = File(context.cacheDir, "$name.png")
     file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
@@ -37,7 +37,7 @@ internal fun shareImage(context: Context, bitmap: Bitmap, name: String, text: St
         if (text != null) putExtra(Intent.EXTRA_TEXT, text)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(send, "공유"))
+    context.startActivity(Intent.createChooser(send, chooserTitle))
 }
 
 /**
@@ -53,10 +53,11 @@ internal fun rememberImageSave(snackbar: SnackbarHostState): (name: String, rend
     fun run(name: String, render: () -> Bitmap) {
         scope.launch {
             val bmp = runCatching { withContext(Dispatchers.Default) { render() } }.getOrNull()
-            val ok = bmp != null && withContext(Dispatchers.IO) { ImageSaver.save(context, bmp, name) }
-            if (!ok) { snackbar.showSnackbar("저장하지 못했어요. 잠시 후 다시 시도해 주세요"); return@launch }
+            if (bmp == null || !withContext(Dispatchers.IO) { ImageSaver.save(context, bmp, name) }) {
+                snackbar.showSnackbar("저장하지 못했어요. 잠시 후 다시 시도해 주세요"); return@launch
+            }
             val r = snackbar.showSnackbar("갤러리에 저장했어요", actionLabel = "공유", duration = SnackbarDuration.Short)
-            if (r == SnackbarResult.ActionPerformed) runCatching { shareImage(context, bmp!!, name) }
+            if (r == SnackbarResult.ActionPerformed) runCatching { shareImage(context, bmp, name) }
         }
     }
 
