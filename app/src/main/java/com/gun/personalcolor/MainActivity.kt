@@ -82,15 +82,17 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    /** kakao{KEY}://kakaolink?tone=<id>, https://…/r/<id>, or the "open=coordi" extra (notification). */
     private fun handleIntent(intent: Intent?) {
         intent ?: return
-        if (intent.getStringExtra("open") == "coordi") { pendingRoute.value = CoordiRoute; return }
-        val uri = intent.data ?: return
-        val id = when (uri.scheme) {
-            "https", "http" -> uri.pathSegments.takeIf { it.size >= 2 && it[0] == "r" }?.get(1)
-            else -> if (uri.host == "kakaolink") uri.getQueryParameter("tone") else null
+        val uri = intent.data
+        pendingRoute.value = when (val link = parseDeepLink(
+            openExtra = intent.getStringExtra("open"), scheme = uri?.scheme, host = uri?.host, path = uri?.path,
+            toneParam = uri?.let { if (it.isHierarchical) it.getQueryParameter("tone") else null },
+            isValidTone = { content.toneOrNull(it) != null },
+        )) {
+            DeepLink.Coordi -> CoordiRoute
+            is DeepLink.ToneLink -> ToneRoute(link.id)
+            null -> return
         }
-        if (content.toneOrNull(id) != null) pendingRoute.value = ToneRoute(id!!)
     }
 }

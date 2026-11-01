@@ -1,6 +1,8 @@
 package com.gun.personalcolor.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import com.gun.personalcolor.feature.widget.TodayColorWidgets
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -43,6 +45,7 @@ import com.gun.personalcolor.feature.tones.tonesScreens
  */
 @Composable
 fun PcNavHost(nav: NavHostController) {
+    val context = LocalContext.current
     val back: () -> Unit = { nav.popBackStack() }
     val toTone: (String) -> Unit = { nav.navigate(ToneRoute(it)) }
     val toAnalyze: () -> Unit = { nav.navigate(AnalyzeRoute) }
@@ -121,6 +124,8 @@ fun PcNavHost(nav: NavHostController) {
             onTones = { nav.navigateToTopLevel(TopLevel.TONES) },
             onWallpaper = { nav.navigate(WallpaperRoute(it)) },
             onCloset = { nav.navigate(ClosetRoute) },
+            // Launchers that support it show "add widget?"; otherwise the row is hidden.
+            onAddWidget = if (TodayColorWidgets.canPin(context)) {{ TodayColorWidgets.requestPin(context) }} else null,
         )
         wallpaperScreen(onBack = back)
         coordiScreen(onBack = back, onTone = toTone, onCloset = { nav.navigate(ClosetRoute) }, onAnalyze = toAnalyze)

@@ -48,8 +48,7 @@ class AdManager @Inject constructor(val billing: Billing) {
     private var interstitialLoading = false
     private var rewarded: RewardedAd? = null
     private var rewardedLoading = false
-    private var lastFullScreenAt = 0L
-    private val unlockedUntil = mutableMapOf<String, Long>()
+    private val pacing = AdPacing(SystemClock::elapsedRealtime)
 
     /** Call from Activity.onCreate. Shows the UMP consent form when required (EEA/UK etc.). */
     fun gatherConsent(activity: Activity) {
@@ -116,10 +115,13 @@ class AdManager @Inject constructor(val billing: Billing) {
     }
 
     /** Feature [key] usable without (another) ad: premium purchase, or a reward watched within its unlock window. */
-    fun isUnlocked(key: String) = adFree || (unlockedUntil[key] ?: 0L) > SystemClock.elapsedRealtime()
+    fun isUnlocked(key: String) = adFree || pacing.isUnlocked(key)
 
-    /** Ends an unlock early. Photo diagnosis calls this after a SUCCESSFUL analysis, so failed retakes stay free. */
-    fun consumeUnlock(key: String) { unlockedUntil.remove(key) }
+    /**
+     * Ends an unlock early. Photo diagnosis calls this after a SUCCESSFUL analysis, so failed retakes stay free.
+     * Returns true if that diagnosis was paid for with a rewarded ad — then its result must not get an interstitial too.
+     */
+    fun consumeUnlock(key: String): Boolean = pacing.consumeUnlock(key)
 
     /** True when the UI should ask "광고 보고 무료로 …할까요?" first. False = just continue (unlocked, or no ad ready). */
     fun shouldOfferReward(key: String): Boolean = !isUnlocked(key) && rewarded != null
@@ -137,9 +139,9 @@ class AdManager @Inject constructor(val billing: Billing) {
             override fun onAdDismissedFullScreenContent() = done()
             override fun onAdFailedToShowFullScreenContent(e: AdError) { earned = true; done() }
             fun done() {
-                lastFullScreenAt = SystemClock.elapsedRealtime()
+                pacing.onFullScreenShown()
                 loadRewarded(activity.applicationContext)
-                if (earned) { unlockedUntil[key] = SystemClock.elapsedRealtime() + unlockMs; onUnlocked() }
+                if (earned) { pacing.unlock(key, unlockMs); onUnlocked() }
             }
         }
         ad.show(activity) { earned = true }
@@ -152,8 +154,7 @@ class AdManager @Inject constructor(val billing: Billing) {
     fun onResult(activity: Activity?, next: () -> Unit) {
         if (activity == null || adFree) return next()
         val ad = interstitial
-        // Every result, except right after another full-screen ad (no back-to-back ads).
-        val due = lastFullScreenAt == 0L || SystemClock.elapsedRealtime() - lastFullScreenAt > BACK_TO_BACK_GAP_MS
+        val due = pacing.interstitialDue()
         if (ad == null || !due) {
             next(); loadInterstitial(activity.applicationContext); return
         }
@@ -162,7 +163,7 @@ class AdManager @Inject constructor(val billing: Billing) {
             override fun onAdDismissedFullScreenContent() = done()
             override fun onAdFailedToShowFullScreenContent(e: AdError) = done()
             fun done() {
-                lastFullScreenAt = SystemClock.elapsedRealtime()
+                pacing.onFullScreenShown()
                 loadInterstitial(activity.applicationContext)
             }
         }

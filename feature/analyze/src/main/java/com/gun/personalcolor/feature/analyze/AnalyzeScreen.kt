@@ -89,10 +89,11 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
 
     val run = { inputs: List<PhotoInput> ->
         vm.analyze(inputs) { needsRefine ->
-            ads?.consumeUnlock(AdManager.KEY_PHOTO)
+            val watchedReward = ads?.consumeUnlock(AdManager.KEY_PHOTO) == true
             // Unsure result → a short draping check first (invisible to the user why); otherwise straight to the result.
             val next = if (needsRefine) onRefine else onResult
-            ads?.onResult(activity, next) ?: next()
+            // One ad per diagnosis: if a rewarded ad unlocked it, no interstitial before the result.
+            if (watchedReward || ads == null) next() else ads.onResult(activity, next)
         }
     }
     // Up to 3 photos: averaging several shots cancels out lighting differences.

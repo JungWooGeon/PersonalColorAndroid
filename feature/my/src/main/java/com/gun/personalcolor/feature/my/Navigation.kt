@@ -24,11 +24,12 @@ fun NavGraphBuilder.myScreens(
     onTones: () -> Unit,
     onWallpaper: (toneId: String?) -> Unit = {},
     onCloset: () -> Unit = {},
+    onAddWidget: (() -> Unit)? = null,
 ) {
     composable<MyRoute> {
         val vm: MyViewModel = hiltViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
-        MyScreen(state, onTone, onAnalyze, onQuiz, onHistory, onSettings, onTones, onWallpaper, onCloset)
+        MyScreen(state, onTone, onAnalyze, onQuiz, onHistory, onSettings, onTones, onWallpaper, onCloset, onAddWidget)
     }
     composable<HistoryRoute> {
         val vm: MyViewModel = hiltViewModel()

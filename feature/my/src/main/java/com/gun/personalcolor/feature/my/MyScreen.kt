@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.my
 
+import androidx.compose.material.icons.outlined.Widgets
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -85,6 +86,7 @@ fun MyScreen(
     onTones: () -> Unit,
     onWallpaper: (String?) -> Unit = {},
     onCloset: () -> Unit = {},
+    onAddWidget: (() -> Unit)? = null,
 ) {
     TrackScreen("my")
     val context = LocalContext.current
@@ -135,6 +137,10 @@ fun MyScreen(
                     ListRow("배경화면 만들기", subtitle = "톤 컬러로 폰 배경화면을 만들어요", icon = Icons.Outlined.Wallpaper,
                         onClick = { onWallpaper(state.myTone?.id) })
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    if (onAddWidget != null) {
+                        ListRow("홈 화면 위젯 추가", subtitle = "오늘의 컬러를 바탕화면에서 바로 봐요", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                     ListRow("설정", icon = Icons.Outlined.Settings, onClick = onSettings)
                 }
             }

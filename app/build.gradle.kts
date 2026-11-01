@@ -52,3 +52,4 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
 
 }
+dependencies { testImplementation(libs.junit) }

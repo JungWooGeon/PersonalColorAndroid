@@ -54,6 +54,17 @@ import java.time.LocalDate
 /** Called by the app when the user's tone changes. */
 object TodayColorWidgets {
     suspend fun refresh(context: Context) = TodayColorWidget().updateAll(context)
+
+    /** Launcher supports the "add this widget?" system prompt (most launchers on Android 8+). */
+    fun canPin(context: Context): Boolean =
+        android.appwidget.AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported
+
+    /** Shows the launcher's "홈 화면에 추가할까요?" prompt. Returns false if the launcher can't do it. */
+    fun requestPin(context: Context): Boolean {
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        if (!manager.isRequestPinAppWidgetSupported) return false
+        return manager.requestPinAppWidget(android.content.ComponentName(context, TodayColorWidgetReceiver::class.java), null, null)
+    }
 }
 
 class TodayColorWidgetReceiver : GlanceAppWidgetReceiver() {
