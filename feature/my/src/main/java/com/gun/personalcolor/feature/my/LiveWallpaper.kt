@@ -57,11 +57,10 @@ internal fun isLiveWallpaperActive(context: Context): Boolean = runCatching {
  * the wallpaper comes and goes. Explicit update broadcast: feature modules don't depend on each other.
  */
 internal fun refreshWidgets(context: Context) {
-    runCatching {
-        val receiver = ComponentName(context.packageName, "com.gun.personalcolor.feature.widget.TodayColorWidgetReceiver")
+    for (name in listOf("TodayColorWidgetReceiver", "TodayLookSquareReceiver", "TodayLookMiniReceiver")) runCatching {
+        val receiver = ComponentName(context.packageName, "com.gun.personalcolor.feature.widget.$name")
         val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(receiver)
-        if (ids == null || ids.isEmpty()) return
-        context.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(receiver)
+        if (ids != null && ids.isNotEmpty()) context.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(receiver)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))
     }
 }

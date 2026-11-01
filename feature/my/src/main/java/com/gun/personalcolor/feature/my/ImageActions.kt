@@ -53,10 +53,11 @@ internal fun rememberImageSave(snackbar: SnackbarHostState): (name: String, rend
     fun run(name: String, render: () -> Bitmap) {
         scope.launch {
             val bmp = runCatching { withContext(Dispatchers.Default) { render() } }.getOrNull()
-            val ok = bmp != null && withContext(Dispatchers.IO) { ImageSaver.save(context, bmp, name) }
-            if (!ok) { snackbar.showSnackbar("저장하지 못했어요. 잠시 후 다시 시도해 주세요"); return@launch }
+            if (bmp == null || !withContext(Dispatchers.IO) { ImageSaver.save(context, bmp, name) }) {
+                snackbar.showSnackbar("저장하지 못했어요. 잠시 후 다시 시도해 주세요"); return@launch
+            }
             val r = snackbar.showSnackbar("갤러리에 저장했어요", actionLabel = "공유", duration = SnackbarDuration.Short)
-            if (r == SnackbarResult.ActionPerformed) runCatching { shareImage(context, bmp!!, name) }
+            if (r == SnackbarResult.ActionPerformed) runCatching { shareImage(context, bmp, name) }
         }
     }
 
