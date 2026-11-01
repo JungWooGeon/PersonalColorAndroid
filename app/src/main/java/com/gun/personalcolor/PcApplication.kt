@@ -8,6 +8,7 @@ import dagger.hilt.android.HiltAndroidApp
 class PcApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.gun.personalcolor.core.ui.GarmentArt.init(this)
         ToneShare.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
     }
 }

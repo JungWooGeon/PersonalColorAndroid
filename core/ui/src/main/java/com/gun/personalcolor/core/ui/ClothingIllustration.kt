@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.PathParser
@@ -64,6 +66,7 @@ fun renderClothingBitmap(kind: String, color: Color, sizePx: Int, density: Float
  * outlines thin out as the art grows (icon-weight at ~50dp, illustration-weight at board size).
  */
 fun DrawScope.drawClothing(kind: String, color: Color) {
+    GarmentArt.bitmap(kind, color)?.let { bmp -> drawPainted(bmp, kind); return }
     val ops = opsOf(kind)
     val lum = color.luminance()
     val dark = lum < 0.12f
@@ -124,6 +127,20 @@ fun DrawScope.drawClothing(kind: String, color: Color) {
  */
 fun DrawScope.drawClothingShadow(kind: String, color: Color = Color.Black, blur: Float = 4f) {
     val s = size.minDimension / 100f
+    GarmentArt.bitmap(kind, Color.Black)?.let { bmp ->
+        val r = paintedRect(kind) ?: return
+        val dst = android.graphics.RectF(
+            (size.width - 100 * s) / 2 + r.left * s, (size.height - 100 * s) / 2 + r.top * s,
+            (size.width - 100 * s) / 2 + r.right * s, (size.height - 100 * s) / 2 + r.bottom * s,
+        )
+        val p = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = android.graphics.PorterDuffColorFilter(color.copy(alpha = 1f).toArgb(), android.graphics.PorterDuff.Mode.SRC_IN)
+            alpha = (color.alpha * 255).toInt()
+            if (blur > 0f) maskFilter = BlurMaskFilter(blur * s, BlurMaskFilter.Blur.NORMAL)
+        }
+        drawIntoCanvas { it.nativeCanvas.drawBitmap(bmp, null, dst, p) }
+        return
+    }
     val paint = Paint().apply { this.color = color }
     paint.asFrameworkPaint().maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL) // local units: the blur follows the canvas scale
     translate((size.width - 100 * s) / 2, (size.height - 100 * s) / 2) {
@@ -148,7 +165,7 @@ fun DrawScope.drawClothingShadow(kind: String, color: Color = Color.Black, blur:
 }
 
 /** Where the garment sits in its 100×100 design box (union of its fills and straps), for layout. */
-fun clothingBounds(kind: String): Rect = boundsCache.getOrPut(kind) {
+fun clothingBounds(kind: String): Rect = paintedRect(kind) ?: boundsCache.getOrPut(kind) {
     opsOf(kind).mapNotNull { op ->
         when (op) {
             is Op.Fill -> op.path.getBounds()
@@ -160,6 +177,27 @@ fun clothingBounds(kind: String): Rect = boundsCache.getOrPut(kind) {
 }
 
 private val boundsCache = ConcurrentHashMap<String, Rect>()
+
+/** Painted art fits [PAINTED_FILL] of the 100×100 design box, centered, keeping its aspect. */
+private const val PAINTED_FILL = 94f
+
+private fun paintedRect(kind: String): Rect? {
+    val aspect = GarmentArt.aspect(kind) ?: return null
+    val w = if (aspect >= 1f) PAINTED_FILL else PAINTED_FILL * aspect
+    val h = if (aspect >= 1f) PAINTED_FILL / aspect else PAINTED_FILL
+    return Rect(50f - w / 2, 50f - h / 2, 50f + w / 2, 50f + h / 2)
+}
+
+private fun DrawScope.drawPainted(bmp: Bitmap, kind: String) {
+    val r = paintedRect(kind) ?: return
+    val s = size.minDimension / 100f
+    val ox = (size.width - 100 * s) / 2
+    val oy = (size.height - 100 * s) / 2
+    val dst = android.graphics.RectF(ox + r.left * s, oy + r.top * s, ox + r.right * s, oy + r.bottom * s)
+    drawIntoCanvas { it.nativeCanvas.drawBitmap(bmp, null, dst, PAINTED_PAINT) }
+}
+
+private val PAINTED_PAINT = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
 
 // Light from the top-left: a lifted shoulder, a shaded hem.
 private val SHEEN = Brush.linearGradient(
