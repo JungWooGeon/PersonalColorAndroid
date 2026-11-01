@@ -34,6 +34,7 @@ private const val FACE_SIDE_R = 454
 private const val CHEEK_L = 50
 private const val CHEEK_R = 280
 private const val FOREHEAD = 151
+private const val MIN_LANDMARKS = FACE_SIDE_R
 
 /**
  * Judges one upright frame. [faces] = landmarks (normalized 0..1) of each detected face; [pixels] = ARGB of a [w]x[h] frame.
@@ -43,6 +44,8 @@ internal fun checkFrame(faces: List<List<Offset>>, pixels: IntArray, w: Int, h: 
     if (faces.isEmpty()) return FrameCheck.Waiting
     if (faces.size > 1) return FrameCheck.Waiting.copy(hint = "한 명만 화면에 나오게 해 주세요")
     val p = faces[0]
+    // Fewer landmarks than the 468/478-point mesh would index out of bounds below.
+    if (p.size <= MIN_LANDMARKS) return FrameCheck.Waiting
     val failed = mutableSetOf<Check>()
     var hint: String? = null
     fun fail(c: Check, h: String) { failed += c; if (hint == null) hint = h }

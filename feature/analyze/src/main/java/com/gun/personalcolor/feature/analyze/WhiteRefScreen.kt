@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,7 +74,12 @@ import kotlin.math.roundToInt
 internal fun WhiteRefScreen(uri: Uri, onRetake: () -> Unit, onDone: (Offset?) -> Unit) {
     val context = LocalContext.current
     // Same decoder (EXIF-upright) as the engine, so normalized coordinates match.
-    val bitmap by produceState<Bitmap?>(null, uri) { value = withContext(Dispatchers.IO) { BitmapLoader.load(context, uri) } }
+    val done by rememberUpdatedState(onDone)
+    val bitmap by produceState<Bitmap?>(null, uri) {
+        value = withContext(Dispatchers.IO) { BitmapLoader.load(context, uri) }
+        // Unreadable capture: skip this optional step; the analysis then reports it as a bad photo (no endless spinner).
+        if (value == null) done(null)
+    }
     var marker by rememberSaveable(uri, stateSaver = OffsetSaver) { mutableStateOf<Offset?>(null) }
     val sample = remember(bitmap, marker) {
         val b = bitmap; val m = marker

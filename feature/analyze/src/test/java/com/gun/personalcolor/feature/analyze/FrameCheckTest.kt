@@ -36,4 +36,14 @@ class FrameCheckTest {
         assertTrue(Check.TINT in checkFrame(listOf(face()), frame(0xFFD0B030.toInt()), w, h).failed)
         assertTrue(Check.TINT in checkFrame(listOf(face()), frame(0xFFA0B0D8.toInt()), w, h).failed)
     }
+
+    @Test fun truncatedLandmarksDoNotCrash() {
+        assertEquals(FrameCheck.Waiting, checkFrame(listOf(face().take(100)), frame(skin), w, h))
+        assertEquals(FrameCheck.Waiting, checkFrame(listOf(emptyList()), frame(skin), w, h))
+    }
+
+    @Test fun landmarksOutsideTheFrameAreSafe() {
+        val off = face().map { Offset(it.x + 2f, it.y - 3f) }
+        assertTrue(!checkFrame(listOf(off), frame(skin), w, h).ok)
+    }
 }

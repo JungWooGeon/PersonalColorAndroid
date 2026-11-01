@@ -37,6 +37,7 @@ import com.gun.personalcolor.core.designsystem.TintyHeader
 import com.gun.personalcolor.core.designsystem.TintyWorking
 import com.gun.personalcolor.core.designsystem.tintyEntrance
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -127,6 +128,8 @@ import com.gun.personalcolor.core.vision.PhotoInput
 
 private const val MAX_PHOTOS = 3
 
+private val AnalyzeState.busy get() = this == AnalyzeState.Working || this == AnalyzeState.Done
+
 @Composable
 internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -> Unit, vm: AnalyzeViewModel = hiltViewModel()) {
     TrackScreen("analyze")
@@ -138,18 +141,28 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
     val showGuide by vm.showGuide.collectAsStateWithLifecycle()
     val step by vm.step.collectAsStateWithLifecycle()
 
-    val run = { inputs: List<PhotoInput> ->
-        vm.analyze(inputs) {
-            val watchedReward = ads?.consumeUnlock(AdManager.KEY_PHOTO) == true
-            // One ad per diagnosis: if a rewarded ad unlocked it, no interstitial before the result.
-            if (watchedReward || ads == null) onResult() else ads.onResult(activity, onResult)
+    // Navigate from the composition that is current *now* (not the one that started the analysis): after a rotation
+    // or a trip to the background the old activity/nav callbacks are stale. Collected only while started.
+    LaunchedEffect(state) {
+        if (state != AnalyzeState.Done) return@LaunchedEffect
+        vm.resultShown()
+        val watchedReward = ads?.consumeUnlock(AdManager.KEY_PHOTO) == true
+        // One ad per diagnosis: if a rewarded ad unlocked it, no interstitial before the result.
+        if (watchedReward || ads == null) onResult() else ads.onResult(activity, onResult)
+    }
+    val run = { inputs: List<PhotoInput> -> vm.analyze(inputs) }
+    // Up to 3 photos: averaging several shots cancels out lighting differences.
+    // The document-picker fallback (no system photo picker) ignores the limit, so cap it here too.
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PHOTOS)) { uris ->
+        run(uris.take(MAX_PHOTOS).map { PhotoInput(it) })
+    }
+    val pick: () -> Unit = {
+        try {
+            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "사진을 고를 수 있는 앱이 없어요", Toast.LENGTH_SHORT).show()
         }
     }
-    // Up to 3 photos: averaging several shots cancels out lighting differences.
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PHOTOS)) { uris ->
-        run(uris.map { PhotoInput(it) })
-    }
-    val pick: () -> Unit = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
 
     // Guided camera needs CAMERA; without it (or without a camera) we fall back to the album.
     var rationale by remember { mutableStateOf(false) }
@@ -208,15 +221,16 @@ internal fun AnalyzeScreen(
         title = "AI 사진 진단",
         onBack = onBack,
         bottomBar = {
-            if (state != AnalyzeState.Working) BottomActions {
+            if (!state.busy) BottomActions {
                 PcButton(if (state is AnalyzeState.Failed) "다시 찍기" else "카메라로 찍기", onCamera, Modifier.fillMaxWidth(), Icons.Outlined.CameraAlt)
                 PcOutlinedButton("앨범에서 고르기 (최대 3장)", onGallery, Modifier.fillMaxWidth(), Icons.Outlined.PhotoLibrary)
             }
         },
     ) { pad ->
-        AnimatedContent(state, label = "analyze") { s ->
+        // Done looks like the last frame of Working (it lasts until the result opens), so no cross-fade between them.
+        AnimatedContent(state, label = "analyze", contentKey = { if (it.busy) AnalyzeState.Working else it }) { s ->
             when (s) {
-                AnalyzeState.Working -> Centered(pad) { Working(step) }
+                AnalyzeState.Working, AnalyzeState.Done -> Centered(pad) { Working(step) }
                 is AnalyzeState.Failed -> Centered(pad) {
                     val (title, message) = s.failure.message()
                     Box(Modifier.size(176.dp).aurora(PcTheme.colors), contentAlignment = Alignment.Center) {

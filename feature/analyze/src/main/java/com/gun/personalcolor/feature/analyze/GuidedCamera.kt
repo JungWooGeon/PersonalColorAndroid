@@ -1,5 +1,8 @@
 package com.gun.personalcolor.feature.analyze
 
+import android.util.Log
+import kotlinx.coroutines.CancellationException
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -152,16 +155,23 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
     }
 
     LaunchedEffect(front) {
-        val p = ProcessCameraProvider.awaitInstance(context).also { provider = it }
-        val selector = when {
-            front && p.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
-            p.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
-            else -> CameraSelector.DEFAULT_FRONT_CAMERA
+        // awaitInstance (CameraX init) and hasCamera (CameraInfoUnavailableException) can throw on broken camera HALs.
+        try {
+            val p = ProcessCameraProvider.awaitInstance(context).also { provider = it }
+            val selector = when {
+                front && p.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+                p.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+                else -> CameraSelector.DEFAULT_FRONT_CAMERA
+            }
+            p.unbindAll()
+            check = FrameCheck.Waiting
+            p.bindToLifecycle(owner, selector, preview, analysis, capture)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("GuidedCamera", "camera unavailable", e)
+            check = FrameCheck(Check.entries.toSet(), "카메라를 열 수 없어요 · 앨범에서 골라 주세요")
         }
-        p.unbindAll()
-        check = FrameCheck.Waiting
-        runCatching { p.bindToLifecycle(owner, selector, preview, analysis, capture) }
-            .onFailure { check = FrameCheck(Check.entries.toSet(), "카메라를 열 수 없어요 · 앨범에서 골라 주세요") }
     }
     DisposableEffect(Unit) {
         onDispose {

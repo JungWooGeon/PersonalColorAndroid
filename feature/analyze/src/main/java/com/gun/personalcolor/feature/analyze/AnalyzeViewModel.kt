@@ -1,6 +1,7 @@
 package com.gun.personalcolor.feature.analyze
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.data.UserPreferencesRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +28,8 @@ sealed interface AnalyzeState {
     /** Guided capture saved at [uri]; asking for an optional white-paper point. [auto] = auto capture. */
     data class WhiteRef(val uri: Uri, val auto: Boolean) : AnalyzeState
     data object Working : AnalyzeState
+    /** Diagnosis published; the screen navigates (with the current activity/nav, so rotation mid-analysis is safe) and calls [AnalyzeViewModel.resultShown]. */
+    data object Done : AnalyzeState
     data class Failed(val failure: PhotoFailure) : AnalyzeState
 }
 
@@ -47,24 +51,33 @@ class AnalyzeViewModel @Inject constructor(
     private val _step = MutableStateFlow(0)
     val step = _step.asStateFlow()
 
-    fun analyze(inputs: List<PhotoInput>, onSuccess: () -> Unit) {
+    fun analyze(inputs: List<PhotoInput>) {
         if (inputs.isEmpty()) return
-        if (_state.value == AnalyzeState.Working) return
+        if (_state.value == AnalyzeState.Working || _state.value == AnalyzeState.Done) return
         _state.value = AnalyzeState.Working
         _step.value = 0
         viewModelScope.launch {
             val real = MutableStateFlow(0)
             // Never ahead of the real work, never faster than STEP_MS per caption.
             val captions = launch { for (i in 1..3) { delay(STEP_MS); real.first { it >= i }; _step.value = i } }
-            val failure = analyzePhoto.analyze(inputs) { s -> real.update { maxOf(it, s) } }
+            val failure = try {
+                analyzePhoto.analyze(inputs) { s -> real.update { maxOf(it, s) } }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("AnalyzeViewModel", "analysis failed", e)
+                PhotoFailure.BadImage
+            }
             if (failure == null) {
                 real.value = 3; captions.join()
                 delay(HOLD_MS); _step.value = FOUND; delay(FOUND_MS)
             } else captions.cancel()
-            _state.value = if (failure == null) AnalyzeState.Idle else AnalyzeState.Failed(failure)
-            if (failure == null) onSuccess()
+            _state.value = if (failure == null) AnalyzeState.Done else AnalyzeState.Failed(failure)
         }
     }
+
+    /** Called once the screen has acted on [AnalyzeState.Done]; coming back shows the tips again. */
+    fun resultShown() { if (_state.value == AnalyzeState.Done) _state.value = AnalyzeState.Idle }
 
     companion object {
         const val FOUND = 4
@@ -77,7 +90,7 @@ class AnalyzeViewModel @Inject constructor(
     fun back() {
         _state.value = when (_state.value) {
             is AnalyzeState.WhiteRef -> AnalyzeState.Camera
-            AnalyzeState.Working -> return
+            AnalyzeState.Working, AnalyzeState.Done -> return
             else -> AnalyzeState.Idle
         }
     }
