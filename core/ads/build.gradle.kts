@@ -41,5 +41,6 @@ dependencies {
     implementation(libs.ump)
     implementation(libs.billing)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(project(":core:designsystem"))
 }

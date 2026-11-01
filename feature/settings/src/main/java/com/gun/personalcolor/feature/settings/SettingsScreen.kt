@@ -86,6 +86,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.gun.personalcolor.core.ads.LocalAdManager
+import com.gun.personalcolor.core.ads.PremiumSection
 import com.gun.personalcolor.core.ads.RestoreResult
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
@@ -251,7 +252,7 @@ internal fun SettingsScreen(
     PcScaffold("설정", actions.onBack) { padding ->
         Box(Modifier.fillMaxSize()) {
             LazyColumn(Modifier.readableWidth(), contentPadding = padding.plusBottom(32.dp)) {
-                item { RemoveAdsGroup(snackbar) }
+                item { PremiumSection(snackbar, Modifier.padding(horizontal = ScreenPadding).padding(top = 12.dp)) }
                 item {
                     Group("화면") {
                         ListRow("테마", subtitle = state.themeMode.label, icon = Icons.Outlined.DarkMode, onClick = { themeDialog = true })
@@ -468,86 +469,6 @@ private fun SettingsPreview() = PcTheme {
     )
 }
 
-/** "프리미엄" one-time purchase (no ads + unlimited daily outfit + premium tools) + restore. Hidden in previews. */
-@Composable
-private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
-    val billing = LocalAdManager.current?.billing ?: return
-    val activity = LocalActivity.current
-    val adFree by billing.adFree.collectAsStateWithLifecycle()
-    val price by billing.price.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var restoring by remember { mutableStateOf(false) }
-    PremiumCard(
-        adFree, price, restoring,
-        onPurchase = {
-            val started = activity != null && billing.purchase(activity)
-            if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
-        },
-        onRestore = {
-            if (restoring) return@PremiumCard
-            restoring = true
-            billing.restore { r ->
-                val msg = when (r) {
-                    RestoreResult.RESTORED -> "프리미엄을 다시 적용했어요"
-                    RestoreResult.NOTHING -> "복원할 구매 내역이 없어요"
-                    RestoreResult.FAILED -> "Google Play에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."
-                }
-                scope.launch { restoring = false; snackbar.showSnackbar(msg) }
-            }
-        },
-    )
-}
-
-/** Soft aurora card with the drop corner: benefits + one-time purchase, or 틴티 cheering once it's bought. */
-@Composable
-private fun PremiumCard(adFree: Boolean, price: String?, restoring: Boolean, onPurchase: () -> Unit, onRestore: () -> Unit) {
-    Column(Modifier.padding(horizontal = ScreenPadding).padding(top = 12.dp)) {
-        PcCard(Modifier.fillMaxWidth(), shape = DropShape, elevation = 2) {
-            Box(Modifier.aurora(PcTheme.colors)) {
-                if (adFree) {
-                    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Tinty(Modifier.size(88.dp), expression = TintyExpression.Cheer, animated = false, prop = TintyProp.Crown)
-                        Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                            Eyebrow("프리미엄")
-                            Text("프리미엄 이용 중", style = MaterialTheme.typography.titleLarge)
-                            Text("광고 없이 모든 기능을 쓰고 있어요", style = Muted)
-                        }
-                    }
-                } else {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Eyebrow("프리미엄")
-                                Text("광고 없이 더 편하게", style = MaterialTheme.typography.titleLarge)
-                            }
-                            Tinty(Modifier.size(84.dp), expression = TintyExpression.Happy, animated = false, prop = TintyProp.Crown)
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("광고 없이 보기", "오늘의 코디 무제한", "립 체험·리포트 바로 보기").forEach { Benefit(it) }
-                        }
-                        Text((price?.let { "$it · " } ?: "") + "한 번만 결제하면 계속 써요", style = Muted)
-                        PcButton("프리미엄 시작하기", onPurchase, Modifier.fillMaxWidth())
-                        TextButton(onRestore, Modifier.align(Alignment.CenterHorizontally), enabled = !restoring) {
-                            if (restoring) {
-                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text("확인 중…")
-                            } else Text("구매 복원")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Benefit(text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
-    Icon(Icons.Rounded.Check, null, Modifier.size(18.dp), tint = PcTheme.colors.best)
-    Spacer(Modifier.width(8.dp))
-    Text(text, style = MaterialTheme.typography.bodyMedium)
-}
-
 /** "알림": daily 오늘의 컬러·코디 notification switch + time. Asks for POST_NOTIFICATIONS on API 33+ when turning on. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -596,9 +517,3 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
 
 internal fun timeLabel(hour: Int, minute: Int) =
     "${if (hour < 12) "오전" else "오후"} ${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
-
-@Preview
-@Composable
-private fun PremiumPreview() = PcTheme {
-    Column { PremiumCard(false, "₩3,900", false, {}, {}); PremiumCard(true, null, false, {}, {}) }
-}

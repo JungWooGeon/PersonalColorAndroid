@@ -61,6 +61,7 @@ import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.ListRow
 import com.gun.personalcolor.core.designsystem.PcCard
 import com.gun.personalcolor.core.designsystem.PcSnackbarHost
+import com.gun.personalcolor.core.ads.PremiumSection
 import com.gun.personalcolor.core.designsystem.PcTonalButton
 import com.gun.personalcolor.core.designsystem.Tinty
 import com.gun.personalcolor.core.designsystem.TintyExpression
@@ -124,8 +125,11 @@ fun MyScreen(
             ) {
                 val toneCard: @Composable (Modifier) -> Unit = { m ->
                     val tone = state.myTone
-                    if (tone != null) MyToneCard(tone, { onTone(tone.id) }, onAnalyze, { saveReport(tone) }, { onWallpaper(tone.id) }, m)
-                    else NoToneCard(onAnalyze, onQuiz, onTones, m)
+                    Column(m, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (tone != null) MyToneCard(tone, { onTone(tone.id) }, onAnalyze, { saveReport(tone) }, { onWallpaper(tone.id) }, Modifier)
+                        else NoToneCard(onAnalyze, onQuiz, onTones, Modifier)
+                        PremiumSection(snackbar, compactWhenOwned = true)
+                    }
                 }
                 val rest: @Composable () -> Unit = {
                     if (state.entries.isNotEmpty()) Stats(state)
