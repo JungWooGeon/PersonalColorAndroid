@@ -15,6 +15,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -41,15 +42,18 @@ class AppWidgetOutfitSource @Inject constructor(
         // Not started yet = the user never opened 오늘의 코디; show it locked so the trial starts in the app.
         val unlocked = billing.adFree.value || inTrial || ads.isUnlocked(AdManager.KEY_COORDI)
         if (!unlocked) return WidgetOutfit("", null, emptyList(), locked = true)
-        val w = weather.today()
+        // Never hang the widget on the network; no weather = the outfit without it, as on failure.
+        val w = withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weather.today() }
         val outfit = coordi.outfit(tone, w, closet.items.first(), 0, LocalDate.now())
         return WidgetOutfit(
             headline = outfit.headline,
             weatherLine = w?.let(TodayCoordiProvider::weatherLine),
-            pieces = outfit.slots.filter { it.kind != null }.map { it.kind!! to it.color.hex },
+            pieces = outfit.slots.mapNotNull { s -> s.kind?.let { it to s.color.hex } },
             locked = false,
         )
     }
+
+    private companion object { const val WEATHER_TIMEOUT_MS = 6_000L }
 }
 
 @Module

@@ -52,4 +52,14 @@ class DeepLinkTest {
     @Test fun webLinkFromAnotherSiteIsIgnored() {
         assertNull(parseDeepLink(null, "https", "evil.example.com", "/r/autumn_mute", null) { true })
     }
+
+    @Test fun malformedWebPaths() {
+        assertEquals(DeepLink.ToneLink("spring_light"), web("//r//spring_light"))
+        assertNull(web("/r/%00"))
+        assertNull(parse(scheme = "https", host = null, path = "/r/spring_light"))
+        assertNull(parse(scheme = "", host = "kakaolink", tone = ""))
+    }
+
+    /** The notification opens 코디 even with no diagnosed tone; the coordi screen shows its own empty state. */
+    @Test fun coordiExtraNeedsNoTone() = assertEquals(DeepLink.Coordi, parseDeepLink("coordi", null, null, null, null) { false })
 }

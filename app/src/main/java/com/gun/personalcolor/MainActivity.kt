@@ -107,12 +107,16 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         intent ?: return
-        val uri = intent.data
-        pendingRoute.value = when (val link = parseDeepLink(
-            openExtra = intent.getStringExtra("open"), scheme = uri?.scheme, host = uri?.host, path = uri?.path,
-            toneParam = uri?.let { if (it.isHierarchical) it.getQueryParameter("tone") else null },
-            isValidTone = { content.toneOrNull(it) != null },
-        )) {
+        // Exported activity: any app can send junk (unparcelable extras, odd URIs). A bad intent just opens home.
+        val link = runCatching {
+            val uri = intent.data
+            parseDeepLink(
+                openExtra = intent.getStringExtra("open"), scheme = uri?.scheme, host = uri?.host, path = uri?.path,
+                toneParam = uri?.let { if (it.isHierarchical) it.getQueryParameter("tone") else null },
+                isValidTone = { content.toneOrNull(it) != null },
+            )
+        }.onFailure { android.util.Log.w("MainActivity", "ignored bad intent", it) }.getOrNull()
+        pendingRoute.value = when (link) {
             DeepLink.Coordi -> CoordiRoute
             is DeepLink.ToneLink -> ToneRoute(link.id)
             null -> return

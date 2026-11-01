@@ -24,6 +24,9 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -84,6 +87,8 @@ enum class TopLevel(val route: Any, val routeClass: KClass<*>, val label: String
 @Composable
 fun PcApp(showOnboarding: Boolean, pendingRoute: Any? = null, onRouteHandled: () -> Unit = {}) {
     val nav = rememberNavController()
+    // Onboarding is pushed once; after recreation (rotation, dark mode, locale) the restored back stack already has it.
+    var onboardingPushed by rememberSaveable { mutableStateOf(false) }
     val entry by nav.currentBackStackEntryAsState()
     val dest = entry?.destination
     val current = TopLevel.entries.firstOrNull { t -> dest?.hierarchy?.any { it.hasRoute(t.routeClass) } == true }
@@ -119,7 +124,7 @@ fun PcApp(showOnboarding: Boolean, pendingRoute: Any? = null, onRouteHandled: ()
         ) {
             PcNavHost(nav)
             // First launch: onboarding on top of home, so finishing it just pops back.
-            LaunchedEffect(Unit) { if (showOnboarding) nav.navigate(OnboardingRoute) }
+            LaunchedEffect(Unit) { if (showOnboarding && !onboardingPushed) { onboardingPushed = true; nav.navigate(OnboardingRoute) } }
             // Deep link (Kakao share / App Link / notification): push the requested screen, then clear it.
             LaunchedEffect(pendingRoute) {
                 if (pendingRoute != null) { nav.navigate(pendingRoute) { launchSingleTop = true }; onRouteHandled() }
