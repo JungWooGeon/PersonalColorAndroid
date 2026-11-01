@@ -3,7 +3,6 @@ package com.gun.personalcolor.feature.onboarding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -75,6 +74,12 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.designsystem.BottomActions
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.aurora
+import com.gun.personalcolor.core.designsystem.elevation
+import com.gun.personalcolor.core.designsystem.elevationBorder
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcTheme
@@ -124,25 +129,25 @@ private class Page(val title: String, val body: String, val points: List<Pair<Im
 private val pages = listOf(
     Page(
         "사진 한 장으로 찾는\n나의 퍼스널컬러",
-        "AI가 얼굴 색을 측정해 12톤 중 나의 톤을 찾아요.",
-        listOf(Icons.Outlined.Colorize to "피부·눈동자·입술·머리카락 색 측정", Icons.Outlined.AutoAwesome to "봄·여름·가을·겨울 12톤 진단"),
+        "피부·눈동자·입술 색을 보고 12톤 중 내 톤을 찾아요.",
+        listOf(Icons.Outlined.Colorize to "피부·눈동자·입술·머리카락 색을 봐요", Icons.Outlined.AutoAwesome to "봄·여름·가을·겨울 12톤으로 알려줘요"),
     ) { ToneRingArt(it) },
     Page(
-        "사진은 내 폰 밖으로\n나가지 않아요",
-        "얼굴 분석은 폰 안에서만 이뤄져요.",
-        listOf(Icons.Outlined.CloudOff to "서버로 보내지 않아요", Icons.Outlined.History to "진단 기록도 이 폰에만 저장"),
+        "사진은 휴대폰 밖으로\n나가지 않아요",
+        "얼굴 분석은 휴대폰 안에서만 해요.",
+        listOf(Icons.Outlined.CloudOff to "서버로 보내지 않아요", Icons.Outlined.History to "진단 기록도 이 휴대폰에만 남아요"),
     ) { PrivatePhoneArt(it) },
     Page(
         "톤을 알았다면\n이렇게 써 보세요",
-        "매일 쓰는 컬러 도구들이에요.",
+        "매일 쓰기 좋은 컬러 도구예요.",
         listOf(
             Icons.Outlined.Palette to "12톤 컬러 도감",
-            Icons.Outlined.Checkroom to "가상 드레이핑으로 색 대보기",
-            Icons.Outlined.Colorize to "컬러 체크로 쇼핑 전에 확인",
+            Icons.Outlined.Checkroom to "컬러 드레이핑으로 얼굴에 색 대 보기",
+            Icons.Outlined.Colorize to "컬러 체크로 쇼핑 전에 확인하기",
         ),
     ) { FeatureCardsArt(it) },
     Page(
-        "정확한 진단을 위해\n이것만 지켜 주세요",
+        "이렇게 찍으면\n더 잘 보여요",
         "조명에 따라 결과가 달라져요.",
         listOf(
             Icons.Outlined.WbSunny to "밝은 자연광 아래에서",
@@ -222,26 +227,25 @@ private fun PageContent(page: Page, tones: List<Tone>) {
 
 @Composable
 private fun ArtFrame(page: Page, tones: List<Tone>) =
-    Box(Modifier.sizeIn(maxWidth = 300.dp, maxHeight = 300.dp).aspectRatio(1f), contentAlignment = Alignment.Center) { page.art(tones) }
+    Box(Modifier.sizeIn(maxWidth = 300.dp, maxHeight = 300.dp).aspectRatio(1f).aurora(PcTheme.colors), contentAlignment = Alignment.Center) { page.art(tones) }
 
 @Composable
 private fun PageText(page: Page, centered: Boolean) {
     Column(horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start) {
         Text(
-            page.title, style = MaterialTheme.typography.headlineSmall,
+            page.title, style = MaterialTheme.typography.headlineMedium,
             textAlign = if (centered) TextAlign.Center else TextAlign.Start,
         )
         Spacer(Modifier.height(12.dp))
         Text(page.body, style = Muted, textAlign = if (centered) TextAlign.Center else TextAlign.Start)
         Spacer(Modifier.height(20.dp))
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PcCard(Modifier.widthIn(max = 420.dp).fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 page.points.forEach { (icon, text) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        IconTile(icon, size = 36.dp)
                         Spacer(Modifier.width(12.dp))
-                        Text(text, style = MaterialTheme.typography.bodyMedium)
+                        Text(text, style = MaterialTheme.typography.titleSmall)
                     }
                 }
             }
@@ -290,8 +294,7 @@ private fun Ring(radiusFraction: Float, modifier: Modifier = Modifier, content: 
 
 @Composable
 private fun CenterBadge(icon: ImageVector, size: Dp, modifier: Modifier = Modifier) =
-    Surface(modifier.size(size), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 2.dp) {
+    PcCard(modifier.size(size), shape = CircleShape, elevation = 2) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, null, Modifier.size(size * 0.5f), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -303,7 +306,7 @@ private fun ToneRingArt(tones: List<Tone>) {
     val colors = tones.colors(fallbackColors())
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val s = min(maxWidth.value, maxHeight.value).dp
-        Box(Modifier.size(s * 0.78f).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
+        Box(Modifier.size(s * 0.78f).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f)))
         Ring(0.78f) {
             colors.forEach { c ->
                 Box(Modifier.size(s * 0.17f).clip(CircleShape).background(c)
@@ -314,38 +317,14 @@ private fun ToneRingArt(tones: List<Tone>) {
     }
 }
 
-/** A phone outline holding a face, with a lock badge. */
+/** 틴티 winking ("사진은 휴대폰 안에서만 봐요") next to a lock tile. */
 @Composable
-private fun PrivatePhoneArt(tones: List<Tone>) {
-    val colors = tones.colors(fallbackColors())
+private fun PrivatePhoneArt(@Suppress("UNUSED_PARAMETER") tones: List<Tone>) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val s = min(maxWidth.value, maxHeight.value).dp
-        Box(Modifier.size(s * 0.9f).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)))
-        Surface(
-            Modifier.width(s * 0.48f).height(s * 0.8f), shape = RoundedCornerShape(s * 0.08f),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            border = BorderStroke(3.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)),
-        ) {
-            Column(Modifier.padding(s * 0.05f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
-                Box(Modifier.size(s * 0.24f).clip(CircleShape)
-                    .background(Brush.linearGradient(colors.take(4).ifEmpty { listOf(Color.Gray, Color.LightGray) }.let { if (it.size == 1) it + it else it })),
-                    contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Face, null, Modifier.size(s * 0.16f), tint = Color.White)
-                }
-                repeat(2) { i ->
-                    Box(Modifier.fillMaxWidth(if (i == 0) 0.8f else 0.55f).height(s * 0.03f).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.outlineVariant))
-                }
-            }
-        }
-        Surface(
-            Modifier.size(s * 0.22f).offset(x = s * 0.2f, y = s * 0.26f), shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary, shadowElevation = 4.dp,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Lock, null, Modifier.size(s * 0.11f), tint = MaterialTheme.colorScheme.onPrimary)
-            }
-        }
+        Tinty(Modifier.size(s * 0.72f), expression = TintyExpression.Happy)
+        IconTile(Icons.Filled.Lock, Modifier.offset(x = -s * 0.3f, y = s * 0.22f), size = s * 0.22f, drop = true,
+            tint = MaterialTheme.colorScheme.onPrimary, container = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -356,15 +335,17 @@ private fun FeatureCardsArt(tones: List<Tone>) {
     val picks = tones.groupBy { it.season }.values.mapNotNull { it.firstOrNull() }.take(3)
     val icons = listOf(Icons.Outlined.Palette, Icons.Outlined.Checkroom, Icons.Outlined.Colorize)
     val fallback = fallbackColors()
+    val dark = PcTheme.colors.isDark
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val s = min(maxWidth.value, maxHeight.value).dp
         listOf(-14f, 0f, 14f).forEachIndexed { i, angle ->
             val swatches = picks.getOrNull(i)?.bestColors?.take(4)?.map { hexColor(it.hex) } ?: listOf(fallback[i % fallback.size])
             Surface(
                 Modifier.width(s * 0.42f).height(s * 0.6f)
-                    .graphicsLayer { rotationZ = angle; translationX = (i - 1) * s.toPx() * 0.22f; translationY = if (i == 1) -s.toPx() * 0.04f else 0f },
+                    .graphicsLayer { rotationZ = angle; translationX = (i - 1) * s.toPx() * 0.22f; translationY = if (i == 1) -s.toPx() * 0.04f else 0f }
+                    .elevation(RoundedCornerShape(s * 0.06f), dark, 2),
                 shape = RoundedCornerShape(s * 0.06f), color = MaterialTheme.colorScheme.surfaceContainer,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 6.dp,
+                border = elevationBorder(2),
             ) {
                 Column(Modifier.padding(s * 0.035f), verticalArrangement = Arrangement.spacedBy(s * 0.02f)) {
                     Column(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(s * 0.035f))) {
@@ -400,7 +381,7 @@ private fun PhotoTipArt(tones: List<Tone>) {
             }
         }
         CenterBadge(Icons.Outlined.Face, s * 0.34f)
-        Surface(Modifier.size(s * 0.2f).offset(x = s * 0.3f, y = -s * 0.3f), shape = CircleShape, color = warm, shadowElevation = 4.dp) {
+        Surface(Modifier.size(s * 0.2f).offset(x = s * 0.3f, y = -s * 0.3f), shape = CircleShape, color = warm) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.WbSunny, null, Modifier.size(s * 0.11f), tint = com.gun.personalcolor.core.ui.contentColorOn(warm))
             }
