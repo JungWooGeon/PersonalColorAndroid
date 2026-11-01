@@ -11,7 +11,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[2] / 'feature/widget/src/main/assets/mood'  # the assets
+REF = Path(__file__).resolve().parent / 'reference'
 REPO = HERE.parents[5]
 GARMENTS = REPO / 'core/ui/src/main/assets/garments'
 MYEONG = REPO / 'core/designsystem/src/main/res/font/nanum_myeongjo.ttf'
@@ -298,12 +299,12 @@ if __name__ == '__main__':
     for wx in WEATHERS:
         build_base(wx).save(HERE / f'A_{wx}_base.webp', **q)
         for i, t in enumerate(PHASES): build_light(wx, t).save(HERE / f'A_{wx}_light{i}.webp', alpha_quality=90, exact=True, **q)
-    (HERE / 'reference').mkdir(exist_ok=True)
+    (REF).mkdir(exist_ok=True)
     for wx in WEATHERS:
         line, cap = COPY[wx]
-        compose_A(TODAY, wx, 0, line, cap).save(HERE / f'reference/A_{wx}.png')
+        compose_A(TODAY, wx, 0, line, cap).save(REF / f'A_{wx}.png')
     for wx in ('rain', 'sunny'):
-        compose_A(TODAY, wx, 0, *COPY[wx], view='hero').save(HERE / f'reference/A_hero_{wx}.png')
-    compose_A(TODAY, 'rain', 0, '', '9° · rain', mini=True).save(HERE / 'reference/A_rain_mini.png')
-    compose_A(SPRING, 'sunny', 0, '햇살 아래,\n복숭아 한 조각', 'Apr 6 · 17° · sunny day look').save(HERE / 'reference/A_sunny_spring.png')
+        compose_A(TODAY, wx, 0, *COPY[wx], view='hero').save(REF / f'A_hero_{wx}.png')
+    compose_A(TODAY, 'rain', 0, '', '9° · rain', mini=True).save(REF / 'A_rain_mini.png')
+    compose_A(SPRING, 'sunny', 0, '햇살 아래,\n복숭아 한 조각', 'Apr 6 · 17° · sunny day look').save(REF / 'A_sunny_spring.png')
     print('ok')
