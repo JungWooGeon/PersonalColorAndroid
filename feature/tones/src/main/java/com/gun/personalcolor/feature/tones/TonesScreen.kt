@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.tones
 
+import com.gun.personalcolor.core.designsystem.TintyProp
+import com.gun.personalcolor.core.designsystem.TintyHeader
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -70,7 +72,7 @@ fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite:
         ) {
             fullSpan("filters") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("4계절을 밝기와 선명도로 나눈 12가지 톤이에요", style = Muted)
+                    TintyHeader("12톤, 하나씩 둘러봐요", "4계절을 밝기와 선명도로 나눈 12가지 톤이에요", TintyProp.Palette, Modifier.padding(bottom = 4.dp))
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val options = listOf(ALL to "전체") + SEASON_KO.toList() + (FAVORITES to "즐겨찾기")
                         options.forEach { (key, label) ->

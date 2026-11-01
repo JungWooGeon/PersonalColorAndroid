@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.drape
 
+import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -193,7 +194,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                         Surface(Modifier.fillMaxSize(), color = bg) {}
                         if (cutout.loading) {
                             // One Tinty for the side-by-side drape panels (drawn over the row below); the lip panel gets its own.
-                            if (extra != null) TintyLoading(Modifier.align(Alignment.Center), size = 104.dp)
+                            if (extra != null) TintyLoading(Modifier.align(Alignment.Center), size = 112.dp, prop = TintyProp.Fabric)
                         } else {
                             DrapedPhoto(
                                 photo, cutout.mask, bg,
@@ -214,7 +215,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                     panel("BEST", best, true, Modifier.weight(1f), null)
                     panel(rightLabel, right, true, Modifier.weight(1f), null)
                 }
-                if (cutout.loading) TintyLoading(Modifier.align(Alignment.Center), size = 104.dp)
+                if (cutout.loading) TintyLoading(Modifier.align(Alignment.Center), size = 112.dp, prop = TintyProp.Fabric)
             }
         }
         val drapeControls: @Composable () -> Unit = {

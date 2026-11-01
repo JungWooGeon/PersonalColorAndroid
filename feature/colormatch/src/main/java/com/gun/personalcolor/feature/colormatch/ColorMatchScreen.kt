@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.colormatch
 
+import com.gun.personalcolor.core.designsystem.tintyEntrance
+import com.gun.personalcolor.core.designsystem.TintyProp
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
 import android.net.Uri
@@ -256,6 +258,7 @@ private fun NoToneState(pad: PaddingValues, onAnalyze: () -> Unit, onPickTone: (
     Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
         TintyEmptyState(
             expression = TintyExpression.Default,
+            prop = TintyProp.Eyedropper,
             title = "먼저 내 톤을 알려주세요",
             message = "내 톤에 어울리는지 알려줘요.",
             action = {
@@ -282,15 +285,19 @@ private fun Intro(
             ReferenceToneChip(tone, onToneChip)
             PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                        tone.bestColors.take(5).forEach {
-                            Swatch(it.hex, Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape).padding(3.dp), CircleShape)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                                tone.bestColors.take(5).forEach {
+                                    Swatch(it.hex, Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape).padding(3.dp), CircleShape)
+                                }
+                            }
+                            Text("이 색, 나한테\n어울릴까?", style = MaterialTheme.typography.headlineSmall)
                         }
+                        val tc = remember(tone) { tone.tintyColors }
+                        Tinty(Modifier.size(116.dp).tintyEntrance(), tc, TintyExpression.Default, prop = TintyProp.Eyedropper, propColor = tc.scarf[0])
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("이 색, 나한테 어울릴까?", style = MaterialTheme.typography.headlineSmall)
-                        Text("${tone.nameKo}에 어울리는지 바로 알려줘요", style = Muted)
-                    }
+                    Text("${tone.nameKo}에 어울리는지 바로 알려줘요", style = Muted)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Step(Icons.Rounded.PhotoCamera, "옷이나 립스틱을 찍어요")
                         Step(Icons.Rounded.TouchApp, "확인할 곳을 눌러요")
@@ -300,7 +307,7 @@ private fun Intro(
             }
             state.error?.let { ErrorText(it) }
             if (state.photoLoading) {
-                TintyLoading(Modifier.fillMaxWidth(), "사진을 불러오고 있어요", remember(tone) { tone.tintyColors }, size = 96.dp)
+                TintyLoading(Modifier.fillMaxWidth(), "사진을 불러오고 있어요", remember(tone) { tone.tintyColors }, size = 104.dp, prop = TintyProp.Eyedropper)
             } else {
                 PcButton("카메라로 찍기", onCamera, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoCamera)
                 PcOutlinedButton("앨범에서 선택", onAlbum, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoLibrary)

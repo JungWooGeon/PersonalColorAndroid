@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.learn
 
+import com.gun.personalcolor.core.designsystem.TintyProp
+import com.gun.personalcolor.core.designsystem.TintyHeader
 import com.gun.personalcolor.core.ui.icon
 
 import com.gun.personalcolor.core.ads.NativeAdCard
@@ -81,6 +83,9 @@ fun LearnScreen(state: LearnUiState, onBack: () -> Unit, onCategory: (String?) -
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                TintyHeader("틴티의 컬러 노트", "알아 두면 옷 고르기가 쉬워져요", TintyProp.Book)
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (listOf<String?>(null) + CATEGORIES).forEach { c ->

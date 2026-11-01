@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.colormatch
 
+import com.gun.personalcolor.core.designsystem.PcDialog
+import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -129,9 +131,9 @@ fun ClosetScreen(
         }
     }) { pad ->
         when {
-            state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { TintyLoading() }
+            state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { TintyLoading(prop = TintyProp.Hanger) }
             state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-                TintyEmptyState("옷장이 아직 비어 있어요", "자주 입는 옷을 찍어 두면\n내 톤에 맞는지 한눈에 보여요", expression = TintyExpression.Default, action = {
+                TintyEmptyState("옷장이 아직 비어 있어요", "자주 입는 옷을 찍어 두면\n내 톤에 맞는지 한눈에 보여요", expression = TintyExpression.Default, prop = TintyProp.Hanger, action = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PcButton("첫 옷 등록하기", onAdd, icon = Icons.Rounded.Add)
                         TextButton(onColorMatch, Modifier.heightIn(min = 48.dp)) {
@@ -348,15 +350,8 @@ internal fun ClosetFields(name: String, onName: (String) -> Unit, category: Stri
 private fun kindLabel(item: ClosetItem) = item.kind?.let { CLOTHING_KINDS[it]?.first } ?: item.category
 
 @Composable
-private fun ConfirmDialog(title: String, message: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = { TextButton(onConfirm) { Text(confirm, color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onDismiss) { Text("취소") } },
-    )
-}
+private fun ConfirmDialog(title: String, message: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) =
+    PcDialog(title, message, confirm, onConfirm, onDismiss, expression = TintyExpression.Surprised, prop = TintyProp.Hanger, destructive = true)
 
 @Preview(showBackground = true)
 @Composable

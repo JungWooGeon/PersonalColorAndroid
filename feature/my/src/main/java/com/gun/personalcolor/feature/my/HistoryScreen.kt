@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.my
 
+import com.gun.personalcolor.core.designsystem.PcDialog
+import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -74,7 +76,7 @@ fun HistoryScreen(
             state.loading -> Unit
             entries.isEmpty() -> TintyEmptyState(
                 "아직 진단 기록이 없어요", "진단하면 여기에 차곡차곡 쌓여요",
-                Modifier.padding(pad), TintyExpression.Default,
+                Modifier.padding(pad), TintyExpression.Default, prop = TintyProp.Book,
                 action = { PcButton("진단하기", onAnalyze) },
             )
             else -> LazyColumn(
@@ -140,13 +142,7 @@ private fun SwipeRow(e: HistoryEntry, state: MyUiState, onTone: () -> Unit, onRe
 
 @Composable
 private fun ConfirmDialog(title: String, text: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) =
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirm, color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
-    )
+    PcDialog(title, text, confirm, onConfirm, onDismiss, expression = TintyExpression.Surprised, prop = TintyProp.Book, destructive = true)
 
 @Preview
 @Composable

@@ -1,5 +1,7 @@
 package com.gun.personalcolor.core.ads
 
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.PcDialog
 import androidx.activity.compose.LocalActivity
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -29,14 +31,10 @@ fun rememberRewardGate(): (RewardRequest) -> Unit {
     val activity = LocalActivity.current
     var pending by remember { mutableStateOf<RewardRequest?>(null) }
     pending?.let { r ->
-        AlertDialog(
-            onDismissRequest = { pending = null },
-            title = { Text(r.title) },
-            text = { Text(r.message) },
-            confirmButton = {
-                TextButton(onClick = { pending = null; ads?.showRewarded(activity, r.key, r.unlockMs, r.action) ?: r.action() }) { Text("광고 보기") }
-            },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("취소") } },
+        PcDialog(
+            r.title, r.message, "광고 보기",
+            onConfirm = { pending = null; ads?.showRewarded(activity, r.key, r.unlockMs, r.action) ?: r.action() },
+            onDismiss = { pending = null }, expression = TintyExpression.Happy,
         )
     }
     return remember(ads) { { r -> if (ads?.shouldOfferReward(r.key) == true) pending = r else r.action() } }

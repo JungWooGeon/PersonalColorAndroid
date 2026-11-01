@@ -1,5 +1,8 @@
 package com.gun.personalcolor.feature.quiz
 
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.TintyProp
+import com.gun.personalcolor.core.designsystem.Tinty
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
@@ -92,7 +95,7 @@ internal fun QuizScreen(questions: List<QuizQuestion>, answered: Int, onBack: ()
             }
             // All answered: the result (and maybe an ad) is on its way.
             if (answered >= questions.size) {
-                Box(Modifier.fillMaxSize(), Alignment.Center) { TintyLoading(message = "결과를 정리하고 있어요") }
+                Box(Modifier.fillMaxSize(), Alignment.Center) { TintyLoading(message = "결과를 정리하고 있어요", size = 156.dp, prop = TintyProp.Cards) }
             } else {
                 AnimatedContent(
                     index,
@@ -116,8 +119,14 @@ private fun Question(index: Int, q: QuizQuestion, onAnswer: (QuizOption) -> Unit
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 28.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Eyebrow("질문 ${index + 1}")
-        Text(q.text, style = MaterialTheme.typography.headlineSmall)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Eyebrow("질문 ${index + 1}")
+                Text(q.text, style = MaterialTheme.typography.headlineSmall)
+            }
+            // Same 틴티 on every question (still), holding the question cards.
+            Tinty(Modifier.size(84.dp), expression = if (index % 3 == 2) TintyExpression.Happy else TintyExpression.Thinking, animated = false, prop = TintyProp.Cards)
+        }
         if (q.hint.isNotBlank()) Text(q.hint, style = Muted)
         Spacer(Modifier.height(8.dp))
         q.options.forEachIndexed { i, o ->

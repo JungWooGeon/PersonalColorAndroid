@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.settings
 
+import com.gun.personalcolor.core.designsystem.PcDialog
+import com.gun.personalcolor.core.designsystem.TintyProp
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -285,7 +287,7 @@ internal fun SettingsScreen(
                 }
                 item {
                     Group("정보") {
-                        ListRow("온보딩 다시 보기", icon = Icons.AutoMirrored.Outlined.HelpOutline, onClick = actions.onOnboarding)
+                        ListRow("틴티 소개 다시 보기", icon = Icons.AutoMirrored.Outlined.HelpOutline, onClick = actions.onOnboarding)
                         ListRow("오픈소스 라이선스", icon = Icons.Outlined.Code, onClick = actions.onLicenses)
                         ListRow("앱 버전", icon = Icons.Outlined.Info, trailing = {
                             Text(version, style = Muted, maxLines = 1)
@@ -399,15 +401,7 @@ private fun TonePicker(tones: List<Tone>, selectedId: String?, onPick: (String?)
 
 @Composable
 private fun ConfirmDialog(title: String, message: String, confirmText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) =
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton({ onConfirm(); onDismiss() }) { Text(confirmText, color = MaterialTheme.colorScheme.error) }
-        },
-        dismissButton = { TextButton(onDismiss) { Text("취소") } },
-    )
+    PcDialog(title, message, confirmText, { onConfirm(); onDismiss() }, onDismiss, expression = TintyExpression.Surprised, destructive = true)
 
 // --- Intents ---
 
@@ -492,7 +486,7 @@ private fun PremiumCard(adFree: Boolean, price: String?, onPurchase: () -> Unit,
             Box(Modifier.aurora(PcTheme.colors)) {
                 if (adFree) {
                     Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Tinty(Modifier.size(80.dp), expression = TintyExpression.Cheer, animated = false)
+                        Tinty(Modifier.size(88.dp), expression = TintyExpression.Cheer, animated = false, prop = TintyProp.Crown)
                         Column(Modifier.weight(1f).padding(start = 8.dp)) {
                             Eyebrow("프리미엄")
                             Text("프리미엄 이용 중", style = MaterialTheme.typography.titleLarge)
@@ -501,9 +495,12 @@ private fun PremiumCard(adFree: Boolean, price: String?, onPurchase: () -> Unit,
                     }
                 } else {
                     Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column {
-                            Eyebrow("프리미엄")
-                            Text("광고 없이 더 편하게", style = MaterialTheme.typography.titleLarge)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Eyebrow("프리미엄")
+                                Text("광고 없이 더 편하게", style = MaterialTheme.typography.titleLarge)
+                            }
+                            Tinty(Modifier.size(84.dp), expression = TintyExpression.Happy, animated = false, prop = TintyProp.Crown)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("광고 없이 보기", "오늘의 코디 무제한", "립 체험·리포트 바로 보기").forEach { Benefit(it) }

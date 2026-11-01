@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.colormatch
 
+import com.gun.personalcolor.core.designsystem.PropTile
+import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.horizontalScroll
 import com.gun.personalcolor.core.ui.ClothingIllustration
@@ -216,11 +218,11 @@ private fun PhotoPart(state: ClosetAddUiState, onCamera: () -> Unit, onAlbum: ()
         when {
             state.processing -> TintyLoading(
                 Modifier.padding(16.dp), "배경을 지우고 있어요\n처음엔 조금 걸릴 수 있어요",
-                remember(state.tone) { state.tone?.tintyColors ?: TintyColors.Brand }, size = 112.dp,
+                remember(state.tone) { state.tone?.tintyColors ?: TintyColors.Brand }, size = 112.dp, prop = TintyProp.Hanger,
             )
             photo != null -> CutoutPicker(photo, state.point, state.photoColor, onPickPoint)
             else -> Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconTile(Icons.Rounded.Checkroom, size = 64.dp, drop = true)
+                PropTile(TintyProp.Hanger, remember(state.tone) { state.tone?.tintyColors ?: TintyColors.Brand }, size = 72.dp)
                 Spacer(Modifier.height(4.dp))
                 Text("내 옷을 찍어 보세요", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text("밝은 곳에서 옷 전체가 나오게 찍으면\n배경을 깔끔하게 지워 줘요", style = Muted, textAlign = TextAlign.Center)
