@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.ZoneId
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -57,6 +58,9 @@ class DailyNotificationReceiver : BroadcastReceiver() {
                 val prefs = entry.prefs().preferences.first()
                 if (intent.action == ACTION_FIRE && prefs.dailyNotification) post(app, entry.provider())
                 DailyNotificationScheduler.sync(app, prefs)   // next day (or restore after boot / app update)
+            } catch (e: Exception) {
+                // Never crash the process from a background broadcast (DataStore IO, alarm SecurityException…).
+                android.util.Log.w("Coordi", "daily notification failed", e)
             } finally {
                 pending.finish()
             }
@@ -67,7 +71,8 @@ class DailyNotificationReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= 33 &&
             ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
-        val summary = runCatching { provider.summary() }.getOrNull()
+        // goAsync gives ~10 s; a slow location / weather fetch falls back to the generic copy.
+        val summary = runCatching { withTimeoutOrNull(SUMMARY_TIMEOUT_MS) { provider.summary() } }.getOrNull()
         val (short, long) = notificationText(summary)
         val manager = ctx.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "오늘의 컬러 알림", NotificationManager.IMPORTANCE_DEFAULT))
@@ -91,6 +96,7 @@ class DailyNotificationReceiver : BroadcastReceiver() {
         internal const val ACTION_FIRE = "com.gun.personalcolor.action.DAILY_NOTIFICATION"
         private const val CHANNEL = "daily"
         private const val NOTIFICATION_ID = 1001
+        private const val SUMMARY_TIMEOUT_MS = 6_000L
     }
 }
 
@@ -125,8 +131,13 @@ object DailyNotificationScheduler {
         val alarms = context.getSystemService(AlarmManager::class.java)
         // Exact when the OS allows it (pre-granted up to Android 13); otherwise inexact (may run up to ~1h late).
         val exactOk = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
-        if (exactOk) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pendingIntent(context))
-        else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pendingIntent(context))
+        try {
+            if (exactOk) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pendingIntent(context))
+            else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pendingIntent(context))
+        } catch (_: SecurityException) {
+            // Exact-alarm access revoked between the check and the call: inexact still delivers the notification.
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pendingIntent(context))
+        }
         WorkManager.getInstance(context).cancelUniqueWork(LEGACY_WORK)   // drop the old WorkManager-based schedule
     }
 

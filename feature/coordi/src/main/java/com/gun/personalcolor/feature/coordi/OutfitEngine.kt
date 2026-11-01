@@ -119,7 +119,7 @@ object OutfitEngine {
      * 3. Rain: black or ivory rain boots, or black loafers; the umbrella is black / ivory or the accent, never the shoe color.
      *    "방수" only on the windbreaker.
      * 4. Slots come in wearing order: 아우터 → 상의 → 하의 (or 원피스) → 신발 → 가방 → 소품 (umbrella on rainy days, else a
-     *    muffler or beanie when it's cold). LookBoard has one spot per label.
+     *    muffler or beanie when it's cold).
      */
     internal class Neutrals(val base: List<NamedColor>, val leather: List<NamedColor>, val denim: List<NamedColor>) {
         /** Rain boots: black or the lightest leather neutral (ivory / white), never a palette color. */
@@ -160,7 +160,9 @@ object OutfitEngine {
     internal fun accentsOf(tone: Tone): List<NamedColor> {
         val neutral = neutralsOf(tone).all.map { lab(it.hex) }
         val byChroma = tone.bestColors.sortedBy { lab(it.hex).chroma }
-        return byChroma.filter { c -> lab(c.hex).let { l -> l.chroma >= 15 && neutral.none { deltaE(it, l) < 12 } } }.ifEmpty { byChroma }
+        // No palette colors at all (bad content): fall back to the neutrals so callers never pick from an empty list.
+        return byChroma.filter { c -> lab(c.hex).let { l -> l.chroma >= 15 && neutral.none { deltaE(it, l) < 12 } } }
+            .ifEmpty { byChroma }.ifEmpty { neutralsOf(tone).base }
     }
 
     private val SKIRTS = setOf("skirt", "mini_skirt", "pleats", "long_skirt", "denim_skirt")
@@ -240,7 +242,7 @@ object OutfitEngine {
         variant: Int = 0,
     ): Outfit {
         val rnd = Random(date.toEpochDay() * 31 + tone.id.hashCode() + variant * 7919L)
-        val feels = weather?.feelsLike?.roundToInt() ?: monthlyFeels[date.monthValue - 1]
+        val feels = weather?.feelsLike?.takeIf { it.isFinite() }?.roundToInt() ?: monthlyFeels[date.monthValue - 1]
         val band = bands.first { feels >= it.min }
         val rainy = weather != null && weather.precipProb >= 50
         val strongUv = (weather?.uv ?: 0.0) >= 6.0
@@ -397,7 +399,7 @@ object OutfitEngine {
             val toWorst = worst.minOfOrNull { deltaE(l, it) } ?: Double.MAX_VALUE
             toBest + if (toWorst < toBest) 25.0 else 0.0
         }
-        return ranked[variant % minOf(3, ranked.size)]
+        return ranked[Math.floorMod(variant, minOf(3, ranked.size))]
     }
 
     private fun List<NamedColor>.pick(rnd: Random, fallback: NamedColor) = if (isEmpty()) fallback else this[rnd.nextInt(size)]
@@ -405,8 +407,9 @@ object OutfitEngine {
     // ponytail: CIE76 distance — fine for picking among a handful of colors; swap in CIEDE2000 if ranking looks off.
     internal fun deltaE(a: Lab, b: Lab) = sqrt((a.l - b.l).let { it * it } + (a.a - b.a).let { it * it } + (a.b - b.b).let { it * it })
 
+    /** Malformed hex (bad content or a closet entry) reads as mid grey instead of throwing; "#AARRGGBB" keeps its RGB. */
     internal fun lab(hex: String): Lab {
-        val v = hex.removePrefix("#").toInt(16)
+        val v = hex.removePrefix("#").toLongOrNull(16)?.toInt() ?: 0x808080
         return ColorMath.rgbToLab(Rgb(v shr 16 and 0xFF, v shr 8 and 0xFF, v and 0xFF))
     }
 }

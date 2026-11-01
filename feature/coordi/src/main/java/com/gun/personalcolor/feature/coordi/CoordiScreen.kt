@@ -338,7 +338,7 @@ private fun LocationCard(onResult: () -> Unit) {
             if (blocked) "설정에서 위치 허용" else "위치 허용하기",
             onClick = {
                 if (blocked) {
-                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri()))
+                    runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri())) }
                 } else launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             },
             modifier = Modifier.fillMaxWidth(),

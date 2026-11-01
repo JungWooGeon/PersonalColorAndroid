@@ -41,6 +41,29 @@ class OutfitEngineTest {
     private fun weather(feels: Double, rain: Int = 0, uv: Double = 2.0) =
         TodayWeather("마포구 망원동", feels, feels, feels - 3, feels + 3, rain, "맑음", 0, uv, 5.0, 0L)
 
+    // Regression: bad content or odd weather must never crash 오늘의 코디 (or the widget / notification built on it).
+    @Test fun emptyPaletteFallsBackToNeutrals() {
+        val bare = tone.copy(bestColors = emptyList(), worstColors = emptyList())
+        assertTrue(OutfitEngine.accentsOf(bare).isNotEmpty())
+        (0..5).forEach { v -> assertTrue(OutfitEngine.build(bare, weather(14.0), date, moods, variant = v).slots.isNotEmpty()) }
+    }
+
+    @Test fun malformedHexReadsAsGrey() {
+        assertEquals(OutfitEngine.lab("#808080"), OutfitEngine.lab("not a color"))
+        assertEquals(OutfitEngine.lab("#C0674A"), OutfitEngine.lab("#FFC0674A"))
+        val odd = tone.copy(bestColors = tone.bestColors + NamedColor("깨진 색", "#ZZZ"))
+        assertTrue(OutfitEngine.build(odd, weather(14.0), date, moods).slots.isNotEmpty())
+    }
+
+    @Test fun nanFeelsLikeUsesTheMonthlyDefault() {
+        val nan = OutfitEngine.build(tone, weather(Double.NaN), date, moods)
+        assertTrue(nan.layerLine.contains("체감 8°C"))
+    }
+
+    @Test fun negativeVariantStillPicksAMood() {
+        assertTrue(OutfitEngine.closestMood(moods, tone, variant = -1) in moods)
+    }
+
     @Test fun deterministicPerDay() {
         val a = OutfitEngine.build(tone, weather(14.0), date, moods)
         assertEquals(a, OutfitEngine.build(tone, weather(14.0), date, moods))

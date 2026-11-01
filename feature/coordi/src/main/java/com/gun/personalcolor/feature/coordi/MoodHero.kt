@@ -87,13 +87,21 @@ internal fun MoodHero(look: MoodLook, modifier: Modifier = Modifier, description
         val w = constraints.maxWidth; val h = constraints.maxHeight
         // (look, its frames): the old look keeps breathing until the new one is rendered.
         val shown by produceState(heroCache.get(key(look, w, h))?.let { look to it }, look, w, h) {
+            if (w <= 0 || h <= 0) return@produceState // not laid out yet: a 0-px bitmap would throw
             val k = key(look, w, h)
-            value = look to (heroCache.get(k) ?: withContext(Dispatchers.Default) {
-                (0..2).map { p ->
-                    SceneBed.render(context, look.pieces, look.weather, look.line, look.caption, w, h, p, look.locked, false,
-                        pill = null, hero = true).asImageBitmap()
+            val frames = heroCache.get(k) ?: withContext(Dispatchers.Default) {
+                try {
+                    (0..2).map { p ->
+                        SceneBed.render(context, look.pieces, look.weather, look.line, look.caption, w, h, p, look.locked, false,
+                            pill = null, hero = true).asImageBitmap()
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) { // OOM on a huge window, a broken asset…: keep the previous scene (or the backdrop)
+                    android.util.Log.w("MoodHero", "render failed", e); null
                 }
-            }.also { heroCache.put(k, it) })
+            }?.also { heroCache.put(k, it) } ?: return@produceState
+            value = look to frames
         }
         val frames = shown?.second
         var phase by remember { mutableIntStateOf(0) }

@@ -56,20 +56,22 @@ internal class CoordiViewModel @Inject constructor(
             tone = tone,
             weather = w,
             // Wait for the weather so the outfit doesn't change under the user's eyes.
-            outfit = if (tone != null && !w.loading) provider.outfit(tone, w.weather, items, v) else null,
+            // Never crash the screen on bad content: no outfit shows the loading card instead.
+            outfit = if (tone != null && !w.loading) runCatching { provider.outfit(tone, w.weather, items, v) }.getOrNull() else null,
             trialDaysLeft = trialLeft,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoordiUiState())
 
     init {
-        viewModelScope.launch { prefs.startCoordiTrialIfNeeded(System.currentTimeMillis()) }
+        viewModelScope.launch { runCatching { prefs.startCoordiTrialIfNeeded(System.currentTimeMillis()) } }
         refreshWeather()
     }
 
     fun refreshWeather() = viewModelScope.launch {
         val permitted = WeatherRepository.hasPermission(context)
         weather.value = WeatherState(loading = true, hasPermission = permitted)
-        val w = if (permitted) withTimeoutOrNull(15_000) { weatherRepo.today() } else null
+        // A failed fetch (or a revoked permission mid-call) falls back to the season-based outfit.
+        val w = if (permitted) runCatching { withTimeoutOrNull(15_000) { weatherRepo.today() } }.getOrNull() else null
         weather.value = WeatherState(loading = false, weather = w, hasPermission = permitted)
     }
 
