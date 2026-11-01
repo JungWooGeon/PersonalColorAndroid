@@ -28,21 +28,22 @@ object MoodCopy {
         return if (jong == 0 || jong == 8) "로" else "으로"
     }
 
+    /** The line follows the weather, also at night (the look is still today's; only the scene is dark). */
     fun line(sky: String, condition: String?, temp: Int?, color: String?): String {
         color ?: return "오늘의 룩"
+        val day = if (sky == "night") sky(condition, 12) else sky
         return when {
-            sky == "night" -> "내일은 $color"
-            sky == "rain" -> "${if (condition.orEmpty().contains("눈")) "눈" else "비"} 오는 날, $color 한 방울"
+            day == "rain" -> "${if (condition.orEmpty().contains("눈")) "눈" else "비"} 오는 날, $color 한 방울"
             temp != null && temp <= 5 -> "$color${ro(color)} 따뜻하게"
-            sky == "cloudy" -> "흐린 날엔 $color${ro(color)}"
+            day == "cloudy" -> "흐린 날엔 $color${ro(color)}"
             else -> "햇살 아래, $color 한 조각"
         }
     }
 
-    /** "Nov 1 · 9° · rainy day look". */
+    /** "Nov 1 · 9° · rainy day look", "Nov 1 · 9° · tonight". */
     fun caption(sky: String, condition: String?, temp: Int?, now: LocalDateTime = LocalDateTime.now()): String {
         val word = when (sky) {
-            "night" -> "for tomorrow"
+            "night" -> "tonight"
             "rain" -> if (condition.orEmpty().contains("눈")) "snowy day look" else "rainy day look"
             "cloudy" -> "cloudy day look"
             else -> "sunny day look"

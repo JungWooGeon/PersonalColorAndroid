@@ -11,12 +11,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
-import androidx.compose.ui.graphics.toArgb
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.Tone
-import com.gun.personalcolor.core.ui.hexColor
+import com.gun.personalcolor.core.ui.mood.MoodCopy
 import com.gun.personalcolor.core.ui.mood.SceneBed
 import com.gun.personalcolor.core.ui.mood.SceneWall
 import dagger.BindsOptionalOf
@@ -196,46 +195,8 @@ internal object LookWidgets {
     private fun ourLiveWallpaperOn(context: Context) =
         runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.packageName == context.packageName }.getOrDefault(false)
 
-    enum class Sky { sunny, cloudy, rain, night }
-
-    /** "영등포구 9°C 이슬비" + hour → the scene. Night is 22–6 h whatever the weather. */
-    internal fun skyOf(weatherLine: String?, hour: Int): Sky {
-        if (hour >= 22 || hour < 6) return Sky.night
-        val c = weather(weatherLine).second.orEmpty()
-        return when {
-            listOf("비", "눈", "소나기", "진눈깨비").any { it in c } -> Sky.rain
-            listOf("흐", "구름", "안개", "황사", "박무", "연무").any { it in c } -> Sky.cloudy
-            else -> Sky.sunny
-        }
-    }
-
-    /** 으로/로: 로 after a vowel or ㄹ (와인으로, 코랄로, 피치로). */
-    internal fun ro(word: String): String {
-        val ch = word.lastOrNull() ?: return "로"
-        if (ch !in '가'..'힣') return "로"
-        val jong = (ch - '가') % 28
-        return if (jong == 0 || jong == 8) "로" else "으로"
-    }
-
-    internal fun lineOf(sky: Sky, cond: String?, temp: Int?, color: String?): String {
-        color ?: return "오늘의 룩"
-        return when {
-            sky == Sky.night -> "내일은 $color"
-            sky == Sky.rain -> "${if (cond.orEmpty().contains("눈")) "눈" else "비"} 오는 날, $color 한 방울"
-            temp != null && temp <= 5 -> "$color${ro(color)} 따뜻하게"
-            sky == Sky.cloudy -> "흐린 날엔 $color${ro(color)}"
-            else -> "햇살 아래, $color 한 조각"
-        }
-    }
-
-    /** The look's accent: its most colorful piece whose color is one of the tone's colors. */
-    private fun accentName(tone: Tone, pieces: List<Pair<String, Int>>): String? =
-        pieces.mapNotNull { (_, c) -> tone.bestColors.firstOrNull { hexColor(it.hex).toArgb() == c }?.let { it to c } }
-            .maxByOrNull { chroma(it.second) }?.takeIf { chroma(it.second) > 40 }?.first?.name
-            ?.let { NICK[it] ?: it }
-
-    /** Softer words for the line, where the tone's name reads like a paint chip. */
-    private val NICK = mapOf("피치" to "복숭아")
+    /** "영등포구 9°C 이슬비" + hour → sunny|cloudy|rain|night (MoodCopy.sky). */
+    internal fun skyOf(weatherLine: String?, hour: Int): String = MoodCopy.sky(weather(weatherLine).second, hour)
 
     /** What [data] looks like in the widget, and its contentDescription. */
     fun look(data: Data): Pair<WidgetLook, String> {
@@ -246,30 +207,24 @@ internal object LookWidgets {
         val outfit = data.outfit
         if (tone == null) {
             val sky = skyOf(null, hour)
-            return WidgetLook(null, sky.name, "내 컬러부터 찾아볼까요?", "$date · find your color", "my color",
+            return WidgetLook(null, sky, "내 컬러부터 찾아볼까요?", "$date · find your color", "my color",
                 locked = false, pill = "진단하러 가기") to "나의 컬러는? 탭해서 퍼스널 컬러를 진단해요"
         }
         if (outfit == null || outfit.locked) {
             // Never the real outfit here: the scene shows generic pieces under a veil.
             val sky = skyOf(null, hour)
-            return WidgetLook(null, sky.name, "오늘의 룩이 도착했어요", "$date · today's look", "today's look", locked = true,
+            return WidgetLook(null, sky, "오늘의 룩이 도착했어요", "$date · today's look", "today's look", locked = true,
                 pill = if (outfit == null) "열어보기" else "광고 보고 열기") to "오늘의 코디가 도착했어요. 탭해서 열어보세요"
         }
         val (tempS, cond) = weather(outfit.weatherLine)
         val temp = tempS?.removeSuffix("°")?.toIntOrNull()
         val sky = skyOf(outfit.weatherLine, hour)
         val pieces = outfit.pieces.mapNotNull { (k, hex) -> runCatching { k to android.graphics.Color.parseColor(hex) }.getOrNull() }
-        val line = lineOf(sky, cond, temp, accentName(tone, pieces))
-        val word = when (sky) {
-            Sky.night -> "for tomorrow"
-            Sky.rain -> if (cond.orEmpty().contains("눈")) "snowy day look" else "rainy day look"
-            Sky.cloudy -> "cloudy day look"
-            Sky.sunny -> "sunny day look"
-        }
-        val caption = listOfNotNull(date, tempS, word).joinToString(" · ")
-        val mini = listOfNotNull(tempS, when (sky) { Sky.sunny -> "sun"; Sky.cloudy -> "cloudy"; Sky.rain -> if (cond.orEmpty().contains("눈")) "snow" else "rain"; Sky.night -> "night" }).joinToString(" · ")
+        val line = MoodCopy.line(sky, cond, temp, MoodCopy.accent(tone, pieces))
+        val caption = MoodCopy.caption(sky, cond, temp, now)
+        val mini = listOfNotNull(tempS, when (sky) { "sunny" -> "sun"; "rain" -> if (cond.orEmpty().contains("눈")) "snow" else "rain"; else -> sky }).joinToString(" · ")
         val names = outfit.pieces.joinToString(", ") { CLOTHING_KINDS[it.first]?.first ?: it.first }
-        return WidgetLook(pieces, sky.name, line, caption, mini, locked = false) to "오늘의 코디: $line. ${outfit.headline}. $names"
+        return WidgetLook(pieces, sky, line, caption, mini, locked = false) to "오늘의 코디: $line. ${outfit.headline}. $names"
     }
 
     /** "망원동 9°C 이슬비" → ("9°", "이슬비"). */
@@ -279,10 +234,6 @@ internal object LookWidgets {
         return "${m.groupValues[1]}°" to m.groupValues[2].trim().ifBlank { null }
     }
 
-    private fun chroma(c: Int): Int {
-        val r = android.graphics.Color.red(c); val g = android.graphics.Color.green(c); val b = android.graphics.Color.blue(c)
-        return maxOf(r, g, b) - minOf(r, g, b)
-    }
 
     /** The widget at [wDp]×[hDp] for light [phase]. */
     fun render(context: Context, look: WidgetLook, wDp: Int, hDp: Int, phase: Int): Bitmap {
