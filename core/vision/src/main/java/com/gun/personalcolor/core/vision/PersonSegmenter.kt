@@ -8,6 +8,7 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenter
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
@@ -29,9 +30,15 @@ class PersonSegmenter @Inject constructor(@ApplicationContext private val contex
         )
     }
 
-    /** ALPHA_8 mask at [bitmap]'s size: person opaque, soft edge. Null if segmentation fails. */
+    // XNNPACK runs SME code (rdsvl, ...) when the kernel lists SME. Apple M4/M5 emulators list sme/sme2 yet trap it:
+    // an uncatchable SIGILL. The GPU delegate isn't a way out (no GLES 3.1 there; aborts in post-processing on a
+    // Note20), so on SME devices skip the cutout and drape draws without it.
+    // ponytail: also skips real SME2 phones, where it likely works; revisit once one can be tested.
+    private val smeCpu by lazy { runCatching { hasSme(File("/proc/cpuinfo").readText()) }.getOrDefault(false) }
+
+    /** ALPHA_8 mask at [bitmap]'s size: person opaque, soft edge. Null if segmentation fails or is skipped (SME). */
     @Synchronized
-    fun personMask(bitmap: Bitmap): Bitmap? = runCatching {
+    fun personMask(bitmap: Bitmap): Bitmap? = if (smeCpu) null else runCatching {
         val masks = segmenter.segment(BitmapImageBuilder(bitmap).build()).confidenceMasks().get()
         // The selfie model has a single "person" channel; if a model ever reports [background, person], take the last.
         val mask = masks.last()
@@ -45,6 +52,11 @@ class PersonSegmenter @Inject constructor(@ApplicationContext private val contex
         else Bitmap.createScaledBitmap(small, bitmap.width, bitmap.height, true)
     }.getOrNull()
 }
+
+/** True if any cpuinfo "Features" line lists an SME extension (sme, sme2, sme2p1, smef64f64, ...). */
+internal fun hasSme(cpuinfo: String): Boolean = cpuinfo.lineSequence()
+    .filter { it.trimStart().startsWith("Features") }
+    .any { line -> line.substringAfter(':').split(' ', '\t').any { it.startsWith("sme") } }
 
 /** Pure mask helpers (JVM-testable). */
 object MaskMath {
