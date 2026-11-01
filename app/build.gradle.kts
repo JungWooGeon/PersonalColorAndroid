@@ -55,3 +55,24 @@ dependencies {
 
 }
 dependencies { testImplementation(libs.junit) }
+
+// Safety net: fail the build if any @HiltViewModel is missing from the generated Hilt component
+// (otherwise the app crashes at runtime with "Cannot create an instance of ...ViewModel").
+listOf("Debug", "Release").forEach { v ->
+    val sources = fileTree(rootDir) { include("app/src/main/**/*.kt", "feature/*/src/main/**/*.kt") }
+    val component = layout.buildDirectory.file(
+        "generated/hilt/component_sources/${v.lowercase()}/com/gun/personalcolor/DaggerPcApplication_HiltComponents_SingletonC.java"
+    )
+    val verify = tasks.register("verifyHiltViewModels$v") {
+        dependsOn("hiltJavaCompile$v")
+        inputs.files(sources)
+        inputs.file(component)
+        doLast {
+            val generated = component.get().asFile.readText()
+            val vms = sources.flatMap { f -> Regex("""@HiltViewModel[\s\S]*?class\s+(\w+)""").findAll(f.readText()).map { it.groupValues[1] } }
+            val missing = vms.filter { "${it}_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName" !in generated }
+            check(vms.isNotEmpty() && missing.isEmpty()) { "Hilt code missing for $missing (of ${vms.size}). Rerun: ./gradlew kspDebugKotlin kspReleaseKotlin --rerun" }
+        }
+    }
+    tasks.matching { it.name == "package$v" }.configureEach { dependsOn(verify) }
+}
