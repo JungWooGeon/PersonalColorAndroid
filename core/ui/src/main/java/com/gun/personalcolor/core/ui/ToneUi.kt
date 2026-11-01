@@ -137,7 +137,10 @@ private fun splitAtMiddleSpace(name: String): String {
 /** Rounded color square with a hairline border (so whites show on white). */
 @Composable
 fun Swatch(hex: String, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)) {
-    Box(modifier.clip(shape).background(hexColor(hex)).border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape))
+    val color = hexColor(hex)
+    // A swatch close to the surface (black in dark mode, white in light) gets a visible edge.
+    val edge = if (kotlin.math.abs(color.luminance() - MaterialTheme.colorScheme.surface.luminance()) < 0.08f) 0.3f else 0.08f
+    Box(modifier.clip(shape).background(color).border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = edge), shape))
 }
 
 /** Overlapping color dots. */
