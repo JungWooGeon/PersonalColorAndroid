@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.home
 
+import kotlinx.coroutines.flow.catch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.data.ContentRepository
@@ -36,11 +37,11 @@ data class HomeState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(content: ContentRepository, prefs: UserPreferencesRepository, weather: WeatherRepository) : ViewModel() {
     // Weather only if location was granted earlier (오늘의 코디); home never asks. Null until/unless it arrives.
-    private val todayWeather = flow<TodayWeather?> { emit(weather.today()) }.onStart { emit(null) }
+    private val todayWeather = flow<TodayWeather?> { emit(weather.today()) }.onStart { emit(null) }.catch { emit(null) }
 
     val state: StateFlow<HomeState> = combine(prefs.preferences, todayWeather) { p, w ->
         val my = content.toneOrNull(p.myToneId)
-        val today = my?.bestColors?.let { it[LocalDate.now().dayOfYear % it.size] }
+        val today = my?.bestColors?.let { todayColor(it, LocalDate.now().dayOfYear) }
         val hour = LocalTime.now().hour
         HomeState(
             myTone = my, todayColor = today, tones = content.tones, articles = content.articles.take(4),
@@ -48,3 +49,6 @@ class HomeViewModel @Inject constructor(content: ContentRepository, prefs: UserP
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState(tones = content.tones, articles = content.articles.take(4)))
 }
+
+/** Rotates daily through [colors]; null when there are none (no division by zero). */
+internal fun <T> todayColor(colors: List<T>, dayOfYear: Int): T? = colors.getOrNull(Math.floorMod(dayOfYear, colors.size.coerceAtLeast(1)))

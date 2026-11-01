@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.quiz
 
+import kotlinx.coroutines.CancellationException
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.analysis.Axes
@@ -23,12 +25,29 @@ class QuizViewModel @Inject constructor(
     private val _answers = MutableStateFlow<List<QuizOption>>(emptyList())
     val answers = _answers.asStateFlow()
 
-    fun answer(option: QuizOption, onDone: () -> Unit) {
+    /** True once the result is published; the screen navigates (with its *current* nav/activity, rotation-safe) and calls [resultShown]. */
+    private val _done = MutableStateFlow(false)
+    val done = _done.asStateFlow()
+
+    fun answer(option: QuizOption) {
         if (_answers.value.size >= questions.size) return
         val now = _answers.value + option
         _answers.value = now
-        if (now.size == questions.size) viewModelScope.launch { diagnose(score(questions, now)); onDone() }
+        if (now.size == questions.size) viewModelScope.launch {
+            try {
+                diagnose(score(questions, now))
+                _done.value = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Couldn't publish: let the last answer be picked again instead of a spinner forever.
+                Log.w("QuizViewModel", "quiz diagnosis failed", e)
+                _answers.value = now.dropLast(1)
+            }
+        }
     }
+
+    fun resultShown() { _done.value = false }
 
     /** Returns false when there is nothing to undo (caller leaves the screen). */
     fun undo(): Boolean {

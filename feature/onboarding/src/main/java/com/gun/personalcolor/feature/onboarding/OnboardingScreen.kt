@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.onboarding
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -107,7 +108,8 @@ internal class OnboardingViewModel @Inject constructor(
         if (finishing) return
         finishing = true
         viewModelScope.launch {
-            prefs.setOnboardingDone(true)
+            // A failed write only means onboarding shows again next launch; never block or crash here.
+            runCatching { prefs.setOnboardingDone(true) }.onFailure { Log.w("Onboarding", "save failed", it) }
             onDone()
         }
     }

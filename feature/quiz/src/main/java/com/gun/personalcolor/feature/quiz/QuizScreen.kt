@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.quiz
 
+import androidx.compose.runtime.LaunchedEffect
 import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.designsystem.Tinty
@@ -67,11 +68,15 @@ internal fun QuizRoute(onBack: () -> Unit, onResult: () -> Unit, vm: QuizViewMod
     val answers by vm.answers.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
     val ads = LocalAdManager.current
+    val done by vm.done.collectAsStateWithLifecycle()
+    LaunchedEffect(done) {
+        if (!done) return@LaunchedEffect
+        vm.resultShown()
+        ads?.onResult(activity, onResult) ?: onResult()
+    }
     val back = { if (!vm.undo()) onBack() }
     BackHandler(onBack = back)
-    QuizScreen(vm.questions, answers.size, back) { o ->
-        vm.answer(o) { ads?.onResult(activity, onResult) ?: onResult() }
-    }
+    QuizScreen(vm.questions, answers.size, back, vm::answer)
 }
 
 @Composable
@@ -79,7 +84,7 @@ internal fun QuizScreen(questions: List<QuizQuestion>, answered: Int, onBack: ()
     PcScaffold("셀프 진단", onBack) { pad ->
         val index = answered.coerceAtMost(questions.lastIndex)
         Column(Modifier.fillMaxSize().padding(pad).readableWidth(600.dp).padding(horizontal = ScreenPadding)) {
-            val progress by animateFloatAsState(answered / questions.size.toFloat(), tween(PcMotion.BASE, easing = PcMotion.Standard), label = "progress")
+            val progress by animateFloatAsState(answered / questions.size.coerceAtLeast(1).toFloat(), tween(PcMotion.BASE, easing = PcMotion.Standard), label = "progress")
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 LinearProgressIndicator(
                     progress = { progress },
