@@ -2,9 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <receiver
+            android:name=".TodayLookMiniReceiver"
+            android:exported="true"
+            android:label="@string/widget_look_label_mini">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_look_mini_info" />
+        </receiver>
+        <receiver
+            android:name=".TodayLookSquareReceiver"
+            android:exported="true"
+            android:label="@string/widget_look_label_square">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_look_square_info" />
+        </receiver>
+        <receiver
             android:name=".TodayColorWidgetReceiver"
             android:exported="true"
-            android:label="@string/widget_today_color_label">
+            android:label="@string/widget_look_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

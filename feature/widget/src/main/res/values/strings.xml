@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_today_color_label">오늘의 컬러</string>
-    <string name="widget_today_color_description">오늘의 컬러와 코디</string>
+    <string name="widget_look_label">오늘의 룩</string>
+    <string name="widget_look_label_square">오늘의 룩 2x2</string>
+    <string name="widget_look_label_mini">오늘의 룩 1x1</string>
+    <string name="widget_look_description">오늘 날씨에 맞춘 내 컬러 코디</string>
 </resources>

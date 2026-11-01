@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No card: the collage and the title float on the wallpaper. Every layer is a bitmap drawn 1:1 at its padding offset. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Static collage (locked teaser, or when there's nothing to animate). -->
+    <ImageView
+        android:id="@+id/base"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="matrix" />
+
+    <!-- Landing sequence, then a long rest on the finished collage. -->
+    <ViewFlipper
+        android:id="@+id/frames"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="90"
+        android:importantForAccessibility="no" />
+
+    <!-- Pill + title, above the clothes. -->
+    <ImageView
+        android:id="@+id/still"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="matrix" />
+</FrameLayout>

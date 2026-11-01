@@ -3,83 +3,84 @@ package com.gun.personalcolor.feature.widget
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.view.View
-import android.widget.FrameLayout
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
-import androidx.glance.ExperimentalGlanceApi
-import androidx.glance.appwidget.compose
+import android.graphics.Paint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Debug builds only. Renders the widget at several sizes, light and dark, in every outfit state, to
- * <external files>/widget_snapshots/ — so dark mode can be reviewed without touching the system setting:
+ * Debug builds only. Renders every widget size in every state, light and dark, plus each landing frame, to
+ * <external files>/widget_snapshots/ (transparent PNGs, as they float on the wallpaper):
  * `adb shell am broadcast -n com.gun.personalcolor/com.gun.personalcolor.feature.widget.WidgetSnapshotReceiver`
  */
 class WidgetSnapshotReceiver : BroadcastReceiver() {
-    @OptIn(ExperimentalGlanceApi::class)
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
+                val tones = dagger.hilt.android.EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java).content().tones
+                val samples = mapOf(
+                    "W1" to LookWidgets.Data(tones.first { it.id == "winter_deep" }, WidgetOutfit("비 오는 날 와인 포인트 룩", "망원동 9°C 비",
+                        listOf("short_coat" to "#2F3136", "turtleneck" to "#5E1224", "wide" to "#26324A", "loafers" to "#151515", "shoulder_bag" to "#161616"), false), false, false),
+                    "S1" to LookWidgets.Data(tones.first { it.id == "spring_light" }, WidgetOutfit("봄볕 데일리 피치 가디건 룩", "망원동 18°C 맑음",
+                        listOf("cardigan" to "#FFCBA4", "wide" to "#A9BCD6", "mary_jane" to "#E8DCC8", "shoulder_bag" to "#D9B38C"), false), false, false),
+                    "D1" to LookWidgets.Data(tones.first { it.id == "summer_light" }, WidgetOutfit("햇살 좋은 날 라벤더 원피스 룩", "망원동 26°C 맑음",
+                        listOf("dress" to "#C9B6E4", "sandals" to "#EFE6D8", "bag" to "#E8DCC8", "sunglasses" to "#1A1A1A"), false), false, false),
+                ).let { m -> m + ("L1" to m.getValue("W1").let { LookWidgets.Data(it.tone, WidgetOutfit("", null, emptyList(), true), false, false) }) +
+                    ("B1" to m.getValue("S1").let { LookWidgets.Data(it.tone, it.outfit, false, false, darkText = true) }) }
+                // `--es pin mini|square|wide`: the launcher's "add widget" prompt (review on emulators).
+                intent.getStringExtra("pin")?.let { which ->
+                    val cls = when (which) { "mini" -> TodayLookMiniReceiver::class.java; "square" -> TodayLookSquareReceiver::class.java; else -> TodayColorWidgetReceiver::class.java }
+                    android.appwidget.AppWidgetManager.getInstance(context).requestPinAppWidget(android.content.ComponentName(context, cls), null, null)
+                    return@launch
+                }
+                // `--es apply W1|S1|D1|locked|off`: put a sample on the real widgets (home-screen review without an account).
+                // A "_dark" suffix renders the dark-mode variant without touching the system setting.
+                intent.getStringExtra("apply")?.let { arg ->
+                    val key = arg.removeSuffix("_dark")
+                    val live = LookWidgets.load(context.also { LookWidgets.debugOverride = null }).liveTinty
+                    LookWidgets.debugOverride = when (key) {
+                        "off" -> null
+                        "locked" -> samples.getValue("W1").let { LookWidgets.Data(it.tone, WidgetOutfit("", null, emptyList(), true), live, false) }
+                        else -> samples.getValue(key).let { LookWidgets.Data(it.tone, it.outfit, live, false, it.darkText) }
+                    }?.let { if (arg.endsWith("_dark")) LookWidgets.Data(it.tone, it.outfit, it.liveTinty, true, it.darkText) else it }
+                    LookWidgets.updateAll(context)
+                    return@launch
+                }
                 val dir = File(context.getExternalFilesDir(null), "widget_snapshots").apply { deleteRecursively(); mkdirs() }
-                val sizes = mapOf(
-                    "2x2" to DpSize(150.dp, 150.dp), "2x2tall" to DpSize(165.dp, 255.dp), "mid" to DpSize(190.dp, 200.dp),
-                    "4x2s" to DpSize(330.dp, 110.dp), "4x2" to DpSize(370.dp, 190.dp),
-                )
-                // The app's real outfit, fetched once (calling the source again for every render raced and sometimes
-                // left a render blank; the widget itself calls it once per update).
-                val real = dagger.hilt.android.EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
-                    .outfitSource().orElse(null)?.today()
-                val outfits = mapOf(
+                val real = LookWidgets.load(context)
+                val states = samples + mapOf(
                     "real" to real,
-                    "open" to WidgetOutfit("카멜 트렌치에 아이보리 니트", "맑음 18°",
-                        listOf("trench" to "#C69C6D", "knit" to "#F3E9DC", "slacks" to "#8A6E5A"), locked = false),
-                    "locked" to WidgetOutfit("", null, emptyList(), locked = true),
+                    "locked" to LookWidgets.Data(real.tone, WidgetOutfit("", null, emptyList(), locked = true), real.liveTinty, real.night),
+                    "nooutfit" to LookWidgets.Data(real.tone, null, real.liveTinty, real.night),
                 )
-                for ((state, outfit) in outfits) for (character in listOf(true, false)) for (night in listOf(false, true)) for ((name, size) in sizes) {
-                    if (state != "real" && !name.startsWith("4x2")) continue
-                    if (!character && state == "locked") continue
-                    val file = File(dir, "${state}${if (character) "" else "_drop"}_${name}_${if (night) "dark" else "light"}.png")
-                    try {
-                    val cfg = Configuration(context.resources.configuration).apply {
-                        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
-                            (if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
-                    }
-                    val ctx = context.createConfigurationContext(cfg)
-                    val d = ctx.resources.displayMetrics.density
-                    val w = (size.width.value * d).toInt(); val h = (size.height.value * d).toInt()
-                    // compose() sometimes returns the first, still-empty emission (the root with no children) when
-                    // provideGlance is slow; the real widget just recomposes. Retry until the content is there.
-                    var bmp: Bitmap? = null
-                    for (attempt in 1..4) {
-                        val views = TodayColorWidget(outfit, character).compose(ctx, size = size)
-                        bmp = withContext(Dispatchers.Main) {
-                            val v = views.apply(ctx, FrameLayout(ctx))
-                            v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
-                            v.layout(0, 0, w, h)
-                            val inner = (v as? android.view.ViewGroup)?.getChildAt(0) as? android.view.ViewGroup
-                            if (inner == null || inner.childCount == 0) null
-                            else Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { b ->
-                                Canvas(b).apply { drawColor(if (night) 0xFF000000.toInt() else 0xFFE9E4F2.toInt()); v.draw(this) }
-                            }
+                val sizes = mapOf("1x1" to (80 to 116), "2x2" to (170 to 242), "4x2" to (350 to 242), "4x2s" to (330 to 160))
+                for ((state, data) in states) for (night in listOf(false, true)) for ((name, wh) in sizes) {
+                    val (art, _) = LookWidgets.render(context, data, wh.first, wh.second, night)
+                    val d = context.resources.displayMetrics.density
+                    val w = (wh.first * d).toInt(); val h = (wh.second * d).toInt()
+                    fun save(file: String, layers: List<WidgetArt.Placed?>) {
+                        val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                        val c = Canvas(b)
+                        val p = Paint(Paint.FILTER_BITMAP_FLAG)
+                        for (l in layers.filterNotNull()) {
+                            val s = l.bmp.density.takeIf { it > 0 }?.let { b.density.toFloat() / it } ?: 1f
+                            c.drawBitmap(l.bmp, null, android.graphics.RectF(l.x.toFloat(), l.y.toFloat(), l.x + l.bmp.width * s, l.y + l.bmp.height * s), p)
                         }
-                        if (bmp != null) break
+                        File(dir, file).outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     }
-                    if (bmp == null) { android.util.Log.e("WidgetSnapshot", "empty: ${file.name}"); continue }
-                    file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    } catch (e: Exception) {
-                        android.util.Log.e("WidgetSnapshot", "failed: ${file.name}", e)
+                    val tag = "${state}_${name}_${if (night) "dark" else "light"}"
+                    save("$tag.png", listOf(art.collage, art.still))
+                    if (state in samples && !night) art.landing.forEachIndexed { i, f ->
+                        save("anim_${state}_${name}_%02d.png".format(i), f.layers + f.shine + art.still)
                     }
                 }
                 android.util.Log.i("WidgetSnapshot", "done")
+            } catch (e: Exception) {
+                android.util.Log.e("WidgetSnapshot", "failed", e)
             } finally {
                 pending.finish()
             }
