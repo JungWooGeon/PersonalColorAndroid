@@ -21,7 +21,7 @@ import androidx.core.content.res.ResourcesCompat
 import com.gun.personalcolor.core.model.BAG_KINDS
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.ui.GarmentArt
-import com.gun.personalcolor.core.ui.renderClothingBitmap
+import android.util.Log
 import org.json.JSONObject
 import kotlin.math.hypot
 import kotlin.math.max
@@ -36,6 +36,7 @@ import com.gun.personalcolor.core.designsystem.R as DsR
  */
 object SceneWall {
     private const val DIR = "mood"
+    private val WARM = Color.rgb(0xEF, 0xE4, 0xD3)
 
     // Neutral stand-ins for the locked state: never the real outfit.
     private val GENERIC = listOf("knit" to 0xFFD8CFC4.toInt(), "wide" to 0xFFB9AFA4.toInt(), "loafers" to 0xFF8C8279.toInt(), "shoulder_bag" to 0xFFCDBFAF.toInt())
@@ -58,7 +59,17 @@ object SceneWall {
         phase: Int, // 0..2 light phase
         locked: Boolean,
         bgAlpha: Float = 1f, // < 1: the scene shows the wallpaper through; garments, hangers and text stay solid
-    ): Bitmap = synchronized(this) {
+    ): Bitmap = try {
+        synchronized(this) { scene(context, pieces, weather, line, caption, wPx.coerceAtLeast(1), hPx.coerceAtLeast(1), phase, locked, bgAlpha) }
+    } catch (t: Throwable) { // a missing asset, a bad layout or OOM: a plain warm card beats a crashed widget
+        Log.w("SceneWall", "render failed", t)
+        Bitmap.createBitmap(wPx.coerceAtLeast(1), hPx.coerceAtLeast(1), Bitmap.Config.ARGB_8888).apply { eraseColor(WARM) }
+    }
+
+    private fun scene(
+        context: Context, pieces: List<Pair<String, Int>>, weather: String, line: String, caption: String,
+        wPx: Int, hPx: Int, phase: Int, locked: Boolean, bgAlpha: Float,
+    ): Bitmap {
         val ctx = context.applicationContext
         val wx = weather.takeIf { it in setOf("sunny", "cloudy", "rain", "night") } ?: "cloudy"
         val ph = phase.coerceIn(0, 2)
@@ -70,7 +81,7 @@ object SceneWall {
         val m = Matrix().apply { setScale(s, s); postTranslate((wPx - bw * s) / 2, (hPx - bh * s) / 2) }
 
         // 1. base (decoded once per weather + size, kept at output size)
-        c.drawBitmap(baseFor(ctx, wx, wPx, hPx, m, bw, bh), 0f, 0f, null)
+        baseFor(ctx, wx, wPx, hPx, m, bw, bh)?.let { c.drawBitmap(it, 0f, 0f, null) } ?: c.drawColor(WARM)
         c.save(); c.concat(m)
 
         // 2-4. garments with contact shadows, then hangers
@@ -100,27 +111,30 @@ object SceneWall {
         val hdefs = L.getJSONObject("hangers")
         for (slot in hung) {
             val def = hdefs.getJSONObject(slot.getString("hanger"))
-            val img = hangers.getOrPut(def.getString("file")) { ctx.assets.open("$DIR/${def.getString("file")}").use(BitmapFactory::decodeStream) }
+            val file = def.getString("file")
+            val img = hangers[file] ?: decode(ctx, file)?.also { hangers[file] = it } ?: continue
             val hook = slot.getJSONArray("hook"); val anc = def.getJSONArray("anchor")
             c.drawBitmap(img, (hook.getInt(0) - anc.getInt(0)).toFloat(), (hook.getInt(1) - anc.getInt(1)).toFloat(), hp)
             mc?.drawBitmap(img, (hook.getInt(0) - anc.getInt(0)).toFloat(), (hook.getInt(1) - anc.getInt(1)).toFloat(), hp)
         }
 
         // 5. light: shade (alpha as black), then warm light (screen)
-        val (shade, warm) = lightFor(ctx, L, wx, ph)
-        val full = RectF(0f, 0f, bw.toFloat(), bh.toFloat())
-        val lp = Paint(Paint.FILTER_BITMAP_FLAG)
-        c.drawBitmap(shade, null, full, lp)
-        c.drawBitmap(warm, null, full, lp.apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN) })
+        lightFor(ctx, L, wx, ph)?.let { (shade, warm) ->
+            val full = RectF(0f, 0f, bw.toFloat(), bh.toFloat())
+            val lp = Paint(Paint.FILTER_BITMAP_FLAG)
+            c.drawBitmap(shade, null, full, lp)
+            c.drawBitmap(warm, null, full, lp.apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN) })
+        }
         c.restore()
 
         // 6. grain (overlay, device px) 7. vignette
-        val g = grain ?: ctx.assets.open("$DIR/grain.webp").use(BitmapFactory::decodeStream).also { grain = it }
-        c.drawRect(0f, 0f, wPx.toFloat(), hPx.toFloat(), Paint().apply {
-            shader = BitmapShader(g, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
-            alpha = (255 * L.getDouble("grainAlpha")).toInt()
-        })
+        (grain ?: decode(ctx, "grain.webp")?.also { grain = it })?.let { g ->
+            c.drawRect(0f, 0f, wPx.toFloat(), hPx.toFloat(), Paint().apply {
+                shader = BitmapShader(g, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+                alpha = (255 * L.getDouble("grainAlpha")).toInt()
+            })
+        }
         val vig = (255 * L.getDouble("vignette")).toInt().coerceIn(0, 255)
         c.drawRect(0f, 0f, wPx.toFloat(), hPx.toFloat(), Paint().apply {
             shader = RadialGradient(wPx / 2f, hPx / 2f, hypot(wPx / 2f, hPx / 2f), intArrayOf(0, 0, Color.argb(vig, 0, 0, 0)), floatArrayOf(0f, .45f, 1f), Shader.TileMode.CLAMP)
@@ -135,8 +149,12 @@ object SceneWall {
         c.save(); c.concat(m)
         text(ctx, c, L.getJSONObject("text"), wx, line, caption, locked)
         c.restore()
-        out
+        return out
     }
+
+    private fun decode(ctx: Context, name: String, opts: BitmapFactory.Options? = null): Bitmap? =
+        runCatching { ctx.assets.open("$DIR/$name").use { BitmapFactory.decodeStream(it, null, opts) } }
+            .onFailure { Log.w("SceneWall", "$name missing") }.getOrNull()
 
     /** kind list -> role -> (kind, argb); first piece per role wins. Only an umbrella takes the acc spot by the window. */
     private fun roles(pieces: List<Pair<String, Int>>): Map<String, Pair<String, Int>> {
@@ -161,7 +179,7 @@ object SceneWall {
     /** Garment cropped to its bounds, graded, with the highlight rim for dark colors (compose_ref_b.rim). A fresh bitmap: recycle after use. */
     private fun garment(kind: String, argb: Int, grade: ColorMatrixColorFilter, rim: JSONObject): Bitmap? {
         val cc = androidx.compose.ui.graphics.Color(argb)
-        val raw = GarmentArt.bitmap(kind, cc) ?: runCatching { renderClothingBitmap(kind, cc, 420, 4.2f) }.getOrNull() ?: return null
+        val raw = GarmentArt.bitmap(kind, cc) ?: return null // no painted art: the piece is left out
         val w = raw.width; val h = raw.height
         val px = IntArray(w * h).also { raw.getPixels(it, 0, w, 0, 0, w, h) }
         var x0 = w; var y0 = h; var x1 = -1; var y1 = -1
@@ -224,11 +242,11 @@ object SceneWall {
         c.restore()
     }
 
-    private fun baseFor(ctx: Context, wx: String, w: Int, h: Int, m: Matrix, bw: Int, bh: Int): Bitmap {
+    private fun baseFor(ctx: Context, wx: String, w: Int, h: Int, m: Matrix, bw: Int, bh: Int): Bitmap? {
         base?.let { (bwx, size, b) -> if (bwx == wx && size == w * 65536 + h) return b }
         base?.third?.recycle(); base = null
         // ponytail: full-res decode then one downscale; inSampleSize=2 if the 6.4MB transient ever matters
-        val src = ctx.assets.open("$DIR/B_${wx}_base.webp").use(BitmapFactory::decodeStream)
+        val src = decode(ctx, "B_${wx}_base.webp") ?: return null
         val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         Canvas(b).apply { concat(m) }.drawBitmap(src, null, RectF(0f, 0f, bw.toFloat(), bh.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
         src.recycle()
@@ -237,12 +255,10 @@ object SceneWall {
     }
 
     /** Splits the straight-alpha light map into a black shade layer (alpha * shadeMax) and an opaque warm layer (rgb * lightMax). */
-    private fun lightFor(ctx: Context, L: JSONObject, wx: String, ph: Int): Pair<Bitmap, Bitmap> {
+    private fun lightFor(ctx: Context, L: JSONObject, wx: String, ph: Int): Pair<Bitmap, Bitmap>? {
         lights["$wx#$ph"]?.let { return it }
         if (lights.keys.any { !it.startsWith("$wx#") }) { lights.values.forEach { it.first.recycle(); it.second.recycle() }; lights.clear() }
-        val src = ctx.assets.open("$DIR/B_${wx}_light$ph.webp").use {
-            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inPremultiplied = false })
-        }!!
+        val src = decode(ctx, "B_${wx}_light$ph.webp", BitmapFactory.Options().apply { inPremultiplied = false }) ?: return null
         val w = src.width; val h = src.height
         val px = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h) }
         src.recycle()

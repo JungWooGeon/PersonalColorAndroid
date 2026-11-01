@@ -22,7 +22,6 @@ import androidx.core.content.res.ResourcesCompat
 import com.gun.personalcolor.core.model.BAG_KINDS
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.ui.GarmentArt
-import com.gun.personalcolor.core.ui.renderClothingBitmap
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.max
@@ -65,8 +64,9 @@ object SceneBed {
         val px = IntArray(n).also { raw.getPixels(it, 0, raw.width, 0, 0, raw.width, raw.height) }
         val shade = IntArray(n) { px[it] and 0xFF000000.toInt() }
         val lit = IntArray(n) { px[it] or 0xFF000000.toInt() }
-        Bitmap.createBitmap(shade, raw.width, raw.height, Bitmap.Config.ARGB_8888) to
-            Bitmap.createBitmap(lit, raw.width, raw.height, Bitmap.Config.ARGB_8888)
+        val w = raw.width; val h = raw.height
+        raw.recycle()
+        Bitmap.createBitmap(shade, w, h, Bitmap.Config.ARGB_8888) to Bitmap.createBitmap(lit, w, h, Bitmap.Config.ARGB_8888)
     }
 
     private fun grain(ctx: Context) = cached("grain") { bmp(ctx, "grain.webp") }
@@ -115,9 +115,8 @@ object SceneBed {
 
     // ------------------------------------------------------------------------------------------------ render
 
-    /** Scene A at [wPx]×[hPx] for light [phase] (0..2); [mini] = the 1x1 crop. */
     /**
-     * [pieces] (kind, ARGB) in wearing order; [weather] sunny|cloudy|rain|night; [phase] the light phase 0..2.
+     * Scene A at [wPx]×[hPx]. [pieces] (kind, ARGB) in wearing order; [weather] sunny|cloudy|rain|night; [phase] the light phase 0..2.
      * [locked]: generic pieces under a frosted veil (the real outfit is never drawn). [mini]: the 1x1 crop, caption only.
      * [pill]: the quiet call to action under the line (bottom center on the 1x1).
      */
@@ -127,6 +126,16 @@ object SceneBed {
         rounded: Boolean = true,
         hero: Boolean = false,
         bgAlpha: Float = 1f, // < 1: the scene shows the wallpaper through; garments and text stay solid
+    ): Bitmap = try {
+        scene(ctx, pieces, weather, line, caption, wPx.coerceAtLeast(1), hPx.coerceAtLeast(1), phase, locked, mini, pill, rounded, hero, bgAlpha)
+    } catch (t: Throwable) { // incl. OOM: a plain warm card beats a crashed widget or screen
+        Log.w("SceneBed", "render failed", t)
+        Bitmap.createBitmap(wPx.coerceAtLeast(1), hPx.coerceAtLeast(1), Bitmap.Config.ARGB_8888).apply { eraseColor(WARM) }
+    }
+
+    private fun scene(
+        ctx: Context, pieces: List<Pair<String, Int>>, weather: String, line: String, caption: String,
+        wPx: Int, hPx: Int, phase: Int, locked: Boolean, mini: Boolean, pill: String?, rounded: Boolean, hero: Boolean, bgAlpha: Float,
     ): Bitmap {
         val d = ctx.resources.displayMetrics.density
         if (ko == null) ko = runCatching { ResourcesCompat.getFont(ctx, DsR.font.nanum_myeongjo) }.getOrNull() ?: Typeface.SERIF
@@ -178,7 +187,7 @@ object SceneBed {
                     mc?.let { placeGarment(it, art, role, slot, shadow, grade, rim) }
                 }
                 if (cropped) gc.restore()
-                if (layer != null) frost(c, layer)
+                if (layer != null) { frost(c, layer); layer.recycle() }
             }
         }
 
@@ -228,8 +237,7 @@ object SceneBed {
 
     private fun garment(kind: String, color: Int): Bitmap? {
         val cc = androidx.compose.ui.graphics.Color(color)
-        val raw = GarmentArt.bitmap(kind, cc) ?: renderClothingBitmap(kind, cc, 420, 4.2f)
-        return crop(raw)
+        return GarmentArt.bitmap(kind, cc)?.let(::crop) // no painted art: the piece is left out
     }
 
     private fun placeGarment(c: Canvas, art: Bitmap, role: String, slot: JSONObject, shadow: JSONObject?, grade: JSONObject?, dark: Boolean) {
@@ -249,9 +257,13 @@ object SceneBed {
                 if (blur > 0) maskFilter = BlurMaskFilter(blur / 2 / .57f, BlurMaskFilter.Blur.NORMAL)
             }
             val dx = shadow.optDouble("dx", 6.0).toFloat(); val dy = shadow.optDouble("dy", 10.0).toFloat()
-            c.drawBitmap(art.extractAlpha(), null, RectF(dst).apply { offset(dx, dy) }, sp)
+            val a = art.extractAlpha()
+            c.drawBitmap(a, null, RectF(dst).apply { offset(dx, dy) }, sp)
+            a.recycle()
         }
-        c.drawBitmap(graded(art, grade, dark), null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        val g = graded(art, grade, dark)
+        c.drawBitmap(g, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        g.recycle()
         c.restore()
     }
 
@@ -281,6 +293,7 @@ object SceneBed {
                 alpha = (255 * .75f).toInt(); maskFilter = BlurMaskFilter(1.5f, BlurMaskFilter.Blur.NORMAL)
                 xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
             })
+            a.recycle(); rim.recycle()
         }
         return out
     }
@@ -290,10 +303,12 @@ object SceneBed {
         // A downscale is a soft blur without RenderScript: the shapes stay, the details (colors, prints) don't.
         fun scaled(b: Bitmap, k: Float) = Bitmap.createScaledBitmap(b, max(1, (b.width * k).toInt()), max(1, (b.height * k).toInt()), true)
         // Down in two steps, then half way back up, so the bilinear upscale doesn't show blocks.
-        val small = scaled(scaled(scaled(layer, 1 / 3f), 1 / 3f), 3f)
+        val s1 = scaled(layer, 1 / 3f); val s2 = scaled(s1, 1 / 3f); val small = scaled(s2, 3f)
+        if (s1 !== layer) s1.recycle(); if (s2 !== s1 && s2 !== layer) s2.recycle()
         c.save(); c.setMatrix(Matrix())
         c.drawBitmap(small, null, RectF(0f, 0f, layer.width.toFloat(), layer.height.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = 210 })
         c.restore()
+        if (small !== layer) small.recycle()
     }
 
     /** The Korean line; wraps after the comma when it doesn't fit. Returns the box it took (for the pill). */

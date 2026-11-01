@@ -53,6 +53,7 @@ fun Modifier.moodBackdrop(seed: Int = 0): Modifier {
     val base by produceState(bases[night], night) { if (value == null) value = withContext(Dispatchers.IO) { loadBase(ctx, night) } }
     val w = windows[Math.floorMod(seed, windows.size)]
     return drawBehind {
+        if (size.width < 1f || size.height < 1f) return@drawBehind
         val aspect = size.width / size.height
         drawRect(if (night) Color(0xFF2E2826) else Color(0xFFF4E9DC))
         base?.let {

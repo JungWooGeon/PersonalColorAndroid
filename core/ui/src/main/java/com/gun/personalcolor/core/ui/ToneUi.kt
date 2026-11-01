@@ -49,19 +49,32 @@ import com.gun.personalcolor.core.model.Tone
 import kotlin.math.floor
 import kotlin.math.max
 
-fun hexColor(hex: String) = Color(android.graphics.Color.parseColor(hex))
+/** "#RRGGBB" / "#AARRGGBB" (or a color name) → Color. Bad input (a corrupt closet row, a typo in tones.json) is grey, never a crash. */
+fun hexColor(hex: String): Color = parseHex(hex)?.let(::Color)
+    ?: runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrElse { FALLBACK_GREY }
+
+private val FALLBACK_GREY = Color(0xFF9E9E9E)
+
+/** Pure "#RRGGBB" / "#AARRGGBB" parsing (no Android): ARGB, or null. */
+internal fun parseHex(hex: String): Int? {
+    val s = hex.trim().removePrefix("#")
+    if (s.length != 6 && s.length != 8) return null
+    val v = s.toLongOrNull(16) ?: return null
+    return (if (s.length == 6) v or 0xFF000000L else v).toInt()
+}
 
 /** Readable text color on top of [bg]. */
 fun contentColorOn(bg: Color) = if (bg.luminance() > 0.45f) Color(0xFF1D1B1A) else Color.White
 
 /** Signature color of a tone: its most vivid mid-lightness best color (never white/black). */
-val Tone.accent get() = bestColors.map { hexColor(it.hex) }.maxBy { c ->
+val Tone.accent: Color get() = bestColors.map { hexColor(it.hex) }.maxByOrNull { c ->
     val max = maxOf(c.red, c.green, c.blue); val min = minOf(c.red, c.green, c.blue)
     val l = (max + min) / 2
     val sat = if (max == min) 0f else (max - min) / (1 - kotlin.math.abs(2 * l - 1))
     sat * (1 - kotlin.math.abs(l - 0.55f))
-}
-val Tone.gradient get() = Brush.linearGradient(bestColors.take(4).map { hexColor(it.hex) })
+} ?: FALLBACK_GREY
+// A gradient needs two stops.
+val Tone.gradient get() = Brush.linearGradient(bestColors.take(4).map { hexColor(it.hex) }.ifEmpty { listOf(FALLBACK_GREY) }.let { if (it.size < 2) it + it else it })
 
 val SEASON_KO = mapOf("spring" to "봄", "summer" to "여름", "autumn" to "가을", "winter" to "겨울")
 val Tone.seasonKo get() = SEASON_KO[season].orEmpty()

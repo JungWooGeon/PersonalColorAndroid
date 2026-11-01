@@ -1,5 +1,6 @@
 package com.gun.personalcolor.core.ui
 
+import androidx.compose.ui.graphics.toArgb
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.Canvas
@@ -170,7 +171,7 @@ object WallpaperRenderer {
     /** Parsed once per tone: the live wallpaper asks every frame. */
     @Synchronized
     private fun paletteOf(tone: Tone): List<Int> = palette?.takeIf { it.first == tone.id }?.second
-        ?: tone.bestColors.map { Color.parseColor(it.hex) }.also { palette = tone.id to it }
+        ?: tone.bestColors.map { hexColor(it.hex).toArgb() }.ifEmpty { listOf(Color.GRAY) }.also { palette = tone.id to it }
 
     /** 틴티's vector drawing (the heaviest layer), recorded when [refresh] (or the pose changed) and replayed otherwise. */
     private val tintyNode = if (Build.VERSION.SDK_INT >= 29) RenderNode("tinty").apply { setClipToBounds(false) } else null

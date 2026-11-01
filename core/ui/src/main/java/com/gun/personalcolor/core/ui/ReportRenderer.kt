@@ -14,6 +14,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.TextUtils
+import androidx.compose.ui.graphics.toArgb
 import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.designsystem.drawTintyOn
 import com.gun.personalcolor.core.model.NamedColor
@@ -133,7 +134,7 @@ object ReportRenderer {
         })
         // Confetti: deterministic per tone, in its best colors, fanning up and out from 틴티.
         val rnd = java.util.Random(tone.id.hashCode().toLong())
-        val colors = tone.bestColors.map { Color.parseColor(it.hex) }
+        val colors = tone.bestColors.map { hexColor(it.hex).toArgb() }.ifEmpty { listOf(ACCENT) }
         val piece = Paint(Paint.ANTI_ALIAS_FLAG)
         repeat(30) { i ->
             val a = Math.toRadians(-170.0 + 160.0 * rnd.nextDouble())
@@ -202,7 +203,7 @@ object ReportRenderer {
     }
 
     private fun swatch(c: Canvas, r: RectF, hex: String, radius: Float) {
-        c.drawRoundRect(r, radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(hex) })
+        c.drawRoundRect(r, radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = hexColor(hex).toArgb() })
         // Hairline so whites/ivories stay visible on the light background.
         c.drawRoundRect(r, radius, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f; color = LINE })
     }
