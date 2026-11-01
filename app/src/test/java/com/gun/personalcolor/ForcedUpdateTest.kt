@@ -9,10 +9,10 @@ class ForcedUpdateTest {
     private val pending = 1; private val installing = 3; private val idle = 0
 
     @Test fun `newer version forces an immediate update`() =
-        assertEquals(UpdateAction.START, decideUpdate(available, immediateAllowed = true, installStatus = idle, starts = 0))
+        assertEquals(UpdateAction.START, decideUpdate(available, immediateAllowed = true, installStatus = idle, failures = 0))
 
     @Test fun `in-progress immediate update is resumed`() =
-        assertEquals(UpdateAction.RESUME, decideUpdate(inProgress, immediateAllowed = false, installStatus = installing, starts = 0))
+        assertEquals(UpdateAction.RESUME, decideUpdate(inProgress, immediateAllowed = false, installStatus = installing, failures = 0))
 
     @Test fun `no update, unknown (sideloaded, debug) or immediate not allowed does nothing`() {
         assertEquals(UpdateAction.NONE, decideUpdate(notAvailable, true, idle, 0))
@@ -25,9 +25,17 @@ class ForcedUpdateTest {
         assertEquals(UpdateAction.START, decideUpdate(available, true, pending, 0))
     }
 
-    @Test fun `repeated flows are capped so it can never loop endlessly`() {
-        assertEquals(UpdateAction.START, decideUpdate(available, true, idle, ForcedUpdate.MAX_STARTS - 1))
-        assertEquals(UpdateAction.NONE, decideUpdate(available, true, idle, ForcedUpdate.MAX_STARTS))
-        assertEquals(UpdateAction.NONE, decideUpdate(inProgress, true, idle, ForcedUpdate.MAX_STARTS))
+    @Test fun `failing flows are capped so they can never loop endlessly`() {
+        assertEquals(UpdateAction.START, decideUpdate(available, true, idle, ForcedUpdate.MAX_FAILURES - 1))
+        assertEquals(UpdateAction.NONE, decideUpdate(available, true, idle, ForcedUpdate.MAX_FAILURES))
+        assertEquals(UpdateAction.NONE, decideUpdate(inProgress, true, idle, ForcedUpdate.MAX_FAILURES))
+    }
+
+    // Activity.RESULT_OK = -1, RESULT_CANCELED = 0, ActivityResult.RESULT_IN_APP_UPDATE_FAILED = 1.
+    @Test fun `backing out closes the app, a broken flow lets the user continue`() {
+        assertEquals(FlowOutcome.CLOSE_APP, flowOutcome(0))
+        assertEquals(FlowOutcome.FAILED, flowOutcome(1))
+        assertEquals(FlowOutcome.FAILED, flowOutcome(42))
+        assertEquals(FlowOutcome.UPDATING, flowOutcome(-1))
     }
 }

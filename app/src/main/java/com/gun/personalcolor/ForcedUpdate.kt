@@ -17,17 +17,28 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 internal enum class UpdateAction { NONE, START, RESUME }
+internal enum class FlowOutcome { UPDATING, CLOSE_APP, FAILED }
 
 /**
  * Owner's policy: any newer version on Play is installed right away (IMMEDIATE), whatever its priority or staleness.
- * [starts] = flows already started in this process; capped so a Play flow that keeps failing or bouncing can't loop.
+ * [failures] = broken flows in this process; capped so a failing Play flow can't loop (the user then just continues).
  */
-internal fun decideUpdate(availability: Int, immediateAllowed: Boolean, installStatus: Int, starts: Int): UpdateAction = when {
-    starts >= ForcedUpdate.MAX_STARTS -> UpdateAction.NONE
+internal fun decideUpdate(availability: Int, immediateAllowed: Boolean, installStatus: Int, failures: Int): UpdateAction = when {
+    failures >= ForcedUpdate.MAX_FAILURES -> UpdateAction.NONE
     availability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS -> UpdateAction.RESUME
     // INSTALLING: Play is already swapping the APK and restarts the app itself.
     availability == UpdateAvailability.UPDATE_AVAILABLE && immediateAllowed && installStatus != InstallStatus.INSTALLING -> UpdateAction.START
     else -> UpdateAction.NONE
+}
+
+/**
+ * The update is mandatory: backing out of it closes the app (the next launch asks again). Anything else that isn't
+ * OK (RESULT_IN_APP_UPDATE_FAILED, unknown codes) is Play's fault, so the user continues; a broken flow never locks anyone out.
+ */
+internal fun flowOutcome(resultCode: Int): FlowOutcome = when (resultCode) {
+    Activity.RESULT_OK -> FlowOutcome.UPDATING
+    Activity.RESULT_CANCELED -> FlowOutcome.CLOSE_APP
+    else -> FlowOutcome.FAILED
 }
 
 /**
@@ -45,8 +56,11 @@ internal class ForcedUpdate(private val activity: ComponentActivity) {
     private val launcher = activity.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         flowOpen = false
         Log.i(TAG, "update flow result ${r.resultCode}")
-        // Cancelled by the user: ask again, so the update can't be skipped (bounded by MAX_STARTS).
-        if (r.resultCode == Activity.RESULT_CANCELED) check()
+        when (flowOutcome(r.resultCode)) {
+            FlowOutcome.CLOSE_APP -> activity.finishAffinity()
+            FlowOutcome.FAILED -> failures++
+            FlowOutcome.UPDATING -> Unit
+        }
     }
 
     fun check() {
@@ -55,13 +69,14 @@ internal class ForcedUpdate(private val activity: ComponentActivity) {
         job = activity.lifecycleScope.launch {
             try {
                 val info = m.requestAppUpdateInfo()
-                val action = decideUpdate(info.updateAvailability(), info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE), info.installStatus(), starts)
+                val action = decideUpdate(info.updateAvailability(), info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE), info.installStatus(), failures)
                 if (action == UpdateAction.NONE) return@launch
-                starts++
                 flowOpen = m.startUpdateFlowForResult(info, launcher, AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build())
+                if (!flowOpen) failures++
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) { // not from Play, no Play services, offline, launcher already unregistered…
+                failures++ // the user just continues; capped so retries in onResume stop
                 flowOpen = false
                 Log.w(TAG, "update check failed", e)
             }
@@ -70,8 +85,8 @@ internal class ForcedUpdate(private val activity: ComponentActivity) {
 
     companion object {
         private const val TAG = "ForcedUpdate"
-        /** ponytail: per-process cap on started flows; after that the next cold start asks again. */
-        const val MAX_STARTS = 5
-        private var starts = 0
+        /** Broken flows tolerated per process before giving up until the next process start. */
+        const val MAX_FAILURES = 2
+        private var failures = 0
     }
 }
