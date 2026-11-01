@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash: 틴티 drops in, squashes on landing, four season dots pop around it (≈1s). Built from ic_launcher_foreground. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+  <aapt:attr name="android:drawable">
+    <vector android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:name="bob">
+    <group android:name="squash" android:pivotX="54" android:pivotY="81">
+      <group android:name="fall">
+            <group android:translateX="16.9" android:translateY="15.59" android:scaleX="0.1449" android:scaleY="0.1449">
+              <path android:pathData="M250 106 C266 84 286 70 308 66 C318 65 320 74 312 80 C300 90 296 100 300 114 C326 174 404 226 404 322 C404 404 338 452 256 452 C174 452 108 404 108 322 C108 226 212 162 250 106 Z">
+                <aapt:attr name="android:fillColor">
+                  <gradient android:type="linear" android:startX="152.40" android:startY="84.83" android:endX="420.23" android:endY="384.61">
+                    <item android:offset="0" android:color="#FFFFD3BE"/>
+                    <item android:offset="1" android:color="#FFC9BCF2"/>
+                  </gradient>
+                </aapt:attr>
+              </path>
+              <group>
+                <clip-path android:pathData="M250 106 C266 84 286 70 308 66 C318 65 320 74 312 80 C300 90 296 100 300 114 C326 174 404 226 404 322 C404 404 338 452 256 452 C174 452 108 404 108 322 C108 226 212 162 250 106 Z"/>
+                <path android:pathData="M0 0 h512 v512 h-512 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="174.08" android:centerY="153.60" android:gradientRadius="281.60">
+                      <item android:offset="0" android:color="#80FFFFFF"/>
+                      <item android:offset="0.6" android:color="#00FFFFFF"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+                <path android:pathData="M0 0 h512 v512 h-512 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="368.64" android:centerY="537.60" android:gradientRadius="384.00">
+                      <item android:offset="0" android:color="#737B719B"/>
+                      <item android:offset="0.7" android:color="#007B719B"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+              </group>
+              <group android:translateX="184" android:translateY="222" android:rotation="30" android:scaleX="16" android:scaleY="40">
+                <path android:pathData="M-1.15 0 A1.15 1.15 0 1 0 1.15 0 A1.15 1.15 0 1 0 -1.15 0 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="0.00" android:centerY="0.00" android:gradientRadius="1.15">
+                      <item android:offset="0" android:color="#80FFFFFF"/>
+                      <item android:offset="0.72" android:color="#80FFFFFF"/>
+                      <item android:offset="1" android:color="#00FFFFFF"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+              </group>
+              <path android:pathData="M208.5 170 A7.5 7.5 0 1 0 223.5 170 A7.5 7.5 0 1 0 208.5 170 Z"
+                  android:fillColor="#FFFFFF"
+                  android:fillAlpha="0.9"/>
+              <path android:pathData="M288.5 92 A3.5 3.5 0 1 0 295.5 92 A3.5 3.5 0 1 0 288.5 92 Z"
+                  android:fillColor="#FFFFFF"
+                  android:fillAlpha="0.7"/>
+              <group android:translateX="192" android:translateY="348" android:scaleX="21" android:scaleY="11">
+                <path android:pathData="M-1.15 0 A1.15 1.15 0 1 0 1.15 0 A1.15 1.15 0 1 0 -1.15 0 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="0.00" android:centerY="0.00" android:gradientRadius="1.15">
+                      <item android:offset="0" android:color="#9EF7A3A0"/>
+                      <item android:offset="0.72" android:color="#9EF7A3A0"/>
+                      <item android:offset="1" android:color="#00F7A3A0"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+              </group>
+              <group android:translateX="320" android:translateY="348" android:scaleX="21" android:scaleY="11">
+                <path android:pathData="M-1.15 0 A1.15 1.15 0 1 0 1.15 0 A1.15 1.15 0 1 0 -1.15 0 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="0.00" android:centerY="0.00" android:gradientRadius="1.15">
+                      <item android:offset="0" android:color="#9EF7A3A0"/>
+                      <item android:offset="0.72" android:color="#9EF7A3A0"/>
+                      <item android:offset="1" android:color="#00F7A3A0"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+              </group>
+              <path android:pathData="M194 316 A18 24 0 1 0 230 316 A18 24 0 1 0 194 316 Z"
+                  android:fillColor="#2B2236"/>
+              <path android:pathData="M209.34 309 A6.66 6.66 0 1 0 222.66 309 A6.66 6.66 0 1 0 209.34 309 Z"
+                  android:fillColor="#FFFFFF"/>
+              <path android:pathData="M205.8 323 A2.2 2.2 0 1 0 210.2 323 A2.2 2.2 0 1 0 205.8 323 Z"
+                  android:fillColor="#FFFFFF"
+                  android:fillAlpha="0.65"/>
+              <path android:pathData="M282 316 A18 24 0 1 0 318 316 A18 24 0 1 0 282 316 Z"
+                  android:fillColor="#2B2236"/>
+              <path android:pathData="M297.34 309 A6.66 6.66 0 1 0 310.66 309 A6.66 6.66 0 1 0 297.34 309 Z"
+                  android:fillColor="#FFFFFF"/>
+              <path android:pathData="M293.8 323 A2.2 2.2 0 1 0 298.2 323 A2.2 2.2 0 1 0 293.8 323 Z"
+                  android:fillColor="#FFFFFF"
+                  android:fillAlpha="0.65"/>
+              <path android:pathData="M246 342 Q256 351 266 342"
+                  android:strokeColor="#2B2236"
+                  android:strokeWidth="9"
+                  android:strokeLineCap="round"/>
+              <group>
+                <clip-path android:pathData="M106 380 Q256 440 406 380 C414 392 412 410 402 418 Q256 478 110 418 C100 410 98 392 106 380 Z"/>
+                <path android:pathData="M90 370 h59.1198 v120 h-59.1198 Z"
+                    android:fillColor="#FF8A6B"/>
+                <path android:pathData="M148.52 370 h108.08 v120 h-108.08 Z"
+                    android:fillColor="#9CC9EC"/>
+                <path android:pathData="M256 370 h108.08 v120 h-108.08 Z"
+                    android:fillColor="#D4A017"/>
+                <path android:pathData="M363.48 370 h59.1198 v120 h-59.1198 Z"
+                    android:fillColor="#B5006E"/>
+                <path android:pathData="M0 370 h512 v120 h-512 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="0.00" android:startY="370.00" android:endX="0.00" android:endY="490.00">
+                      <item android:offset="0" android:color="#4CFFFFFF"/>
+                      <item android:offset="0.4" android:color="#00FFFFFF"/>
+                      <item android:offset="1" android:color="#33000000"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+                <path android:pathData="M100 370 h312 v120 h-312 Z">
+                  <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="100.00" android:startY="0.00" android:endX="412.00" android:endY="0.00">
+                      <item android:offset="0" android:color="#38000000"/>
+                      <item android:offset="0.22" android:color="#00000000"/>
+                      <item android:offset="0.78" android:color="#00000000"/>
+                      <item android:offset="1" android:color="#38000000"/>
+                    </gradient>
+                  </aapt:attr>
+                </path>
+                <path android:pathData="M147.52 370 h2 v120 h-2 Z"
+                    android:fillColor="#FFFFFF"
+                    android:fillAlpha="0.55"/>
+                <path android:pathData="M255 370 h2 v120 h-2 Z"
+                    android:fillColor="#FFFFFF"
+                    android:fillAlpha="0.55"/>
+                <path android:pathData="M362.48 370 h2 v120 h-2 Z"
+                    android:fillColor="#FFFFFF"
+                    android:fillAlpha="0.55"/>
+                <path android:pathData="M106 383 Q256 443 406 383"
+                    android:strokeColor="#FFFFFF"
+                    android:strokeAlpha="0.5"
+                    android:strokeWidth="2.5"
+                    android:strokeLineCap="butt"/>
+              </group>
+              <path android:pathData="M335 400 H347 A13 13 0 0 1 360 413 V421 A13 13 0 0 1 347 434 H335 A13 13 0 0 1 322 421 V413 A13 13 0 0 1 335 400 Z"
+                  android:fillColor="#9CC9EC"/>
+              <path android:pathData="M335 400 H347 A13 13 0 0 1 360 413 V421 A13 13 0 0 1 347 434 H335 A13 13 0 0 1 322 421 V413 A13 13 0 0 1 335 400 Z">
+                <aapt:attr name="android:fillColor">
+                  <gradient android:type="linear" android:startX="0.00" android:startY="400.00" android:endX="0.00" android:endY="434.00">
+                    <item android:offset="0" android:color="#4CFFFFFF"/>
+                    <item android:offset="0.4" android:color="#00FFFFFF"/>
+                    <item android:offset="1" android:color="#33000000"/>
+                  </gradient>
+                </aapt:attr>
+              </path>
+              <path android:pathData="M332 412 Q341 418 350 412"
+                  android:strokeColor="#000000"
+                  android:strokeAlpha="0.15"
+                  android:strokeWidth="3"
+                  android:strokeLineCap="round"/>
+            </group>
+      </group>
+    </group>
+    </group>
+    <group android:name="dot0" android:pivotX="26" android:pivotY="42" android:scaleX="0" android:scaleY="0">
+      <path android:fillColor="#FFFF8A6B" android:pathData="M22.8 42 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 Z"/>
+    </group>
+    <group android:name="dot1" android:pivotX="82" android:pivotY="34" android:scaleX="0" android:scaleY="0">
+      <path android:fillColor="#FF9CC9EC" android:pathData="M78.8 34 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 Z"/>
+    </group>
+    <group android:name="dot2" android:pivotX="20" android:pivotY="68" android:scaleX="0" android:scaleY="0">
+      <path android:fillColor="#FFD4A017" android:pathData="M16.8 68 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 Z"/>
+    </group>
+    <group android:name="dot3" android:pivotX="88" android:pivotY="64" android:scaleX="0" android:scaleY="0">
+      <path android:fillColor="#FFB5006E" android:pathData="M84.8 64 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 Z"/>
+    </group>
+    </vector>
+  </aapt:attr>
+
+  <target android:name="fall">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <objectAnimator android:propertyName="translateY" android:valueFrom="-80" android:valueTo="0" android:duration="460" android:interpolator="@android:interpolator/accelerate_quad"/>
+      </set>
+    </aapt:attr>
+  </target>
+
+  <target android:name="squash">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="1" android:valueTo="1.12" android:duration="90" android:interpolator="@android:interpolator/decelerate_quad" android:startOffset="460"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="1" android:valueTo="0.84" android:duration="90" android:interpolator="@android:interpolator/decelerate_quad" android:startOffset="460"/>
+        </set>
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="1.12" android:valueTo="1" android:duration="320" android:interpolator="@android:interpolator/overshoot"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="0.84" android:valueTo="1" android:duration="320" android:interpolator="@android:interpolator/overshoot"/>
+        </set>
+      </set>
+    </aapt:attr>
+  </target>
+
+  <target android:name="dot0">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="560"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="560"/>
+        </set>
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="dot1">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="620"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="620"/>
+        </set>
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="dot2">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="680"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="680"/>
+        </set>
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="dot3">
+    <aapt:attr name="android:animation">
+      <set android:ordering="sequentially">
+        <set android:ordering="together">
+          <objectAnimator android:propertyName="scaleX" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="740"/>
+          <objectAnimator android:propertyName="scaleY" android:valueFrom="0" android:valueTo="1" android:duration="260" android:interpolator="@android:interpolator/overshoot" android:startOffset="740"/>
+        </set>
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="bob">
+    <aapt:attr name="android:animation">
+      <objectAnimator android:propertyName="translateY" android:valueFrom="0" android:valueTo="-3.5" android:duration="420"
+          android:startOffset="900" android:repeatCount="infinite" android:repeatMode="reverse"
+          android:interpolator="@android:interpolator/accelerate_decelerate"/>
+    </aapt:attr>
+  </target>
+</animated-vector>

@@ -46,7 +46,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
-        splash.setKeepOnScreenCondition { vm.prefs.value == null }
+        // Let 틴티's drop-in (≈0.9s) land before handing over, unless the app was already warm.
+        val shownAt = android.os.SystemClock.uptimeMillis()
+        val cold = savedInstanceState == null
+        splash.setKeepOnScreenCondition { vm.prefs.value == null || (cold && android.os.SystemClock.uptimeMillis() - shownAt < 850) }
+        // Hand-off: the icon lifts and fades while home's 틴티 pops in underneath.
+        splash.setOnExitAnimationListener { view ->
+            view.iconView.animate().translationY(-24f * resources.displayMetrics.density).scaleX(1.1f).scaleY(1.1f).alpha(0f)
+                .setDuration(260).setInterpolator(android.view.animation.AccelerateInterpolator()).start()
+            val fade = android.animation.ObjectAnimator.ofFloat(view.view, android.view.View.ALPHA, 1f, 0f).apply { startDelay = 60; duration = 240 }
+            var removed = false
+            val remove = { if (!removed) { removed = true; view.remove() } }
+            fade.addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) = remove()
+            })
+            fade.start()
+            view.view.postDelayed({ remove() }, 700) // never leave the splash up, whatever happens to the animator
+        }
         enableEdgeToEdge()
         ads.gatherConsent(this)
         if (savedInstanceState == null) handleIntent(intent)
