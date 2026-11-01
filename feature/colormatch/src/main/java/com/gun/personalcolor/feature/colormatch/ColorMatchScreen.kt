@@ -160,7 +160,7 @@ fun ColorMatchRoute(onTone: (String) -> Unit, onAnalyze: () -> Unit, onTones: ()
         onCamera = {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(context.cacheDir, "color_check.jpg"))
             cameraUri = uri
-            try { camera.launch(uri) } catch (_: ActivityNotFoundException) { vm.showError("카메라 앱을 찾을 수 없어요. 앨범에서 선택해 주세요.") }
+            try { camera.launch(uri) } catch (_: ActivityNotFoundException) { vm.showError("카메라 앱이 없어요. 앨범에서 골라 주세요.") }
         },
         onAlbum = { album.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onManual = vm::startManual,
@@ -252,10 +252,10 @@ private fun NoToneState(pad: PaddingValues, onAnalyze: () -> Unit, onPickTone: (
         EmptyState(
             icon = Icons.Rounded.Palette,
             title = "먼저 내 톤을 알려주세요",
-            message = "내 톤을 기준으로 어울림을 알려드려요.",
+            message = "내 톤에 어울리는지 알려줘요.",
             action = {
                 Column(Modifier.widthIn(max = 360.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PcButton("AI로 내 톤 진단하기", onAnalyze, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoCamera)
+                    PcButton("사진으로 진단하기", onAnalyze, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoCamera)
                     PcOutlinedButton("내 톤 직접 고르기", onPickTone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Palette)
                     TextButton(onTones, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("12가지 톤 알아보기", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
@@ -283,9 +283,9 @@ private fun Intro(
                         }
                     }
                     Text("이 색, 나한테 어울릴까?", style = MaterialTheme.typography.headlineSmall)
-                    Text("찍으면 ${tone.nameKo}에 어울리는지 알려드려요.", style = Muted)
-                    Step(Icons.Rounded.PhotoCamera, "옷·립스틱을 찍거나 사진 고르기")
-                    Step(Icons.Rounded.TouchApp, "확인할 곳을 톡 누르기")
+                    Text("${tone.nameKo}에 어울리는지 바로 알려줘요.", style = Muted)
+                    Step(Icons.Rounded.PhotoCamera, "옷이나 립스틱 찍기")
+                    Step(Icons.Rounded.TouchApp, "확인할 곳 누르기")
                     Step(Icons.Rounded.Verified, "어울림 결과 확인")
                 }
             }
@@ -294,7 +294,7 @@ private fun Intro(
                 Row(Modifier.fillMaxWidth().heightIn(min = 54.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
                     Spacer(Modifier.width(12.dp))
-                    Text("사진을 불러오는 중이에요", style = Muted)
+                    Text("사진 불러오는 중", style = Muted)
                 }
             } else {
                 PcButton("카메라로 찍기", onCamera, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoCamera)
@@ -304,7 +304,6 @@ private fun Intro(
                     Spacer(Modifier.width(8.dp))
                     Text("직접 색 고르기", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text("사진은 저장되지 않아요", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -492,7 +491,7 @@ private fun ManualPicker(hsv: List<Float>, onHsv: (List<Float>, Boolean) -> Unit
     val (h, s, v) = hsv
     fun hsvColor(h: Float, s: Float, v: Float) = Color.hsv(h.coerceIn(0f, 360f), s, v)
     SectionCard("직접 색 고르기") {
-        Text("슬라이더로 색을 맞춰 보세요", style = Muted)
+        Text("슬라이더로 색을 맞춰요", style = Muted)
         GradientSlider("색상", h, 0f..360f, Brush.horizontalGradient(listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map { hsvColor(it, 1f, 1f) }),
             { onHsv(listOf(it, s, v), false) }) { onHsv(hsv, true) }
         GradientSlider("채도", s, 0f..1f, Brush.horizontalGradient(listOf(hsvColor(h, 0f, v), hsvColor(h, 1f, v))),
@@ -549,7 +548,7 @@ private fun Result(color: Rgb, v: ColorVerdict, myToneId: String?, onTone: (Stri
             PcOutlinedButton("옷장에 저장", onSave, Modifier.fillMaxWidth(), icon = Icons.Rounded.BookmarkAdd)
         }
 
-        SectionCard("비슷한 베스트 컬러") {
+        SectionCard("비슷한 BEST 컬러") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 v.nearestBest.forEach { c ->
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -646,7 +645,7 @@ private fun SaveToClosetSheet(hex: String, v: ColorVerdict, onSave: (String, Str
                 onCategory = { new -> if (!edited) name = "${v.nameHint ?: hex} $new"; category = new },
             )
             PcButton("저장", { onSave(name.ifBlank { "${v.nameHint ?: hex} $category" }, category) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.BookmarkAdd)
-            Text("사진은 저장하지 않고 색만 저장해요", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("사진 없이 색만 저장돼요", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

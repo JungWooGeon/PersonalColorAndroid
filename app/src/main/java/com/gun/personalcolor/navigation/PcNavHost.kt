@@ -14,9 +14,7 @@ import com.gun.personalcolor.feature.coordi.coordiScreen
 import com.gun.personalcolor.feature.colormatch.closetScreen
 import com.gun.personalcolor.feature.colormatch.colorMatchScreen
 import com.gun.personalcolor.feature.drape.DrapeRoute
-import com.gun.personalcolor.feature.drape.RefineRoute
 import com.gun.personalcolor.feature.drape.drapeScreen
-import com.gun.personalcolor.feature.drape.refineScreen
 import com.gun.personalcolor.feature.home.HomeRoute
 import com.gun.personalcolor.feature.home.homeScreen
 import com.gun.personalcolor.feature.learn.ArticleRoute
@@ -72,7 +70,6 @@ fun PcNavHost(nav: NavHostController) {
             onBack = back,
             onResult = { nav.navigate(ResultRoute) { popUpTo<AnalyzeRoute> { inclusive = true } } },
             onQuiz = { nav.navigate(QuizRoute) { popUpTo<AnalyzeRoute> { inclusive = true } } },
-            onRefine = { nav.navigate(RefineRoute) { popUpTo<AnalyzeRoute> { inclusive = true } } },
         )
         quizScreen(
             onBack = back,
@@ -85,22 +82,8 @@ fun PcNavHost(nav: NavHostController) {
             onRetryPhoto = { nav.navigate(AnalyzeRoute) { popUpTo<ResultRoute> { inclusive = true } } },
             onColorMatch = { nav.navigateToTopLevel(TopLevel.COLOR_MATCH) },
             onWallpaper = { nav.navigate(WallpaperRoute(it)) },
-            onRefine = { nav.navigate(RefineRoute) },
         )
         drapeScreen(onBack = back)
-        refineScreen(
-            // Opened from the result → back returns to it; opened right after analysis → back still shows the result.
-            onBack = {
-                if (nav.previousBackStackEntry?.destination?.hasRoute(ResultRoute::class) == true) nav.popBackStack()
-                else nav.navigate(ResultRoute) { popUpTo<RefineRoute> { inclusive = true } }
-            },
-            onDone = {
-                val fromResult = nav.previousBackStackEntry?.destination?.hasRoute(ResultRoute::class) == true
-                nav.navigate(ResultRoute) {
-                    if (fromResult) popUpTo<ResultRoute> { inclusive = true } else popUpTo<RefineRoute> { inclusive = true }
-                }
-            },
-        )
 
         tonesScreens(
             onBack = back,

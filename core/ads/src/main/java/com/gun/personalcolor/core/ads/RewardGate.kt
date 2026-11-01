@@ -34,7 +34,7 @@ fun rememberRewardGate(): (RewardRequest) -> Unit {
             title = { Text(r.title) },
             text = { Text(r.message) },
             confirmButton = {
-                TextButton(onClick = { pending = null; ads?.showRewarded(activity, r.key, r.unlockMs, r.action) ?: r.action() }) { Text("광고 보고 계속") }
+                TextButton(onClick = { pending = null; ads?.showRewarded(activity, r.key, r.unlockMs, r.action) ?: r.action() }) { Text("광고 보기") }
             },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("취소") } },
         )

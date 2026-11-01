@@ -95,7 +95,7 @@ fun MyScreen(
     val snackbar = remember { SnackbarHostState() }
     val saveImage = rememberImageSave(snackbar)
     val saveReport = { tone: Tone ->
-        gate(RewardRequest(key = "report", title = "광고 보고 저장할까요?", message = "내 톤의 컬러·메이크업·코디를 한 장으로 저장해요.") {
+        gate(RewardRequest(key = "report", title = "광고 보고 저장하기", message = "짧은 광고 하나만 보면 무료예요.") {
             analytics?.log("report_save", "tone" to tone.id)
             saveImage("personal-color-report") { ReportRenderer.render(context, tone) }
         })
@@ -132,13 +132,13 @@ fun MyScreen(
                     rest()
                 }
                 Card {
-                    ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷 모아 보기", icon = Icons.Outlined.Checkroom, onClick = onCloset)
+                    ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷", icon = Icons.Outlined.Checkroom, onClick = onCloset)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    ListRow("배경화면 만들기", subtitle = "톤 컬러로 폰 배경화면을 만들어요", icon = Icons.Outlined.Wallpaper,
+                    ListRow("배경화면 만들기", subtitle = "내 톤 컬러로 만드는 배경화면", icon = Icons.Outlined.Wallpaper,
                         onClick = { onWallpaper(state.myTone?.id) })
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     if (onAddWidget != null) {
-                        ListRow("홈 화면 위젯 추가", subtitle = "오늘의 컬러를 바탕화면에서 바로 봐요", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
+                        ListRow("위젯 추가", subtitle = "홈 화면에서 오늘의 컬러 보기", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     ListRow("설정", icon = Icons.Outlined.Settings, onClick = onSettings)
@@ -224,7 +224,7 @@ private fun StatTile(value: String, label: String, modifier: Modifier) =
 private fun Favorites(favorites: List<Tone>, onTone: (String) -> Unit, onTones: () -> Unit) = Column {
     SectionHeader("즐겨찾는 톤")
     if (favorites.isEmpty()) {
-        Text("도감에서 ☆로 모아 보세요", style = Muted)
+        Text("도감에서 ☆를 눌러 모아요", style = Muted)
         TextButton(onClick = onTones) { Text("도감 보기", maxLines = 1) }
     } else {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

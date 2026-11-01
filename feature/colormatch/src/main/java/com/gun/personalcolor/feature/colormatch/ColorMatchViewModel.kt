@@ -93,7 +93,7 @@ class ColorMatchViewModel @Inject constructor(
         viewModelScope.launch {
             val bmp = withContext(Dispatchers.Default) { BitmapLoader.load(context, uri, 1600) }
             if (bmp == null) {
-                _state.update { it.copy(photoLoading = false, error = "사진을 불러오지 못했어요. 다른 사진으로 시도해 주세요.") }
+                _state.update { it.copy(photoLoading = false, error = "사진을 불러오지 못했어요. 다른 사진을 골라 주세요.") }
                 return@launch
             }
             val r = sampleRadius(bmp)

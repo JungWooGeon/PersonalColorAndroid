@@ -82,7 +82,7 @@ fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite:
                 FAVORITES -> {
                     val favs = state.tones.filter { it.id in state.favorites }
                     if (favs.isEmpty()) fullSpan("empty") {
-                        EmptyState(Icons.Outlined.StarBorder, "즐겨찾는 톤이 없어요", "카드의 ☆로 모아 보세요")
+                        EmptyState(Icons.Outlined.StarBorder, "즐겨찾는 톤이 없어요", "카드의 ☆를 눌러 모아요")
                     }
                     else toneCards(favs, state, onTone, onToggleFavorite)
                 }

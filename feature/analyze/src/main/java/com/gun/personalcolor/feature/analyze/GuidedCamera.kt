@@ -157,7 +157,7 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
         p.unbindAll()
         check = FrameCheck.Waiting
         runCatching { p.bindToLifecycle(owner, selector, preview, analysis, capture) }
-            .onFailure { check = FrameCheck(Check.entries.toSet(), "카메라를 열 수 없어요 · 앨범을 이용해 주세요") }
+            .onFailure { check = FrameCheck(Check.entries.toSet(), "카메라를 열 수 없어요 · 앨범에서 골라 주세요") }
     }
     DisposableEffect(Unit) {
         onDispose {
@@ -202,7 +202,7 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
         AlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text("아직 조건이 맞지 않아요") },
-            text = { Text("${check.hint}\n그래도 찍으면 진단이 덜 정확할 수 있어요.") },
+            text = { Text("${check.hint}\n이대로 찍으면 정확도가 떨어질 수 있어요.") },
             confirmButton = { TextButton(onClick = { confirm = false; shoot(auto = false) }) { Text("그래도 촬영") } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("취소") } },
         )

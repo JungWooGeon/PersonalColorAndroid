@@ -19,9 +19,9 @@ import com.gun.personalcolor.core.model.Tone
 @Composable
 fun ToneDetails(tone: Tone, modifier: Modifier = Modifier) {
     val cards: List<@Composable () -> Unit> = listOf(
-        { SectionCard("이런 특징이 있어요") { tone.characteristics.lines().filter { it.isNotBlank() }.forEach { Bullet(it.trim()) } } },
-        { SectionCard("베스트 컬러") { SwatchGrid(tone.bestColors) } },
-        { SectionCard("피하면 좋은 컬러") { SwatchGrid(tone.worstColors); Text(tone.avoidTip, style = Muted) } },
+        { SectionCard("특징") { tone.characteristics.lines().filter { it.isNotBlank() }.forEach { Bullet(it.trim()) } } },
+        { SectionCard("BEST 컬러") { SwatchGrid(tone.bestColors) } },
+        { SectionCard("WORST 컬러") { SwatchGrid(tone.worstColors); Text(tone.avoidTip, style = Muted) } },
         {
             SectionCard("메이크업") {
                 Text(tone.makeup.base, style = MaterialTheme.typography.bodyMedium)
@@ -32,7 +32,7 @@ fun ToneDetails(tone: Tone, modifier: Modifier = Modifier) {
         },
         { SectionCard("헤어 컬러") { SwatchGrid(tone.hair.colors); Text(tone.hair.tip, style = Muted) } },
         {
-            SectionCard("패션 · 코디") {
+            SectionCard("코디") {
                 Text(tone.fashion.tip, style = MaterialTheme.typography.bodyMedium)
                 tone.fashion.styling.forEach { Bullet(it) }
             }

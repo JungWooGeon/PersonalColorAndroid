@@ -63,9 +63,9 @@ object ReportRenderer {
         }
         y += 52f
 
-        y = title(c, "베스트 컬러", y)
+        y = title(c, "BEST 컬러", y)
         y = grid(c, tone.bestColors.take(12), y, swatchH = 104f) + 10f
-        y = title(c, "피하면 좋은 컬러", y)
+        y = title(c, "WORST 컬러", y)
         y = grid(c, tone.worstColors.take(6), y, swatchH = 72f) + 10f
 
         // Two columns: makeup | hair + accessory.
@@ -93,7 +93,7 @@ object ReportRenderer {
         ry += layout(c, tone.accessory.tip, right, ry, colW, 24f, MUTED, maxLines = 2)
         y = maxOf(ly, ry)
 
-        y = title(c, "코디 추천", y)
+        y = title(c, "코디", y)
         val bullet = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ACCENT }
         for (s in tone.fashion.styling.take(3)) {
             c.drawCircle(M + 8f, y + 24f, 6f, bullet)

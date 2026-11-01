@@ -85,7 +85,7 @@ fun ArticleScreen(state: ArticleUiState, onBack: () -> Unit, onArticle: (String)
     val article = state.article
     if (article == null) {
         PcScaffold("가이드", onBack) { padding ->
-            EmptyState(Icons.Outlined.SearchOff, "가이드를 찾을 수 없어요", "삭제되었거나 주소가 바뀌었을 수 있어요.", Modifier.padding(padding))
+            EmptyState(Icons.Outlined.SearchOff, "가이드를 찾을 수 없어요", "삭제됐거나 주소가 바뀌었어요.", Modifier.padding(padding))
         }
         return
     }
@@ -141,7 +141,7 @@ private fun CtaCard(onAnalyze: () -> Unit, onQuiz: () -> Unit) {
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("내 퍼스널컬러가 궁금하다면", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text("사진이나 질문으로 바로 알아봐요", style = MaterialTheme.typography.bodyMedium,
+            Text("사진이나 질문으로 바로 알 수 있어요", style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
             val analyze: @Composable (Modifier) -> Unit = { PcButton("사진으로 진단하기", onAnalyze, it, Icons.Outlined.CameraAlt) }
             val quiz: @Composable (Modifier) -> Unit = { PcOutlinedButton("질문으로 셀프 진단", onQuiz, it, Icons.Outlined.Quiz) }

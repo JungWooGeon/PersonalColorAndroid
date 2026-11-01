@@ -188,11 +188,11 @@ internal fun WallpaperRoute(onBack: () -> Unit, vm: WallpaperViewModel = hiltVie
                 vm.setAuto(true, target)
                 AutoWallpaperScheduler.schedule(context)
                 analytics?.log("auto_wallpaper", "on" to "true", "style" to state.style.name.lowercase(), "target" to target.name.lowercase())
-                snackbar.showSnackbar("오늘의 컬러로 바꿨어요. 내일부터 매일 자동으로 바뀌어요")
+                snackbar.showSnackbar("오늘의 컬러로 바꿨어요. 매일 자동으로 바뀌어요")
             } else {
                 snackbar.showSnackbar(
                     if (canSetWallpaper(context)) "배경화면을 설정하지 못했어요. 잠시 후 다시 시도해 주세요"
-                    else "이 기기에서는 앱이 배경화면을 바꿀 수 없어요"
+                    else "이 기기에선 배경화면을 바꿀 수 없어요"
                 )
             }
         }
@@ -217,7 +217,7 @@ internal fun WallpaperRoute(onBack: () -> Unit, vm: WallpaperViewModel = hiltVie
                 }
                 busy = false
                 analytics?.log("wallpaper_set", "style" to s.style.name.lowercase(), "ok" to ok.toString())
-                snackbar.showSnackbar(if (ok) "배경화면으로 설정했어요" else "배경화면을 설정하지 못했어요. 갤러리에 저장해 직접 설정해 보세요")
+                snackbar.showSnackbar(if (ok) "배경화면으로 설정했어요" else "설정하지 못했어요. 갤러리에 저장한 뒤 직접 설정해 주세요")
             }
         },
     )
@@ -336,7 +336,7 @@ private fun Options(
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         ListRow(if (state.style == Style.TODAY) "날짜 표시" else if (state.style == Style.PALETTE_CARD) "컬러 이름 표시" else "톤 이름 표시",
-            subtitle = "아래쪽에 작게 들어가요", onClick = { onShowName(!state.showName) },
+            subtitle = "아래쪽에 작게 표시", onClick = { onShowName(!state.showName) },
             trailing = { Switch(checked = state.showName, onCheckedChange = null) })
     }
     AutoWallpaperCard(state, busy, onAuto, onTarget)
@@ -350,7 +350,7 @@ private fun AutoWallpaperCard(state: WallpaperUiState, busy: Boolean, onAuto: (B
         Column {
             ListRow(
                 "매일 오늘의 컬러로 바꾸기",
-                subtitle = state.myTone?.let { "자정이 지나면 ${it.nameKo}의 오늘의 컬러로 바뀌어요" } ?: "내 톤을 먼저 정하면 쓸 수 있어요",
+                subtitle = state.myTone?.let { "매일 ${it.nameKo} 컬러로 자동 변경" } ?: "내 톤을 먼저 설정해 주세요",
                 onClick = if (available) {{ onAuto(!state.autoEnabled) }} else null,
                 trailing = { Switch(checked = state.autoEnabled, onCheckedChange = null, enabled = available) },
             )

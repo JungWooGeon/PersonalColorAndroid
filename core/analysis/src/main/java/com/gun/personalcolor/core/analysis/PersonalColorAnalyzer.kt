@@ -100,6 +100,7 @@ object PersonalColorAnalyzer {
 
     // White balance. Paper ≈ slightly bluish white; sclera mapped to a slightly warm white (eye whites are naturally yellowish).
     private val SCLERA_TARGET = Lab(85.0, 1.5, 5.0)
+    private const val MIN_SKIN_A = 4.0           // corrected skin redder than this, or the white reference was bad
     private const val SCLERA_GAIN_MIN = 0.6     // linear-light gains, green anchored at 1
     private const val SCLERA_GAIN_MAX = 1.7
     private const val SCLERA_CAST_REJECT = 2.4   // raw max/min gain beyond this = cast too strong to correct
@@ -152,7 +153,8 @@ object PersonalColorAnalyzer {
 
     fun analyze(samples: FaceSamples): AnalysisResult {
         if (samples.skin.size < MIN_SKIN_PIXELS) return AnalysisResult.Rejected(QualityIssue.NO_SKIN)
-        val (gains, wbSource) = whiteBalance(samples) ?: return AnalysisResult.Rejected(QualityIssue.STRONG_COLOR_CAST)
+        val (rawGains, wbSource) = whiteBalance(samples) ?: return AnalysisResult.Rejected(QualityIssue.STRONG_COLOR_CAST)
+        val gains = plausibleGains(samples.skin, rawGains)
 
         val regions = samples.skinRegions.ifEmpty { mapOf("all" to samples.skin) }
             .mapValues { (_, px) -> cleanSkin(px, gains) }
@@ -235,6 +237,20 @@ object PersonalColorAnalyzer {
         val m = scleraNeutral(s.sclera) ?: return doubleArrayOf(1.0, 1.0, 1.0) to WhiteBalanceSource.NONE
         val g = gains(m, scleraTargetRatio, SCLERA_GAIN_MIN, SCLERA_GAIN_MAX, SCLERA_CAST_REJECT) ?: return null
         return g to WhiteBalanceSource.SCLERA
+    }
+
+    /**
+     * Guard against a bad white reference (eyelid skin or shadow mixed into the "eye white"): human skin always has a
+     * clearly positive a* (reddish). If the corrected skin would come out green/grey, weaken the correction until it
+     * is plausible again (full → half → none).
+     */
+    private fun plausibleGains(skin: List<Rgb>, g: DoubleArray): DoubleArray {
+        for (k in listOf(1.0, 0.5, 0.25, 0.0)) {
+            val gk = DoubleArray(3) { 1 + (g[it] - 1) * k }
+            val lab = medianLab(skin.map { toLab(it, gk) })
+            if (lab.a >= MIN_SKIN_A) return gk
+        }
+        return doubleArrayOf(1.0, 1.0, 1.0)
     }
 
     /** Linear-light gains (green anchored at 1) that map measured neutral [m] to the target channel ratios. */

@@ -245,7 +245,7 @@ internal fun SettingsScreen(
                         ListRow("내 퍼스널컬러", subtitle = state.myTone?.nameKo ?: "설정 안 됨", icon = Icons.Outlined.Palette,
                             onClick = { tonePicker = true })
                         SwitchRow("진단 기록 저장", "끄면 새 결과가 기록에 남지 않아요", Icons.Outlined.History, state.saveHistory, onSaveHistory)
-                        SwitchRow("촬영 가이드 보기", "사진 진단 전에 촬영 팁을 보여줘요", Icons.Outlined.CameraAlt, state.showPhotoGuide, onPhotoGuide)
+                        SwitchRow("촬영 가이드 보기", "사진 진단 전에 팁을 보여줘요", Icons.Outlined.CameraAlt, state.showPhotoGuide, onPhotoGuide)
                     }
                 }
                 item {
@@ -265,7 +265,7 @@ internal fun SettingsScreen(
                 item {
                     Group("개인정보") {
                         actions.onPrivacyOptions?.let {
-                            ListRow("개인정보 옵션", subtitle = "광고 개인정보 동의를 다시 설정해요", icon = Icons.Outlined.Shield, onClick = it)
+                            ListRow("개인정보 옵션", subtitle = "광고 개인정보 동의 변경", icon = Icons.Outlined.Shield, onClick = it)
                         }
                         ListRow("개인정보처리방침", icon = Icons.Outlined.PrivacyTip, onClick = { actions.onLegal(LegalDoc.PRIVACY) })
                         ListRow("이용약관", icon = Icons.Outlined.Description, onClick = { actions.onLegal(LegalDoc.TERMS) })
@@ -286,13 +286,6 @@ internal fun SettingsScreen(
                             Text(version, style = Muted, maxLines = 1)
                         })
                     }
-                }
-                item {
-                    Text(
-                        "얼굴 사진은 기기 안에서만 분석하고 저장·전송하지 않아요.",
-                        style = Muted,
-                        modifier = Modifier.padding(horizontal = ScreenPadding + 4.dp, vertical = 24.dp),
-                    )
                 }
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
@@ -441,7 +434,7 @@ private fun Context.openStore() {
 
 private fun Context.shareApp() {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-        .putExtra(Intent.EXTRA_TEXT, "사진 한 장으로 나의 퍼스널컬러를 찾아보세요!\n나의 컬러는? - 퍼스널컬러\n$PLAY_URL")
+        .putExtra(Intent.EXTRA_TEXT, "사진 한 장으로 내 퍼스널컬러 찾기\n나의 컬러는? - 퍼스널컬러\n$PLAY_URL")
     startActivity(Intent.createChooser(send, "앱 공유하기").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
@@ -458,7 +451,7 @@ private fun Context.sendFeedbackMail() {
     try {
         startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(this, "메일 앱이 없어요. $CONTACT_EMAIL 로 보내주세요", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "메일 앱이 없어요. $CONTACT_EMAIL 로 보내 주세요", Toast.LENGTH_LONG).show()
     }
 }
 
@@ -482,18 +475,18 @@ private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
     val scope = rememberCoroutineScope()
     Group("프리미엄") {
         if (adFree) {
-            ListRow("프리미엄 이용 중", subtitle = "광고 없이 모든 기능을 써요. 감사해요!", icon = Icons.Outlined.CheckCircle,
+            ListRow("프리미엄 이용 중", subtitle = "광고 없음 · 오늘의 코디 무제한", icon = Icons.Outlined.CheckCircle,
                 iconTint = MaterialTheme.colorScheme.primary)
         } else {
             ListRow(
-                "프리미엄", subtitle = (price?.let { "$it · " } ?: "") + "광고 제거 + 오늘의 코디 무제한",
+                "프리미엄", subtitle = (price?.let { "$it · " } ?: "") + "광고 제거 · 오늘의 코디 무제한",
                 icon = Icons.Outlined.Block,
                 onClick = {
                     val started = activity != null && billing.purchase(activity)
                     if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
                 },
             )
-            ListRow("구매 복원", subtitle = "다시 설치했다면 눌러 주세요", icon = Icons.Outlined.Restore, onClick = {
+            ListRow("구매 복원", subtitle = "앱을 다시 설치했다면 눌러 주세요", icon = Icons.Outlined.Restore, onClick = {
                 billing.restore()
                 scope.launch { snackbar.showSnackbar("구매 내역을 확인했어요") }
             })
@@ -510,7 +503,7 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
     var timeDialog by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) onChange(true, state.notificationHour, state.notificationMinute)
-        else scope.launch { snackbar.showSnackbar("알림 권한이 없어 켤 수 없어요. 시스템 설정에서 허용해 주세요.") }
+        else scope.launch { snackbar.showSnackbar("설정에서 알림 권한을 허용해 주세요") }
     }
     val enable = {
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -519,7 +512,7 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
         else onChange(true, state.notificationHour, state.notificationMinute)
     }
     Group("알림") {
-        SwitchRow("매일 오늘의 컬러 알림", "오늘의 컬러와 날씨 맞춤 코디를 알려드려요", Icons.Outlined.Notifications, state.dailyNotification) { on ->
+        SwitchRow("오늘의 컬러 알림", "매일 컬러와 날씨 맞춤 코디를 알려줘요", Icons.Outlined.Notifications, state.dailyNotification) { on ->
             if (on) enable() else onChange(false, state.notificationHour, state.notificationMinute)
         }
         ListRow("알림 시간", subtitle = timeLabel(state.notificationHour, state.notificationMinute),

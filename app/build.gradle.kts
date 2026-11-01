@@ -26,7 +26,7 @@ android {
     }
     buildFeatures { buildConfig = true }
     androidResources {
-        noCompress += "task"   // MediaPipe model is memory-mapped
+        noCompress += listOf("task", "tflite")   // MediaPipe models are memory-mapped
         localeFilters += listOf("ko", "en")
     }
 }

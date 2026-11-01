@@ -128,20 +128,20 @@ private val pages = listOf(
     ) { ToneRingArt(it) },
     Page(
         "사진은 내 폰 밖으로\n나가지 않아요",
-        "기기 안에서만 분석하고 저장·전송하지 않아요.",
-        listOf(Icons.Outlined.CloudOff to "서버 전송 없이 기기 안에서 분석", Icons.Outlined.History to "진단 기록은 이 기기에만 저장"),
+        "얼굴 분석은 폰 안에서만 이뤄져요.",
+        listOf(Icons.Outlined.CloudOff to "서버로 보내지 않아요", Icons.Outlined.History to "진단 기록도 이 폰에만 저장"),
     ) { PrivatePhoneArt(it) },
     Page(
-        "진단 다음이\n더 재밌어요",
-        "톤을 알았다면 이제 활용해 봐요.",
+        "톤을 알았다면\n이렇게 써 보세요",
+        "매일 쓰는 컬러 도구들이에요.",
         listOf(
             Icons.Outlined.Palette to "12톤 컬러 도감",
             Icons.Outlined.Checkroom to "가상 드레이핑으로 색 대보기",
-            Icons.Outlined.Colorize to "컬러 체크: 쇼핑할 때 이 색 어울릴까?",
+            Icons.Outlined.Colorize to "컬러 체크로 쇼핑 전에 확인",
         ),
     ) { FeatureCardsArt(it) },
     Page(
-        "정확한 진단을 위한\n한 가지",
+        "정확한 진단을 위해\n이것만 지켜 주세요",
         "조명에 따라 결과가 달라져요.",
         listOf(
             Icons.Outlined.WbSunny to "밝은 자연광 아래에서",

@@ -52,7 +52,7 @@ internal fun checkFrame(faces: List<List<Offset>>, pixels: IntArray, w: Int, h: 
     val height = maxY - minY
     when {
         height < 0.40f -> fail(Check.SIZE, "조금 더 가까이 와 주세요")
-        height > 0.70f -> fail(Check.SIZE, "조금만 멀리 떨어져 주세요")
+        height > 0.70f -> fail(Check.SIZE, "조금 더 멀리 가 주세요")
     }
     if (abs((minX + maxX) / 2 - 0.5f) > 0.12f || abs((minY + maxY) / 2 - GUIDE_CENTER_Y) > 0.12f) {
         fail(Check.CENTER, "얼굴을 타원 가운데로 옮겨 주세요")
@@ -80,7 +80,7 @@ internal fun checkFrame(faces: List<List<Offset>>, pixels: IntArray, w: Int, h: 
         skin.hue > 82 || skin.b > 38 -> fail(Check.TINT, "노란 조명이에요 · 자연광에서 찍어 주세요")
         skin.b < 4 || skin.hue < 15 -> fail(Check.TINT, "푸른 조명이에요 · 자연광에서 찍어 주세요")
     }
-    return FrameCheck(failed, hint ?: "좋아요! 그대로 잠시 멈춰 주세요")
+    return FrameCheck(failed, hint ?: "좋아요, 그대로 있어 주세요")
 }
 
 /** Average color of a square patch around normalized point [c]. */

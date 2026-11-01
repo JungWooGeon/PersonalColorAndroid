@@ -97,11 +97,11 @@ class DailyNotificationReceiver : BroadcastReceiver() {
 /** (short line, expanded text). Fallback copy when there's no tone/summary yet. */
 internal fun notificationText(summary: CoordiSummary?): Pair<String, String?> =
     if (summary == null) {
-        "오늘 나에게 어울리는 컬러와 코디를 확인해 보세요." to null
+        "오늘의 컬러와 코디가 도착했어요" to null
     } else {
         val weather = summary.weatherLine?.let { "$it · " }.orEmpty()
-        "오늘의 컬러는 ${summary.todayColorName} · ${summary.outfitHeadline}" to
-            "오늘의 컬러는 '${summary.todayColorName}'이에요.\n$weather${summary.outfitHeadline} 어때요?"
+        "${summary.todayColorName} · ${summary.outfitHeadline}" to
+            "오늘의 컬러: ${summary.todayColorName}\n$weather${summary.outfitHeadline} 어때요?"
     }
 
 /** Next local time [hour]:[minute] strictly after [now] (today if still ahead, else tomorrow). */

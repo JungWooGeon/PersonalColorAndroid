@@ -8,6 +8,6 @@ import kotlinx.serialization.Serializable
 
 /** Result of the latest diagnosis (photo or quiz), from DiagnosisSession. */
 fun NavGraphBuilder.resultScreen(onBack: () -> Unit, onDrape: () -> Unit, onTone: (String) -> Unit, onRetryPhoto: () -> Unit, onColorMatch: () -> Unit,
-    onWallpaper: (toneId: String) -> Unit = {}, onRefine: () -> Unit = {}) {
-    composable<ResultRoute> { ResultRoute(onBack, onDrape, onTone, onRetryPhoto, onColorMatch, onWallpaper, onRefine) }
+    onWallpaper: (toneId: String) -> Unit = {}) {
+    composable<ResultRoute> { ResultRoute(onBack, onDrape, onTone, onRetryPhoto, onColorMatch, onWallpaper) }
 }

@@ -78,7 +78,7 @@ import com.gun.personalcolor.core.vision.PhotoInput
 private const val MAX_PHOTOS = 3
 
 @Composable
-internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -> Unit, onRefine: () -> Unit, vm: AnalyzeViewModel = hiltViewModel()) {
+internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -> Unit, vm: AnalyzeViewModel = hiltViewModel()) {
     TrackScreen("analyze")
     val context = LocalContext.current
     val activity = LocalActivity.current
@@ -88,12 +88,10 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
     val showGuide by vm.showGuide.collectAsStateWithLifecycle()
 
     val run = { inputs: List<PhotoInput> ->
-        vm.analyze(inputs) { needsRefine ->
+        vm.analyze(inputs) {
             val watchedReward = ads?.consumeUnlock(AdManager.KEY_PHOTO) == true
-            // Unsure result → a short draping check first (invisible to the user why); otherwise straight to the result.
-            val next = if (needsRefine) onRefine else onResult
             // One ad per diagnosis: if a rewarded ad unlocked it, no interstitial before the result.
-            if (watchedReward || ads == null) next() else ads.onResult(activity, next)
+            if (watchedReward || ads == null) onResult() else ads.onResult(activity, onResult)
         }
     }
     // Up to 3 photos: averaging several shots cancels out lighting differences.
@@ -106,7 +104,7 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
     var rationale by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) vm.openCamera() else {
-            Toast.makeText(context, "카메라 권한이 없어 앨범에서 골라 주세요", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "앨범에서 사진을 골라 주세요", Toast.LENGTH_SHORT).show()
             pick()
         }
     }
@@ -122,7 +120,7 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
         AlertDialog(
             onDismissRequest = { rationale = false },
             title = { Text("카메라 권한이 필요해요") },
-            text = { Text("얼굴 위치와 조명을 실시간으로 확인해 잘 나온 순간에 찍어 드려요. 사진은 기기 안에서만 분석해요.") },
+            text = { Text("얼굴과 조명을 확인해 잘 나온 순간에 자동으로 찍어요.") },
             confirmButton = { TextButton(onClick = { rationale = false; permission.launch(Manifest.permission.CAMERA) }) { Text("허용하기") } },
             dismissButton = { TextButton(onClick = { rationale = false; pick() }) { Text("앨범에서 고르기") } },
         )
@@ -131,7 +129,7 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
     // Opt-in rewarded ad before a diagnosis. If no ad is ready (or one was watched recently), it just continues.
     val gate = rememberRewardGate()
     val gated = { action: () -> Unit ->
-        gate(RewardRequest(AdManager.KEY_PHOTO, "광고 보고 무료로 진단할까요?", "광고 후 바로 진단해요. 사진이 잘 안 나와 다시 찍을 땐 광고가 없어요.", AdManager.PHOTO_UNLOCK_MS, action))
+        gate(RewardRequest(AdManager.KEY_PHOTO, "광고 보고 진단하기", "짧은 광고 하나만 보면 무료예요.", AdManager.PHOTO_UNLOCK_MS, action))
     }
 
     // While working, back is ignored (analysis takes a second or two); otherwise it steps back inside the flow.
@@ -185,7 +183,7 @@ internal fun AnalyzeScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(message, style = Muted, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = onQuiz) { Text("사진 없이 질문으로 진단하기") }
+                    TextButton(onClick = onQuiz) { Text("사진 없이 질문으로 진단") }
                 }
                 else -> Guide(pad, showGuide, onQuiz)
             }
@@ -211,10 +209,10 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
             Tip(Icons.Outlined.WbSunny, "낮 시간 창가의 자연광", "노란 조명은 피해 주세요")
             Tip(Icons.Outlined.Description, "흰 종이를 함께 찍기", "A4 용지를 턱 아래에 들고 찍으면 더 정확해요")
             if (expanded) {
-                Tip(Icons.Outlined.FaceRetouchingOff, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업")
+                Tip(Icons.Outlined.FaceRetouchingOff, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업으로")
                 Tip(Icons.Outlined.CenterFocusStrong, "정면, 얼굴을 크게", "카메라가 위치와 조명을 확인해 자동으로 찍어요")
                 Tip(Icons.Outlined.Visibility, "눈을 또렷하게", "앞머리·안경이 눈을 가리지 않게")
-                Tip(Icons.Outlined.PhotoLibrary, "2~3장이면 더 정확해요", "앨범에서 여러 장을 고르면 평균을 내요")
+                Tip(Icons.Outlined.PhotoLibrary, "2~3장이면 더 정확해요", "여러 장을 고르면 평균으로 진단해요")
             }
         }
 
@@ -226,7 +224,7 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
                     color = MaterialTheme.colorScheme.onTertiaryContainer)
             }
         }
-        TextButton(onClick = onQuiz, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("사진 없이 질문으로 진단하기") }
+        TextButton(onClick = onQuiz, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("사진 없이 질문으로 진단") }
     }
 }
 
@@ -254,7 +252,7 @@ private fun Centered(pad: PaddingValues, content: @Composable () -> Unit) {
 private fun PhotoFailure.message(): Pair<String, String> = when (this) {
     PhotoFailure.BadImage -> "사진을 열 수 없어요" to "다른 사진으로 다시 시도해 주세요."
     PhotoFailure.NoFace -> "얼굴을 찾지 못했어요" to "정면 얼굴이 크게 나온 사진을 써 주세요."
-    PhotoFailure.ManyFaces -> "얼굴이 여러 명 있어요" to "한 사람만 나온 사진으로 진단해 주세요."
+    PhotoFailure.ManyFaces -> "여러 사람이 나왔어요" to "한 사람만 나온 사진을 써 주세요."
     is PhotoFailure.Quality -> when (issue) {
         QualityIssue.NO_SKIN -> "피부가 잘 보이지 않아요" to "얼굴을 가리는 것 없이 찍어 주세요."
         QualityIssue.TOO_DARK -> "사진이 너무 어두워요" to "밝은 자연광에서 다시 찍어 주세요."

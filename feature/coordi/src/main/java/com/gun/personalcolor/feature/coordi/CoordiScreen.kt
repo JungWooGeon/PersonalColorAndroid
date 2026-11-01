@@ -119,13 +119,13 @@ internal fun CoordiRouteScreen(onBack: () -> Unit, onTone: (String) -> Unit, onC
         onAnalyze = onAnalyze,
         onLocationResult = { vm.refreshWeather() },
         onUnlock = {
-            gate(RewardRequest(AdManager.KEY_COORDI, "광고 보고 오늘 코디를 볼까요?", "오늘 하루 동안 다시 볼 수 있어요.", AdManager.untilMidnightMs()) {
+            gate(RewardRequest(AdManager.KEY_COORDI, "광고 보고 오늘의 코디 보기", "짧은 광고 하나만 보면 무료예요.", AdManager.untilMidnightMs()) {
                 watchedAd = true
                 analytics?.log("coordi_unlock")
             })
         },
         onNext = {
-            gate(RewardRequest(AdManager.KEY_COORDI, "광고 보고 다른 코디도 볼까요?", "오늘 하루 동안 마음껏 바꿔 볼 수 있어요.", AdManager.untilMidnightMs()) {
+            gate(RewardRequest(AdManager.KEY_COORDI, "광고 보고 다른 코디 보기", "짧은 광고 하나만 보면 무료예요.", AdManager.untilMidnightMs()) {
                 watchedAd = true
                 vm.nextOutfit()
             })
@@ -150,8 +150,8 @@ internal fun CoordiScreen(
         val tone = state.tone
         when {
             tone == null && !state.loading -> EmptyState(
-                Icons.Outlined.Palette, "먼저 내 퍼스널컬러를 알려 주세요",
-                "진단을 마치면 내 톤과 날씨에 맞춘 코디를 매일 추천해 드려요.",
+                Icons.Outlined.Palette, "내 퍼스널컬러를 먼저 알려 주세요",
+                "내 톤과 날씨에 맞는 코디를 매일 추천해요.",
                 Modifier.padding(padding),
             ) { PcButton("퍼스널컬러 진단하기", onAnalyze) }
             else -> Content(state, tone, unlocked, showTrial, padding, onTone, onCloset, onLocationResult, onUnlock, onNext)
@@ -299,8 +299,8 @@ private fun LocationCard(onResult: () -> Unit) {
             Text("내 위치 날씨로 추천받기", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(
-            if (denied) "위치 없이도 괜찮아요. 지금은 계절 기준으로 추천하고 있어요."
-            else "동네 단위의 대략적인 위치만 써서 오늘 날씨에 맞는 옷차림을 골라 드려요.",
+            if (denied) "지금은 계절 기준으로 추천하고 있어요."
+            else "대략적인 위치로 오늘 날씨에 맞는 코디를 골라요.",
             style = Muted,
         )
         PcOutlinedButton(
@@ -430,9 +430,9 @@ private fun LockedCard(onUnlock: () -> Unit) {
             }
         }
         Text("오늘의 코디가 준비됐어요", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("무료 체험이 끝났어요. 짧은 광고를 보면 오늘 하루 코디를 볼 수 있어요.", style = Muted)
+        Text("짧은 광고 하나만 보면 무료예요.", style = Muted)
         PcButton("광고 보고 오늘의 코디 보기", onUnlock, Modifier.fillMaxWidth())
-        Text("프리미엄이면 광고 없이 무제한으로 볼 수 있어요", style = MaterialTheme.typography.labelMedium,
+        Text("프리미엄은 광고 없이 무제한", style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterHorizontally),
             textAlign = TextAlign.Center)
     }

@@ -30,7 +30,6 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.Colorize
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
@@ -167,7 +166,7 @@ private fun TodayColor(color: NamedColor, onCoordi: () -> Unit, modifier: Modifi
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text("오늘의 컬러", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Text(color.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("날씨 맞춤 오늘의 코디 보기", style = MaterialTheme.typography.bodySmall,
+                Text("날씨 맞춤 코디 보기", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -184,14 +183,8 @@ private fun PhotoHero(onClick: () -> Unit, compact: Boolean, modifier: Modifier)
         Column(Modifier.padding(22.dp)) {
             Text(if (compact) "다시 진단해 볼까요?" else "AI 퍼스널컬러 진단", style = MaterialTheme.typography.headlineSmall, color = ink)
             Spacer(Modifier.height(6.dp))
-            Text("사진 한 장으로 12톤 중 나의 톤 찾기",
+            Text("사진 한 장으로 12톤 중 내 톤 찾기",
                 style = MaterialTheme.typography.bodyMedium, color = ink.copy(alpha = 0.8f))
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = ink.copy(alpha = 0.7f))
-                Spacer(Modifier.width(4.dp))
-                Text("사진은 기기 밖으로 나가지 않아요", style = MaterialTheme.typography.labelMedium, color = ink.copy(alpha = 0.7f), maxLines = 1)
-            }
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onClick,

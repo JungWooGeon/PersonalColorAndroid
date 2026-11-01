@@ -20,13 +20,10 @@ data class Diagnosis(
     val features: Features? = null,
     /** Photos averaged into this result (AI only). */
     val photoCount: Int = 1,
-    /** 0..1 from the engine (margin + sample quality). Below [LOW_CONFIDENCE] the UI recommends draping confirmation. */
+    /** 0..1 from the engine (margin + sample quality). Internal only — never shown to users. */
     val confidence: Double = 1.0,
 ) {
-    val isLowConfidence get() = source == ResultSource.AI && confidence < LOW_CONFIDENCE
     val top get() = scores.first()
-
-    companion object { const val LOW_CONFIDENCE = 0.5 }
 }
 
 /** In-memory holder for the latest diagnosis, shared by the result/drape screens. Cleared on process death. */

@@ -140,13 +140,13 @@ private fun Panel(sample: Rgb?, onRetake: () -> Unit, onSkip: () -> Unit, onConf
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    if (white) "흰 종이로 보여요" else "흰색이 아닌 것 같아요 · 밝은 종이 부분을 눌러 주세요",
+                    if (white) "좋아요, 흰 종이예요" else "흰 종이 부분을 눌러 주세요",
                     style = MaterialTheme.typography.bodyMedium, color = if (white) CameraGreen else CameraWarn,
                 )
             }
         }
         Spacer(Modifier.height(4.dp))
-        PcButton("이 부분이 흰 종이예요", onConfirm, Modifier.fillMaxWidth(), enabled = sample != null)
+        PcButton("여기가 흰 종이예요", onConfirm, Modifier.fillMaxWidth(), enabled = sample != null)
         PcOutlinedButton("건너뛰기", onSkip, Modifier.fillMaxWidth())
     }
 }

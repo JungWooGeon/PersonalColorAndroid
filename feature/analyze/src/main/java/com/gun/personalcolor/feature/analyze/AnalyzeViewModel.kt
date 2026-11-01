@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.domain.AnalyzePhotoUseCase
-import com.gun.personalcolor.core.domain.DiagnosisSession
 import com.gun.personalcolor.core.domain.PhotoFailure
 import com.gun.personalcolor.core.vision.PhotoInput
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,7 +29,6 @@ sealed interface AnalyzeState {
 @HiltViewModel
 class AnalyzeViewModel @Inject constructor(
     private val analyzePhoto: AnalyzePhotoUseCase,
-    private val session: DiagnosisSession,
     prefs: UserPreferencesRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow<AnalyzeState>(AnalyzeState.Idle)
@@ -42,15 +40,14 @@ class AnalyzeViewModel @Inject constructor(
 
     fun captured(uri: Uri, auto: Boolean) { _state.value = AnalyzeState.WhiteRef(uri, auto) }
 
-    /** [onSuccess] gets `needsRefine` = the engine is unsure, so the user confirms by draping before the result. */
-    fun analyze(inputs: List<PhotoInput>, onSuccess: (needsRefine: Boolean) -> Unit) {
+    fun analyze(inputs: List<PhotoInput>, onSuccess: () -> Unit) {
         if (inputs.isEmpty()) return
         if (_state.value == AnalyzeState.Working) return
         _state.value = AnalyzeState.Working
         viewModelScope.launch {
             val failure = analyzePhoto.analyze(inputs)
             _state.value = if (failure == null) AnalyzeState.Idle else AnalyzeState.Failed(failure)
-            if (failure == null) onSuccess(session.current.value?.isLowConfidence == true)
+            if (failure == null) onSuccess()
         }
     }
 

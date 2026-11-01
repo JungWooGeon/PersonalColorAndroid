@@ -82,8 +82,8 @@ fun CompareScreen(tones: List<Tone>, initialA: String, initialB: String?, onBack
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             SideBySide("키워드", a, b) { t -> Keywords(t.keywords) }
-            SideBySide("베스트 컬러", a, b) { t -> Swatches(t.bestColors) }
-            SideBySide("피하면 좋은 컬러", a, b) { t -> Swatches(t.worstColors) }
+            SideBySide("BEST 컬러", a, b) { t -> Swatches(t.bestColors) }
+            SideBySide("WORST 컬러", a, b) { t -> Swatches(t.worstColors) }
             SideBySide("립 컬러", a, b) { t -> Swatches(t.makeup.lipColors) }
             SideBySide("헤어 컬러", a, b) { t -> Swatches(t.hair.colors) }
             SideBySide("액세서리", a, b) { t -> Text(t.accessory.metal, style = MaterialTheme.typography.bodyLarge) }
@@ -141,7 +141,7 @@ private fun Keywords(keywords: List<String>) =
 @Composable
 private fun Differences(a: Tone, b: Tone) {
     val shared = sharedColors(a.bestColors, b.bestColors)
-    SectionCard("차이점 한눈에") {
+    SectionCard("한눈에 비교") {
         Bullet(
             if (a.isWarm == b.isWarm) "두 톤 모두 ${a.temperatureKo}이라 어울리는 색의 온도가 같아요."
             else "${a.temperatureKo}과 ${b.temperatureKo}, 노란 기운과 푸른 기운이 달라요."
@@ -154,9 +154,9 @@ private fun Differences(a: Tone, b: Tone) {
             if (a.accessory.metal == b.accessory.metal) "액세서리는 둘 다 ${a.accessory.metal}가 잘 어울려요."
             else "액세서리는 ${a.nameKo}엔 ${a.accessory.metal}, ${b.nameKo}엔 ${b.accessory.metal}가 어울려요."
         )
-        if (shared.isEmpty()) Bullet("겹치는 베스트 컬러는 없어요.")
+        if (shared.isEmpty()) Bullet("겹치는 BEST 컬러는 없어요.")
         else {
-            Bullet("함께 쓸 수 있는 베스트 컬러: ${shared.joinToString { it.name }}")
+            Bullet("겹치는 BEST 컬러: ${shared.joinToString { it.name }}")
             ColorDots(shared, size = 22.dp)
         }
     }

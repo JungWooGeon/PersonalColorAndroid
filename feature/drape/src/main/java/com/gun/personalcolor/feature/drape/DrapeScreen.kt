@@ -1,221 +1,345 @@
 package com.gun.personalcolor.feature.drape
 
-import androidx.compose.foundation.Canvas
 import android.graphics.BlurMaskFilter
 import android.os.Build
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.input.pointer.pointerInput
-import com.gun.personalcolor.core.ads.RewardRequest
-import com.gun.personalcolor.core.ads.rememberRewardGate
-import com.gun.personalcolor.core.analytics.LocalAnalytics
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.HideImage
-import androidx.compose.material3.Icon
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.gun.personalcolor.core.ads.RewardRequest
+import com.gun.personalcolor.core.ads.rememberRewardGate
+import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.isWideWindow
+import com.gun.personalcolor.core.designsystem.readableWidth
 import com.gun.personalcolor.core.domain.DiagnosisSession
 import com.gun.personalcolor.core.model.NamedColor
+import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.Swatch
 import com.gun.personalcolor.core.ui.hexColor
 import com.gun.personalcolor.core.vision.FacePhoto
+import com.gun.personalcolor.core.vision.PersonSegmenter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+/** Person mask for the current photo. [mask] null after loading = segmentation failed (draw without cutout). */
+data class Cutout(val loading: Boolean, val mask: ImageBitmap? = null)
+
 @HiltViewModel
-class DrapeViewModel @Inject constructor(session: DiagnosisSession, val content: ContentRepository) : ViewModel() {
+class DrapeViewModel @Inject constructor(
+    session: DiagnosisSession,
+    val content: ContentRepository,
+    segmenter: PersonSegmenter,
+) : ViewModel() {
     val diagnosis = session.current
+
+    /** Computed once per diagnosis photo and kept while this screen lives. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cutout: StateFlow<Cutout> = session.current.map { it?.photo }.distinctUntilChanged()
+        .transformLatest { photo ->
+            if (photo == null) return@transformLatest emit(Cutout(false))
+            emit(Cutout(true))
+            emit(Cutout(false, withContext(Dispatchers.Default) { segmenter.personMask(photo.bitmap)?.asImageBitmap() }))
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Cutout(true))
 }
 
 // MediaPipe face-mesh lip contours: outer edge of the lips and the mouth opening.
 private val LIP_OUTER = listOf(61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146)
 private val LIP_INNER = listOf(78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95)
 
-/** Virtual try-on on the diagnosis photo: a fabric "cape" under the chin, or lipstick (reward-gated). Tool screen: no ads. */
+/** Virtual draping (BEST vs WORST side by side) and lip try-on (reward-gated) on the diagnosis photo. Tool screen: no ads. */
 @Composable
 internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()) {
     TrackScreen("drape")
     val d by vm.diagnosis.collectAsStateWithLifecycle()
+    val cutout by vm.cutout.collectAsStateWithLifecycle()
     val photo = d?.photo ?: run { LaunchedEffect(Unit) { onBack() }; return }
     val top = vm.content.tone(d!!.top.toneId)
     val others = remember(top) { vm.content.tones.filter { it.id != top.id } }
-
-    // Palette groups. Drape: my best, my worst, then other tones' best. Lip: my lips, worst, then other tones' lips.
-    val drapeGroups = remember(top) { listOf("베스트" to top.bestColors, "워스트" to top.worstColors) + others.map { it.nameKo to it.bestColors } }
     val lipGroups = remember(top) {
-        listOf("내 톤 추천" to top.makeup.lipColors, "워스트 립" to top.worstColors.take(4)) + others.map { it.nameKo to it.makeup.lipColors }
+        listOf("내 톤 추천" to top.makeup.lipColors, "WORST 립" to top.worstColors.take(4)) + others.map { it.nameKo to it.makeup.lipColors }
     }
+
     var lip by rememberSaveable { mutableStateOf(false) }
-    var drapeGroup by rememberSaveable { mutableIntStateOf(0) }
+    var original by rememberSaveable { mutableStateOf(false) }
+    var best by remember(top) { mutableStateOf(top.bestColors.first()) }
+    var compare by rememberSaveable { mutableIntStateOf(-1) } // -1 = my WORST, else index into [others]
+    var right by remember(top) { mutableStateOf(top.worstColors.first()) }
     var lipGroup by rememberSaveable { mutableIntStateOf(0) }
-    var drapeColor by remember { mutableStateOf<NamedColor?>(top.bestColors.first()) }
-    var lipColor by remember { mutableStateOf<NamedColor?>(top.makeup.lipColors.firstOrNull()) }
+    var lipColor by remember(top) { mutableStateOf(top.makeup.lipColors.firstOrNull()) }
     var intensity by rememberSaveable { mutableFloatStateOf(0.65f) }
     val gate = rememberRewardGate()
     val analytics = LocalAnalytics.current
 
-    val groups = if (lip) lipGroups else drapeGroups
-    val group = if (lip) lipGroup else drapeGroup
-    val selected = if (lip) lipColor else drapeColor
-    val select: (NamedColor?) -> Unit = { c ->
-        if (lip) {
-            lipColor = c
-            if (c != null) analytics?.log("lip_tryon", "color" to c.name)
-        } else drapeColor = c
-    }
-    val selectGroup: (Int) -> Unit = { i ->
-        if (lip) lipGroup = i else drapeGroup = i
-        select(groups[i].second.firstOrNull())
-    }
+    val rightTone = others.getOrNull(compare)
+    val rightLabel = rightTone?.nameKo ?: "WORST"
+    val rightColors = rightTone?.bestColors ?: top.worstColors
+    val bg = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFF2E2C2B) else Color(0xFFE8E6E3)
+    val neutralCloth = if (bg.luminance() < 0.5f) Color(0xFF4A4746) else Color(0xFFC9C6C2)
 
-    PcScaffold("가상 체험", onBack) { pad ->
+    PcScaffold("가상 체험", onBack, actions = {
+        IconToggleButton(checked = original, onCheckedChange = { original = it }) {
+            Icon(if (original) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, "원본 보기")
+        }
+    }) { pad ->
         val wide = isWideWindow()
-        val controls: @Composable (Modifier) -> Unit = { m ->
-            Column(m.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                    SegmentedButton(selected = !lip, onClick = { lip = false }, shape = SegmentedButtonDefaults.itemShape(0, 2)) {
-                        Text("천 드레이핑", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    SegmentedButton(
-                        selected = lip,
-                        onClick = {
-                            if (!lip) gate(RewardRequest(key = "lip_tryon", title = "광고 보고 체험할까요?",
-                                message = "한 번 보면 앱을 닫을 때까지 자유롭게 써요.", action = { lip = true }))
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text("립 체험", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        val modeSwitch: @Composable () -> Unit = {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(selected = !lip, onClick = { lip = false }, shape = SegmentedButtonDefaults.itemShape(0, 2)) {
+                    Text("컬러 드레이핑", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Row(Modifier.padding(horizontal = 20.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(selected?.name ?: "원본 사진", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("길게 누르면 원본", style = Muted, maxLines = 1, modifier = Modifier.padding(start = 12.dp))
+                SegmentedButton(
+                    selected = lip,
+                    onClick = {
+                        if (!lip) gate(RewardRequest(key = "lip_tryon", title = "광고 보고 립 체험하기",
+                            message = "짧은 광고 하나만 보면 무료예요.", action = { lip = true }))
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(1, 2),
+                ) { Text("립 체험", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+        }
+        val panel: @Composable (String, NamedColor?, Boolean, Modifier, (DrawScope.(androidx.compose.ui.geometry.Rect) -> Unit)?) -> Unit =
+            { badge, color, cloth, m, extra ->
+                // Lip try-on has no cloth to compare → a squarer panel so the face, not the grey cape, fills it.
+                val ratio = if (extra != null) 1f else 3f / 4f
+                Column(m, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(ratio).clip(MaterialTheme.shapes.large)) {
+                        Surface(Modifier.fillMaxSize(), color = bg) {}
+                        if (cutout.loading) {
+                            CircularProgressIndicator(Modifier.align(Alignment.Center).size(32.dp), strokeWidth = 3.dp)
+                        } else {
+                            DrapedPhoto(
+                                photo, cutout.mask, bg,
+                                cloth = if (cloth) color?.let { hexColor(it.hex) } else neutralCloth,
+                                original = original, modifier = Modifier.fillMaxSize(), extra = extra ?: {},
+                            )
+                        }
+                        if (badge.isNotEmpty() && !original) Badge(badge, badge == "BEST", Modifier.align(Alignment.TopStart).padding(10.dp))
+                    }
+                    Text(color?.name ?: "", style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
                 }
-                Text(
-                    if (lip) "안색이 생기 있어 보이는 립이 어울리는 색이에요" else "얼굴이 맑고 환해 보이는 색이 어울리는 색이에요",
-                    style = Muted, modifier = Modifier.padding(horizontal = 20.dp),
-                )
-                val chip: @Composable (Int) -> Unit = { i ->
-                    FilterChip(selected = group == i, onClick = { selectGroup(i) }, label = { Text(groups[i].first, maxLines = 1) })
-                }
-                if (wide) {
-                    // Room to wrap: everything visible at once.
-                    FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { groups.indices.forEach { chip(it) } }
-                    FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Dot(null, selected == null) { select(null) }
-                        groups[group].second.forEach { c -> Dot(c, c == selected) { select(c) } }
-                    }
-                } else {
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(groups.size) { chip(it) }
-                    }
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        item { Dot(null, selected == null) { select(null) } }
-                        items(groups[group].second) { c -> Dot(c, c == selected) { select(c) } }
-                    }
-                }
-                if (lip) {
-                    Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("연하게", style = Muted, maxLines = 1)
-                        Slider(intensity, { intensity = it }, Modifier.weight(1f).padding(horizontal = 12.dp),
-                            enabled = selected != null, valueRange = 0.3f..1f)
-                        Text("진하게", style = Muted, maxLines = 1)
-                    }
+            }
+
+        val drapePanels: @Composable (Modifier) -> Unit = { m ->
+            Row(m, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                panel("BEST", best, true, Modifier.weight(1f), null)
+                panel(rightLabel, right, true, Modifier.weight(1f), null)
+            }
+        }
+        val drapeControls: @Composable () -> Unit = {
+            Text("얼굴빛이 더 맑아 보이는 쪽이 잘 어울리는 색이에요", style = Muted)
+            ColorRow("BEST", top.bestColors, best, { best = it })
+            ColorRow(rightLabel, rightColors, right, { right = it }) {
+                CompareMenu(top, others, compare) { i ->
+                    compare = i
+                    right = (others.getOrNull(i)?.bestColors ?: top.worstColors).first()
                 }
             }
         }
+
+        val lipPanel: @Composable (Modifier) -> Unit = { m ->
+            panel("", lipColor, false, m) { r ->
+                val c = lipColor ?: return@panel
+                fun pt(i: Int) = photo.point(i, r)
+                val path = Path().apply {
+                    smoothLoop(LIP_OUTER.map(::pt)); smoothLoop(LIP_INNER.map(::pt))
+                    fillType = PathFillType.EvenOdd
+                }
+                drawLip(path, hexColor(c.hex), intensity, feather = (pt(291) - pt(61)).getDistance() * 0.025f)
+            }
+        }
+        val lipControls: @Composable () -> Unit = {
+            Text("생기 있어 보이는 색이 잘 어울려요", style = Muted)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(lipGroups.size) { i ->
+                    FilterChip(selected = lipGroup == i, onClick = { lipGroup = i; lipColor = lipGroups[i].second.firstOrNull() },
+                        label = { Text(lipGroups[i].first, maxLines = 1) })
+                }
+            }
+            DotRow(lipGroups[lipGroup].second, lipColor) { c ->
+                lipColor = c
+                analytics?.log("lip_tryon", "color" to c.name)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("연하게", style = Muted, maxLines = 1)
+                Slider(intensity, { intensity = it }, Modifier.weight(1f).padding(horizontal = 12.dp), valueRange = 0.3f..1f)
+                Text("진하게", style = Muted, maxLines = 1)
+            }
+        }
+
+        val scroll = rememberScrollState()
         if (wide) {
-            Row(Modifier.fillMaxSize().padding(pad)) {
-                TryOn(photo, lip, selected, intensity, Modifier.weight(1f).fillMaxHeight().padding(16.dp))
-                // Centered vertically; scrolls if a short landscape window can't fit it.
-                Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    controls(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding())
+            Row(
+                Modifier.fillMaxSize().padding(pad).readableWidth(1100.dp).padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                // Panels sized by height so both fit a short landscape window.
+                Box(Modifier.weight(1.2f).verticalScroll(rememberScrollState()).padding(vertical = 16.dp), contentAlignment = Alignment.TopCenter) {
+                    if (lip) lipPanel(Modifier.widthIn(max = 420.dp).fillMaxWidth())
+                    else drapePanels(Modifier.widthIn(max = 640.dp).fillMaxWidth())
+                }
+                Column(
+                    Modifier.weight(1f).verticalScroll(scroll).padding(vertical = 16.dp).navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    modeSwitch()
+                    if (lip) lipControls() else drapeControls()
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize().padding(pad)) {
-                TryOn(photo, lip, selected, intensity, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
-                controls(Modifier.fillMaxWidth().navigationBarsPadding())
+            Column(
+                Modifier.fillMaxSize().verticalScroll(scroll).padding(pad).readableWidth().padding(horizontal = 20.dp, vertical = 12.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                modeSwitch()
+                if (lip) lipPanel(Modifier.fillMaxWidth()) else drapePanels(Modifier.fillMaxWidth())
+                if (lip) lipControls() else drapeControls()
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
 }
 
-/** Photo with the cape or lip color on top. Press and hold to see the original. */
 @Composable
-private fun TryOn(photo: FacePhoto, lip: Boolean, color: NamedColor?, intensity: Float, modifier: Modifier) {
-    val image = remember(photo) { photo.bitmap.asImageBitmap() }
-    var holding by remember { mutableStateOf(false) }
-    Canvas(
-        modifier.clip(MaterialTheme.shapes.large).pointerInput(Unit) {
-            detectTapGestures(onPress = { holding = true; tryAwaitRelease(); holding = false })
-        },
-    ) {
-        val r = drawFitted(image)
-        if (color == null || holding) return@Canvas
-        fun pt(i: Int) = photo.point(i, r)
-        if (lip) {
-            val path = Path().apply {
-                smoothLoop(LIP_OUTER.map(::pt)); smoothLoop(LIP_INNER.map(::pt))
-                fillType = PathFillType.EvenOdd
-            }
-            drawLip(path, hexColor(color.hex), intensity, feather = (pt(291) - pt(61)).getDistance() * 0.025f)
-        } else drawCape(photo, r, hexColor(color.hex))
+private fun Badge(text: String, best: Boolean, modifier: Modifier) {
+    val c = MaterialTheme.colorScheme
+    Surface(modifier, shape = CircleShape, color = if (best) c.primary else c.inverseSurface,
+        contentColor = if (best) c.onPrimary else c.inverseOnSurface) {
+        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
     }
+}
+
+/** Small label (+ optional trailing control) over a row of color dots. */
+@Composable
+private fun ColorRow(label: String, colors: List<NamedColor>, selected: NamedColor?, onSelect: (NamedColor) -> Unit, trailing: @Composable () -> Unit = {}) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            trailing()
+        }
+        DotRow(colors, selected, onSelect)
+    }
+}
+
+@Composable
+private fun DotRow(colors: List<NamedColor>, selected: NamedColor?, onSelect: (NamedColor) -> Unit) {
+    LazyRow(contentPadding = PaddingValues(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(colors) { c -> Dot(c, c == selected) { onSelect(c) } }
+    }
+}
+
+/** "다른 톤과 비교" dropdown: my WORST colors or another tone's BEST colors on the right panel. */
+@Composable
+private fun CompareMenu(top: Tone, others: List<Tone>, compare: Int, onPick: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }) {
+            Text("다른 톤과 비교", maxLines = 1)
+            Icon(Icons.Outlined.ArrowDropDown, null)
+        }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text("${top.nameKo} WORST", maxLines = 1) }, onClick = { open = false; onPick(-1) },
+                trailingIcon = if (compare == -1) ({ Text("✓") }) else null)
+            others.forEachIndexed { i, t ->
+                DropdownMenuItem(text = { Text("${t.nameKo} BEST", maxLines = 1) }, onClick = { open = false; onPick(i) },
+                    trailingIcon = if (compare == i) ({ Text("✓") }) else null)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Dot(c: NamedColor, selected: Boolean, onClick: () -> Unit) {
+    Swatch(
+        c.hex,
+        Modifier.size(48.dp).clip(CircleShape)
+            .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
+            .clickable(onClickLabel = c.name, onClick = onClick),
+        CircleShape,
+    )
 }
 
 /** Closed curve through the midpoints of [p], using each landmark as a control point, so the contour has no corners. */
@@ -247,15 +371,3 @@ private fun DrawScope.drawLip(path: Path, color: Color, intensity: Float, feathe
     }
 }
 
-/** Color dot; null = "no cape" (original photo), drawn as a split dot. */
-@Composable
-private fun Dot(c: NamedColor?, selected: Boolean, onClick: () -> Unit) {
-    val m = Modifier.size(48.dp).clip(CircleShape)
-        .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
-        .clickable(onClick = onClick)
-    if (c == null) {
-        Box(m.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.HideImage, "원본 사진", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    } else Swatch(c.hex, m, CircleShape)
-}

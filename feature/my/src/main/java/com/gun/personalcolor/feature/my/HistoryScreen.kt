@@ -67,9 +67,9 @@ fun HistoryScreen(
         when {
             state.loading -> Unit
             entries.isEmpty() -> EmptyState(
-                Icons.Outlined.History, "아직 진단 기록이 없어요", "진단 결과는 이 기기에만 저장돼요.",
+                Icons.Outlined.History, "아직 진단 기록이 없어요", "진단하면 여기에 쌓여요",
                 Modifier.padding(pad),
-                action = { PcButton("지금 진단하기", onAnalyze) },
+                action = { PcButton("진단하기", onAnalyze) },
             )
             else -> LazyColumn(
                 Modifier.fillMaxSize().readableWidth(),

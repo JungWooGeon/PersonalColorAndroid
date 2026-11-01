@@ -63,7 +63,7 @@ internal fun rememberImageSave(snackbar: SnackbarHostState): (name: String, rend
     val permission = rememberLauncherForActivityResult(RequestPermission()) { granted ->
         val p = pending; pending = null
         if (p == null) return@rememberLauncherForActivityResult
-        if (granted) run(p.first, p.second) else scope.launch { snackbar.showSnackbar("사진을 저장하려면 저장 권한이 필요해요") }
+        if (granted) run(p.first, p.second) else scope.launch { snackbar.showSnackbar("저장하려면 권한이 필요해요") }
     }
 
     return { name, render ->

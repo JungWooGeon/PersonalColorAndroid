@@ -116,10 +116,10 @@ object OutfitEngine {
             if (band.min == Int.MIN_VALUE) add("목도리")
         }
         val tip = when {
-            rainy -> "비 소식이 있어요(강수확률 ${weather!!.precipProb}%). 우산을 챙기고 밝은 톤 포인트로 기분을 올려 보세요."
-            strongUv -> "자외선이 강해요. 모자나 선글라스로 햇빛을 가려 주세요."
+            rainy -> "비 소식이 있어요(강수확률 ${weather!!.precipProb}%). 우산 챙기고, 밝은 포인트 컬러로 기분 전환해요."
+            strongUv -> "자외선이 강해요. 모자나 선글라스를 챙기세요."
             weather != null && weather.max - weather.min >= 10 -> "일교차가 커요. 벗고 입기 쉬운 겉옷을 챙기세요."
-            else -> "이번 달 무드 컬러 '${mood.name}'을(를) 작은 소품으로 더해 보세요."
+            else -> "이달의 무드 컬러 '${mood.name}', 소품으로 살짝 더해 봐요."
         }
         val shortName = { s: OutfitSlot -> if (s.fromCloset) s.color.name else s.item }
         return Outfit(

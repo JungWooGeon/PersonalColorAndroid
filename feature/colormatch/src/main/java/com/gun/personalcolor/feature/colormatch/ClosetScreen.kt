@@ -114,7 +114,7 @@ fun ClosetScreen(
         when {
             state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
             state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-                EmptyState(Icons.Rounded.Checkroom, "옷장이 비어 있어요", "컬러 체크 결과를 저장해 보세요", action = {
+                EmptyState(Icons.Rounded.Checkroom, "옷장이 비어 있어요", "컬러 체크에서 저장한 옷이 여기 모여요", action = {
                     PcButton("컬러 체크하기", onColorMatch, icon = Icons.Rounded.Colorize)
                 })
             }
@@ -152,7 +152,7 @@ fun ClosetScreen(
                             }
                             val count = { l: MatchLevel -> state.entries.count { it.level == l } }
                             Text(
-                                "어울리는 옷 ${count(MatchLevel.GOOD)} · 무난 ${count(MatchLevel.NEUTRAL)} · 피함 ${count(MatchLevel.AVOID)}",
+                                "어울림 ${count(MatchLevel.GOOD)} · 무난 ${count(MatchLevel.NEUTRAL)} · 피함 ${count(MatchLevel.AVOID)}",
                                 style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp),
                             )
                         }
@@ -180,7 +180,7 @@ fun ClosetScreen(
 
     if (confirmClear) ConfirmDialog(
         title = "옷장을 비울까요?",
-        message = "저장한 색 ${state.entries.size}개가 모두 삭제돼요.",
+        message = "저장한 옷 ${state.entries.size}개가 모두 지워져요.",
         confirm = "전체 삭제",
         onConfirm = { onClear(); confirmClear = false },
         onDismiss = { confirmClear = false },
@@ -271,7 +271,7 @@ private fun ItemSheet(e: ClosetEntry, onUpdate: (ClosetItem) -> Unit, onDelete: 
 
     if (confirmDelete) ConfirmDialog(
         title = "삭제할까요?",
-        message = "'${item.name}'을(를) 옷장에서 삭제해요.",
+        message = "'${item.name}' 항목이 옷장에서 지워져요.",
         confirm = "삭제",
         onConfirm = { confirmDelete = false; onDelete() },
         onDismiss = { confirmDelete = false },

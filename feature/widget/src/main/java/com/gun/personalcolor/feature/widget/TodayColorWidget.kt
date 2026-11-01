@@ -168,7 +168,7 @@ private fun NoTone() {
     val ink = GlanceTheme.colors.onBackground
     Column(GlanceModifier.fillMaxWidth().padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            "내 퍼스널컬러를 진단하고 오늘의 컬러를 받아보세요",
+            "진단하면 매일 내 컬러를 알려줘요",
             style = TextStyle(color = ink, fontSize = 13.sp, fontWeight = FontWeight.Medium),
             maxLines = 3,
         )

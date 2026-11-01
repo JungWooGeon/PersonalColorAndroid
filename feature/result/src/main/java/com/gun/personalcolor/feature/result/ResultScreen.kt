@@ -83,7 +83,6 @@ import kotlin.math.roundToInt
 internal fun ResultRoute(
     onBack: () -> Unit, onDrape: () -> Unit, onTone: (String) -> Unit, onRetryPhoto: () -> Unit, onColorMatch: () -> Unit,
     onWallpaper: (String) -> Unit = {},
-    onRefine: () -> Unit = {},
     vm: ResultViewModel = hiltViewModel(),
 ) {
     TrackScreen("result")
@@ -97,7 +96,7 @@ internal fun ResultRoute(
     val snackbar = remember { SnackbarHostState() }
     val saveImage = rememberImageSave(snackbar)
     val saveReport = {
-        gate(RewardRequest(key = "report", title = "광고 보고 저장할까요?", message = "내 톤의 컬러·메이크업·코디를 한 장으로 저장해요.") {
+        gate(RewardRequest(key = "report", title = "광고 보고 저장하기", message = "짧은 광고 하나만 보면 무료예요.") {
             analytics?.log("report_save", "tone" to tone.id)
             saveImage("personal-color-report") { ReportRenderer.render(context, tone) }
         })
@@ -118,7 +117,7 @@ internal fun ResultRoute(
             ) {
                 val summary: @Composable (Modifier) -> Unit = { m ->
                     Column(m, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(if (diagnosis.source == ResultSource.QUIZ) "셀프 진단 결과" else if (diagnosis.photoCount > 1) "사진 ${diagnosis.photoCount}장으로 분석한 나의 퍼스널컬러" else "AI가 분석한 나의 퍼스널컬러",
+                        Text(if (diagnosis.source == ResultSource.QUIZ) "셀프 진단 결과" else if (diagnosis.photoCount > 1) "사진 ${diagnosis.photoCount}장 분석 결과" else "AI 사진 진단 결과",
                             style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         ToneHeader(tone)
                         Actions(
@@ -128,8 +127,6 @@ internal fun ResultRoute(
                             onSetMyTone = { vm.setMyTone(tone.id) },
                         )
                         ReportActions(onReport = saveReport, onWallpaper = { onWallpaper(tone.id) })
-                        // Draping confirmation is how consultants decide; most accuracy gain for one extra minute.
-                        if (diagnosis.photo != null) RefineCard(onRefine)
                     }
                 }
                 val analysis: @Composable (Modifier) -> Unit = { m ->
@@ -150,14 +147,14 @@ internal fun ResultRoute(
                 Text("${tone.nameKo} 스타일 가이드", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
                 ToneDetails(tone)
 
-                SectionCard("다음으로 해 볼 것") {
-                    PcOutlinedButton("쇼핑할 때 컬러 체크하기", onColorMatch, Modifier.fillMaxWidth(), Icons.Outlined.Colorize)
+                SectionCard("다음 단계") {
+                    PcOutlinedButton("쇼핑할 때 컬러 체크", onColorMatch, Modifier.fillMaxWidth(), Icons.Outlined.Colorize)
                     PcOutlinedButton(if (diagnosis.source == ResultSource.AI) "다른 사진으로 다시 진단" else "사진으로 정밀 진단",
                         onRetryPhoto, Modifier.fillMaxWidth(), Icons.Outlined.Refresh)
                 }
                 NativeAdCard()
                 Text(
-                    "조명·카메라에 따라 결과가 달라질 수 있어요. 참고용으로 활용해 주세요.",
+                    "조명과 카메라에 따라 결과가 조금 달라질 수 있어요.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -175,7 +172,7 @@ private fun Actions(hasPhoto: Boolean, isMyTone: Boolean, onDrape: () -> Unit, o
             FilledTonalButton(onClick = onSetMyTone, enabled = !isMyTone, modifier = m.heightIn(min = 54.dp), shape = MaterialTheme.shapes.medium) {
                 Icon(if (isMyTone) Icons.Outlined.CheckCircle else Icons.Outlined.FavoriteBorder, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (isMyTone) "내 톤으로 저장됨" else "내 톤으로 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (isMyTone) "내 톤으로 설정됨" else "내 톤으로 설정", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         val drape: @Composable (Modifier) -> Unit = { m -> PcButton("드레이핑", onDrape, m, Icons.Outlined.Checkroom) }
@@ -223,7 +220,7 @@ private fun Scores(d: Diagnosis, content: ContentRepository, onTone: (String) ->
                 }
             }
         }
-        Text("2·3순위 톤의 컬러도 잘 어울릴 수 있어요", style = Muted)
+        Text("2·3순위 톤 컬러도 잘 어울릴 수 있어요", style = Muted)
     }
 }
 
@@ -242,7 +239,7 @@ private fun Basis(d: Diagnosis) {
                 f.lips?.let { Measured("입술", it) }
                 f.hair?.let { Measured("머리카락", it) }
             }
-            Text("조명 색을 보정한 값이에요.", style = Muted)
+            Text("조명 색을 보정한 값이에요", style = Muted)
         }
     }
 }
@@ -274,17 +271,3 @@ private fun Measured(label: String, lab: Lab) {
     }
 }
 
-@Composable
-private fun RefineCard(onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Tune, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                Text("정밀 진단으로 확인하기", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onTertiaryContainer, maxLines = 1)
-                Text("천을 대 보고 고르면 더 정확해져요 · 1분", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-        }
-    }
-}

@@ -58,7 +58,7 @@ object ColorMatcher {
         }
         val reason = when (level) {
             MatchLevel.GOOD -> "${nearGood.first} '${nearGood.second.name}'${gwa(nearGood.second.name)} ${if (dGood <= VERY_CLOSE) "아주 " else ""}비슷해요"
-            MatchLevel.AVOID -> "워스트 컬러 '${nearWorst!!.name}'에 가까워요"
+            MatchLevel.AVOID -> "WORST 컬러 '${nearWorst!!.name}'에 가까워요"
             MatchLevel.NEUTRAL -> neutralHint(lab, tone)
         }
 
@@ -88,7 +88,7 @@ object ColorMatcher {
 
     /** Best colors first, then makeup and hair colors as "also good". */
     private fun goodColors(t: Tone): List<Pair<String, NamedColor>> =
-        t.bestColors.map { "베스트 컬러" to it } +
+        t.bestColors.map { "BEST 컬러" to it } +
             t.makeup.lipColors.map { "추천 립 컬러" to it } +
             t.makeup.eyeColors.map { "추천 아이 컬러" to it } +
             t.makeup.blushColors.map { "추천 블러셔" to it } +
@@ -101,10 +101,10 @@ object ColorMatcher {
         return when {
             lab.l - meanL > LIGHTNESS_HINT -> "이 톤엔 조금 더 깊이 있는 색이 좋아요"
             meanL - lab.l > LIGHTNESS_HINT -> "이 톤엔 조금 더 밝은 색이 좋아요"
-            lab.chroma < NEUTRAL_CHROMA -> "무채색이라 다른 컬러와 매치하기 무난해요"
+            lab.chroma < NEUTRAL_CHROMA -> "무채색이라 어디에 매치해도 무난해요"
             lab.chroma - meanC > CHROMA_HINT -> "이 톤엔 조금 더 차분한 색이 좋아요"
             meanC - lab.chroma > CHROMA_HINT -> "이 톤엔 조금 더 선명한 색이 좋아요"
-            else -> "베스트 컬러와 어느 정도 비슷한 색이에요"
+            else -> "BEST 컬러와 조금 비슷해요"
         }
     }
 
