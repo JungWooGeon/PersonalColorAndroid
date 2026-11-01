@@ -66,7 +66,7 @@ class AnalyzePhotoUseCase @Inject constructor(
         onStep(3)
         val ok = outcomes.mapNotNull { o -> (o as? FaceOutcome.Done)?.let { d -> (d.result as? AnalysisResult.Success)?.let { d.photo to it } } }
         if (ok.isEmpty()) {
-            val failure = failureOf(outcomes.first())
+            val failure = outcomes.firstOrNull()?.let(::failureOf) ?: PhotoFailure.BadImage
             analytics.log("analysis_failed", "reason" to failure.toString())
             return failure
         }

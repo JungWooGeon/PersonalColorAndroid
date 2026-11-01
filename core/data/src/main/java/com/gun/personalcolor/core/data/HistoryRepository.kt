@@ -13,7 +13,7 @@ import javax.inject.Singleton
 
 @Singleton
 class HistoryRepository @Inject constructor(@HistoryStore private val store: DataStore<Preferences>) {
-    val entries: Flow<List<HistoryEntry>> = store.data.map { decode(it) }
+    val entries: Flow<List<HistoryEntry>> = store.safeData.map { decode(it) }
 
     suspend fun add(entry: HistoryEntry) = store.edit { it[KEY] = Json.encodeToString((listOf(entry) + decode(it)).take(MAX)) }
 

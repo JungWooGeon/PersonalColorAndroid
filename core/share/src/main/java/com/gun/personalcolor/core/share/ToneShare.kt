@@ -56,12 +56,18 @@ object ToneShare {
     private fun shareSheet(activity: Activity, tone: Tone, imageFile: File?) {
         val send = Intent(Intent.ACTION_SEND).apply {
             putExtra(Intent.EXTRA_TEXT, "나의 퍼스널컬러는 ${tone.nameKo}! 너의 컬러도 알려줘 👉 ${pageUrl(tone.id)}")
-            if (imageFile != null) {
+            // A file outside the FileProvider paths throws: share the text alone rather than crash.
+            val uri = imageFile?.let { f ->
+                runCatching { FileProvider.getUriForFile(activity, "${activity.packageName}.files", f) }
+                    .onFailure { Log.w("ToneShare", "image not shareable", it) }.getOrNull()
+            }
+            if (uri != null) {
                 type = "image/png"
-                putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(activity, "${activity.packageName}.files", imageFile))
+                putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } else type = "text/plain"
         }
-        activity.startActivity(Intent.createChooser(send, "결과 공유"))
+        runCatching { activity.startActivity(Intent.createChooser(send, "결과 공유")) }
+            .onFailure { Log.w("ToneShare", "share sheet failed", it) }
     }
 }

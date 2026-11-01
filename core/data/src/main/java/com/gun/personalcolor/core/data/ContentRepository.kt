@@ -1,6 +1,7 @@
 package com.gun.personalcolor.core.data
 
 import android.content.Context
+import android.util.Log
 import com.gun.personalcolor.core.model.Article
 import com.gun.personalcolor.core.model.QuizQuestion
 import com.gun.personalcolor.core.model.Tone
@@ -21,11 +22,12 @@ class ContentRepository @Inject constructor(@ApplicationContext private val cont
 
     val articles: List<Article> by lazy { json.decodeFromString<ArticlesFile>(read("articles.json")).articles }
 
-    fun tone(id: String): Tone = tones.first { it.id == id }
+    /** Unknown ids (stale data, bad deep link) fall back to the first tone instead of crashing. */
+    fun tone(id: String): Tone = toneOrNull(id) ?: tones.first().also { Log.w("Content", "unknown tone id: $id") }
     fun toneOrNull(id: String?): Tone? = tones.firstOrNull { it.id == id }
     fun article(id: String): Article? = articles.firstOrNull { it.id == id }
 
-    @Serializable private data class TonesFile(val tones: List<Tone>)
-    @Serializable private data class ArticlesFile(val articles: List<Article>)
-    @Serializable private data class QuizFile(val questions: List<QuizQuestion>)
+    @Serializable internal data class TonesFile(val tones: List<Tone>)
+    @Serializable internal data class ArticlesFile(val articles: List<Article>)
+    @Serializable internal data class QuizFile(val questions: List<QuizQuestion>)
 }

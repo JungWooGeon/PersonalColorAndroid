@@ -2,6 +2,7 @@ package com.gun.personalcolor.core.vision
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.android.gms.common.moduleinstall.ModuleInstall
 import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
 import com.google.mlkit.vision.common.InputImage
@@ -11,6 +12,8 @@ import com.gun.personalcolor.core.analysis.Rgb
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.max
@@ -20,6 +23,8 @@ import kotlin.math.roundToInt
 /** On-device garment cut-out (ML Kit subject segmentation). Nothing leaves the device. Call from a background dispatcher. */
 @Singleton
 class GarmentCutter @Inject constructor(@ApplicationContext private val context: Context) {
+    private companion object { const val TAG = "GarmentCutter" }
+
     private val segmenter by lazy {
         SubjectSegmentation.getClient(SubjectSegmenterOptions.Builder().enableForegroundBitmap().build())
     }
@@ -28,12 +33,19 @@ class GarmentCutter @Inject constructor(@ApplicationContext private val context:
     suspend fun cutout(bitmap: Bitmap, maxSide: Int = 1024): Bitmap? {
         // First use: Play services downloads the segmentation model on demand. Make sure it's installed (waits up to
         // ~45 s, usually a few seconds), then segment; one retry covers a just-finished install.
-        ensureModel()
-        val fg = segment(bitmap) ?: run {
-            Thread.sleep(1_500) // ponytail: blocks one background thread once; fine for a single user action
-            segment(bitmap)
-        } ?: return null
-        return runCatching { crop(fg, maxSide) }.getOrNull()
+        try {
+            ensureModel()
+            val fg = segment(bitmap) ?: run {
+                delay(1_500)
+                segment(bitmap)
+            } ?: return null
+            return crop(fg, maxSide)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {   // Play services missing/outdated, OOM on a huge photo: no cut-out, never a crash
+            Log.w(TAG, "cutout failed", e)
+            return null
+        }
     }
 
     /** True when the model is ready. Requests the download if needed and waits for it (bounded). */
@@ -55,7 +67,7 @@ class GarmentCutter @Inject constructor(@ApplicationContext private val context:
                     .addOnFailureListener { c.resume(false) }
             }
             if (ok) return true
-            Thread.sleep(1_500)
+            delay(1_500)
         }
         return false
     }
@@ -85,7 +97,10 @@ class GarmentCutter @Inject constructor(@ApplicationContext private val context:
     }
 
     /** Main garment color of a cut-out (or any photo): see [GarmentColor.dominant]. */
-    fun dominantColor(cutout: Bitmap): Rgb {
+    fun dominantColor(cutout: Bitmap): Rgb = runCatching { dominantColorOrThrow(cutout) }
+        .getOrElse { Log.w(TAG, "dominant color failed", it); Rgb(128, 128, 128) }
+
+    private fun dominantColorOrThrow(cutout: Bitmap): Rgb {
         // Downsample to ≤ ~40k pixels; plenty for a color estimate.
         val step = max(1, (kotlin.math.sqrt(cutout.width * cutout.height / 40_000.0)).roundToInt())
         val small = if (step == 1) cutout

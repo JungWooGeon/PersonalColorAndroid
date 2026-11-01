@@ -41,6 +41,7 @@ sealed interface FaceOutcome {
  */
 @Singleton
 class FaceAnalyzer @Inject constructor(@ApplicationContext private val context: Context) {
+    private companion object { const val FACE_LANDMARKS = 478 }
     private val landmarker by lazy {
         FaceLandmarker.createFromOptions(
             context,
@@ -60,6 +61,8 @@ class FaceAnalyzer @Inject constructor(@ApplicationContext private val context: 
         val faces = landmarker.detect(BitmapImageBuilder(bitmap).build()).faceLandmarks()
         if (faces.isEmpty()) return FaceOutcome.NoFace
         if (faces.size > 1) return FaceOutcome.ManyFaces
+        // The sampler reads iris landmarks up to index 477; a model without them can't be measured.
+        if (faces[0].size < FACE_LANDMARKS) return FaceOutcome.BadImage
         onStep(2)
         val points = faces[0].map { Offset(it.x(), it.y()) }
         val photo = FacePhoto(bitmap, points)

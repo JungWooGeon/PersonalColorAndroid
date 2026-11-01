@@ -27,7 +27,7 @@ class ClosetRepository(private val store: DataStore<Preferences>, private val di
     @Inject constructor(@ClosetStore store: DataStore<Preferences>, @ApplicationContext context: Context) :
         this(store, File(context.filesDir, "closet"))
 
-    val items: Flow<List<ClosetItem>> = store.data.map { decode(it) }
+    val items: Flow<List<ClosetItem>> = store.safeData.map { decode(it) }
 
     suspend fun add(item: ClosetItem) {
         var dropped = emptyList<ClosetItem>()

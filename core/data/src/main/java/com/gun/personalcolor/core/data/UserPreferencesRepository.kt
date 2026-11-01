@@ -17,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class UserPreferencesRepository @Inject constructor(@SettingsStore private val store: DataStore<Preferences>) {
-    val preferences: Flow<UserPreferences> = store.data.map { p ->
+    val preferences: Flow<UserPreferences> = store.safeData.map { p ->
         UserPreferences(
             themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             onboardingDone = p[ONBOARDING] ?: false,
