@@ -140,6 +140,12 @@ internal fun LicensesScreen(onBack: () -> Unit) {
                                 Text("CC BY 4.0", style = Muted)
                                 Text("오늘의 코디 날씨 정보에 사용해요.", style = MaterialTheme.typography.bodySmall)
                             }
+                            Spacer(Modifier.height(10.dp))
+                            SectionCard(null) {
+                                Text("Pretendard 글꼴", style = MaterialTheme.typography.titleMedium)
+                                Text("Kil Hyung-jin · SIL Open Font License 1.1", style = Muted)
+                                Text("앱과 공유 이미지의 글꼴이에요.", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 },

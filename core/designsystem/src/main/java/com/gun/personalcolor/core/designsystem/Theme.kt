@@ -15,6 +15,10 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.style.LineBreak
@@ -136,7 +140,18 @@ private val KoreanLineBreak = LineBreak.Paragraph.copy(wordBreak = LineBreak.Wor
 // Phrase breaking only kicks in for a Korean text locale, so set it explicitly (devices may be in another language).
 private fun TextStyle.kr() = copy(lineBreak = KoreanLineBreak, localeList = LocaleList("ko-KR"))
 private fun style(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) =
-    TextStyle(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = tracking.sp).kr()
+    TextStyle(fontFamily = Pretendard, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = tracking.sp).kr()
+
+/**
+ * Pretendard (SIL OFL 1.1), one variable file subset to KS X 1001 Hangul + Latin (~0.4 MB in the APK).
+ * Rarer syllables fall back to the system font glyph by glyph.
+ */
+@OptIn(ExperimentalTextApi::class)
+val Pretendard = FontFamily(
+    listOf(400, 500, 600, 700, 800).map { w ->
+        Font(R.font.pretendard, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    },
+)
 
 // BRAND_SYSTEM §2. Titles tighten by ~-0.02em; at most three weights per screen (400 · 600 · 800/700).
 private val Type = Typography(

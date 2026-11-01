@@ -62,11 +62,31 @@ data class TintyColors(val bodyTop: Color, val bodyBottom: Color, val scarf: Lis
             scarf = listOf(Color(0xFFFF8A6B), Color(0xFF9CC9EC), Color(0xFFD4A017), Color(0xFFB5006E)),
             blush = Color(0xFFF7A3A0),
         )
+
+        /** Not yet colored: a clear, pearly drop with a grey scarf. The result reveal paints it into the tone. */
+        val Clear = TintyColors(
+            bodyTop = Color(0xFFFBF9F7), bodyBottom = Color(0xFFD9D4E1),
+            scarf = listOf(Color(0xFFE6E2EA), Color(0xFFD3CEDA), Color(0xFFC2BCCA), Color(0xFFB1AABB)),
+            blush = Color(0xFFEFD6DA),
+        )
     }
 }
 
 /** Happy = wink. Loading → Thinking, result → Cheer, empty → Surprised, night/off → Sleep. */
 enum class TintyExpression { Default, Happy, Surprised, Thinking, Cheer, Sleep }
+
+/**
+ * What 틴티 holds (right hand) for each job: one illustration system, drawn in the character's own style and
+ * colored by its palette. [ColorCard] and [Fabric] use the `propColor` passed alongside. [TintyPropArt] draws one alone.
+ */
+enum class TintyProp { None, ColorCard, Palette, Magnifier, Eyedropper, Hanger, Book, Fabric, Cards, Crown, Lock }
+
+/**
+ * 틴티 getting painted from [from] into the colors it is drawn with: a paint drop falls on its head ([drop] 0→1),
+ * the color floods the body top-down ([flood] 0→1), then the four scarf chips flip one by one ([chips] 0→4).
+ * Lambdas are read while drawing, so driving them with Animatables only re-draws.
+ */
+class TintyPaint(val from: TintyColors, val drop: () -> Float, val flood: () -> Float, val chips: () -> Float)
 
 /**
  * 틴티, the brand character, drawn as vectors (crisp at any size). Square; fits the smaller side of [modifier].
@@ -78,7 +98,10 @@ fun Tinty(
     colors: TintyColors = TintyColors.Brand,
     expression: TintyExpression = TintyExpression.Default,
     animated: Boolean = true,
-) = TintyCanvas(modifier, colors, expression, animated, working = false)
+    prop: TintyProp = TintyProp.None,
+    propColor: Color = colors.scarf[0],
+    paint: TintyPaint? = null,
+) = TintyCanvas(modifier, colors, expression, animated, working = false, prop, propColor, paint)
 
 /** Screen-level wait: Tinty thinking (faster bounce, hopping color chips) with an optional muted line under it. */
 @Composable
@@ -87,16 +110,59 @@ fun TintyLoading(
     message: String? = null,
     colors: TintyColors = TintyColors.Brand,
     size: Dp = 132.dp,
+    /** The tool of the job being waited on (fabric while draping, hanger while cutting out clothes…). */
+    prop: TintyProp = TintyProp.None,
 ) {
     Column(
         modifier.semantics(mergeDescendants = true) { progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TintyCanvas(Modifier.size(size), colors, TintyExpression.Thinking, animated = true, working = true)
+        TintyCanvas(Modifier.size(size), colors, TintyExpression.Thinking, animated = true, working = true, prop = prop)
         if (message != null) Text(message, style = Muted, textAlign = TextAlign.Center)
     }
 }
+
+/** 틴티 at work (fast bounce, thinking face) holding [prop]: analysis, report rendering. */
+@Composable
+fun TintyWorking(modifier: Modifier = Modifier, colors: TintyColors = TintyColors.Brand, prop: TintyProp = TintyProp.Magnifier) =
+    TintyCanvas(modifier, colors, TintyExpression.Thinking, animated = true, working = true, prop = prop)
+
+/** Just the prop, in the character's style: spot icons for feature tiles and list rows. Square, fits [modifier]. */
+@Composable
+fun TintyPropArt(prop: TintyProp, modifier: Modifier = Modifier, colors: TintyColors = TintyColors.Brand, propColor: Color = colors.scarf[0]) {
+    val palette = remember(colors) { TintyPalette(colors, false) }
+    val paints = remember { BlurPaints() }
+    Canvas(modifier) {
+        val box = PROP_BOX[prop] ?: return@Canvas
+        val s = min(size.width / box.width, size.height / box.height)
+        translate(size.width / 2f - box.center.x * s, size.height / 2f - box.center.y * s) {
+            scale(s, s, pivot = Offset.Zero) { drawProp(prop, palette, paints, propColor) }
+        }
+    }
+}
+
+/**
+ * 틴티's silhouette (the drop with the brush-tip curl), faceless: the brand glyph for step dots, page dots and the
+ * tab indicator. Fits [modifier] (taller than wide, ~0.77:1). [brush] overrides [color].
+ */
+@Composable
+fun DropGlyph(color: Color, modifier: Modifier = Modifier, brush: Brush? = null, eyes: Boolean = false) = Canvas(modifier) { drawDropGlyph(color, brush, eyes = eyes) }
+
+/** [strokePx] draws the outline only (for an unselected icon). [eyes] adds 틴티's two eyes (a tiny face for icons). */
+fun DrawScope.drawDropGlyph(color: Color, brush: Brush? = null, strokePx: Float? = null, eyes: Boolean = false) {
+    val b = DROP_BOUNDS
+    val s = min((size.width - (strokePx ?: 0f)) / b.width, (size.height - (strokePx ?: 0f)) / b.height)
+    translate(size.width / 2f - b.center.x * s, size.height / 2f - b.center.y * s) {
+        scale(s, s, pivot = Offset.Zero) {
+            val style = if (strokePx != null) Stroke(strokePx / s, join = StrokeJoin.Round) else androidx.compose.ui.graphics.drawscope.Fill
+            if (brush != null) drawPath(Geo.body, brush, style = style) else drawPath(Geo.body, color, style = style)
+            if (eyes) { drawOval(INK, Offset(EX - GAP - 20f, EY - 30f), Size(40f, 56f)); drawOval(INK, Offset(EX + GAP - 20f, EY - 30f), Size(40f, 56f)) }
+        }
+    }
+}
+
+private val DROP_BOUNDS by lazy { Geo.body.getBounds() }
 
 /**
  * Still 틴티 drawn into [canvas] (an android.graphics.Canvas) at [left],[top] in a [sizePx] square:
@@ -105,14 +171,34 @@ fun TintyLoading(
 fun drawTintyOn(
     canvas: android.graphics.Canvas, left: Float, top: Float, sizePx: Float,
     colors: TintyColors = TintyColors.Brand, expression: TintyExpression = TintyExpression.Default,
+    prop: TintyProp = TintyProp.None, propColor: Color = colors.scarf[0],
 ) {
     val scope = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
     canvas.save(); canvas.translate(left, top)
     scope.draw(androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr,
         androidx.compose.ui.graphics.Canvas(canvas), Size(sizePx, sizePx)) {
-        drawTinty(TintyPalette(colors, expression == TintyExpression.Sleep), BlurPaints(), expression, -1f, working = false)
+        drawTinty(TintyPalette(colors, expression == TintyExpression.Sleep), BlurPaints(), expression, -1f, working = false, prop, propColor, null, null)
     }
     canvas.restore()
+}
+
+/**
+ * Living 틴티 for android.graphics.Canvas render loops (live wallpaper): palette and paints are built once,
+ * [draw] takes the loop's clock in seconds and plays the same idle motion as [Tinty] (negative = still).
+ */
+class TintyPainter(colors: TintyColors, private val expression: TintyExpression = TintyExpression.Default) {
+    private val palette = TintyPalette(colors, expression == TintyExpression.Sleep)
+    private val paints = BlurPaints()
+    private val scope = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
+
+    fun draw(canvas: android.graphics.Canvas, left: Float, top: Float, sizePx: Float, seconds: Float) {
+        canvas.save(); canvas.translate(left, top)
+        scope.draw(androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr,
+            androidx.compose.ui.graphics.Canvas(canvas), Size(sizePx, sizePx)) {
+            drawTinty(palette, paints, expression, if (seconds < 0f) -1f else seconds % CYCLE, working = false, TintyProp.None, Color.Unspecified, null, null)
+        }
+        canvas.restore()
+    }
 }
 
 /** [drawTintyOn] into a new transparent bitmap. */
@@ -125,14 +211,17 @@ fun tintyBitmap(sizePx: Int, colors: TintyColors = TintyColors.Brand, expression
 // Implementation. Geometry is a straight port of the character spec (_source/tinty.py), all in a 512×512 box.
 // Paths/brushes are built once; a frame only changes transforms and a few floats (no per-frame allocation).
 
-private const val CYCLE = 5.6f // s; every motion period divides it (0.8 / 1.4 / 2.8 / 5.6)
-private val INK = Color(0xFF2B2236)
+internal const val CYCLE = 5.6f // s; every motion period divides it (0.8 / 1.4 / 2.8 / 5.6)
+internal val INK = Color(0xFF2B2236)
 
 @Composable
-private fun TintyCanvas(modifier: Modifier, colors: TintyColors, expression: TintyExpression, animated: Boolean, working: Boolean) {
-    val resolver = LocalContext.current.contentResolver
-    val systemAnimOff = remember { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+private fun TintyCanvas(
+    modifier: Modifier, colors: TintyColors, expression: TintyExpression, animated: Boolean, working: Boolean,
+    prop: TintyProp = TintyProp.None, propColor: Color = colors.scarf[0], paint: TintyPaint? = null,
+) {
+    val systemAnimOff = rememberReducedMotion()
     val palette = remember(colors, expression) { TintyPalette(colors, expression == TintyExpression.Sleep) }
+    val fromPalette = remember(paint?.from, expression) { paint?.let { TintyPalette(it.from, expression == TintyExpression.Sleep) } }
     val paints = remember { BlurPaints() }
     val time: State<Float>? = if (animated && !systemAnimOff) {
         rememberInfiniteTransition("tinty").animateFloat(
@@ -140,10 +229,20 @@ private fun TintyCanvas(modifier: Modifier, colors: TintyColors, expression: Tin
         )
     } else null
     // The state is read inside the draw lambda, so animation only re-draws (no recomposition / relayout).
-    Canvas(modifier) { drawTinty(palette, paints, expression, time?.value ?: -1f, working) }
+    Canvas(modifier) { drawTinty(palette, paints, expression, time?.value ?: -1f, working, prop, propColor, paint, fromPalette) }
 }
 
-private fun DrawScope.drawTinty(p: TintyPalette, bp: BlurPaints, e: TintyExpression, t: Float, working: Boolean) {
+/** True when the user turned system animations off: loops stop, reveals jump to their end state. */
+@Composable
+fun rememberReducedMotion(): Boolean {
+    val resolver = LocalContext.current.contentResolver
+    return remember { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+}
+
+private fun DrawScope.drawTinty(
+    p: TintyPalette, bp: BlurPaints, e: TintyExpression, t: Float, working: Boolean,
+    prop: TintyProp, propColor: Color, paint: TintyPaint?, from: TintyPalette?,
+) {
     val moving = t >= 0f
     val ph = if (moving) 2f * PI.toFloat() * t / (if (working) 0.8f else 1.4f) else 0f
     val up = if (moving) 0.5f - 0.5f * cos(ph) else 0f
@@ -158,24 +257,66 @@ private fun DrawScope.drawTinty(p: TintyPalette, bp: BlurPaints, e: TintyExpress
         working -> ((t % 2.8f) / 2.8f - 0.5f) / 0.5f
         else -> (t - 2.0f) / 0.9f
     }
+    val flood = if (paint == null || from == null) 1f else paint.flood().coerceIn(0f, 1f)
+    val chips = if (paint == null || from == null) 4f else paint.chips().coerceIn(0f, 4f)
+    val base = if (from != null && flood < 1f) from else p
 
     val s = min(size.width, size.height) / 512f
     translate((size.width - 512f * s) / 2f, (size.height - 512f * s) / 2f) {
         scale(s, s, pivot = Offset.Zero) {
             // Ground shadow shrinks/fades as Tinty lifts off.
             scale(1f - 0.22f * up, 1f - 0.22f * up, pivot = Offset(256f, 476f)) {
-                bp.ground.color = p.deep.copy(alpha = 0.22f * (1f - 0.36f * up)).toArgb()
+                bp.ground.color = base.deep.copy(alpha = 0.22f * (1f - 0.36f * up)).toArgb()
                 drawContext.canvas.nativeCanvas.drawOval(146f, 464f, 366f, 488f, bp.ground)
             }
             translate(0f, -lift * up) {
                 scale(1f + 0.028f * sq, 1f - 0.032f * sq, pivot = Offset(256f, 450.56f)) {
-                    drawBody(p, bp, gloss)
+                    if (from != null && flood < 1f) {
+                        drawBody(from, bp, gloss)
+                        if (flood > 0f) clipPath(floodPath(flood)) { drawBody(p, bp, gloss) }
+                    } else drawBody(p, bp, gloss)
                     drawFace(p, bp, e, blink)
-                    drawScarf(p, bp, sway)
-                    drawHands(p, bp, e)
-                    drawExtras(p, bp, e, t, working)
+                    drawScarf(p, from, chips, bp, sway)
+                    if (prop != TintyProp.None && prop != TintyProp.Crown) drawProp(prop, p, bp, propColor)
+                    drawHands(if (flood < 0.6f) base else p, bp, e, prop)
+                    if (prop == TintyProp.Crown) drawProp(prop, p, bp, propColor)
+                    if (prop == TintyProp.None || e != TintyExpression.Thinking) drawExtras(p, bp, e, t, working) // a held prop replaces the thinking chips
                 }
             }
+            if (paint != null && from != null) drawPaintDrop(paint.drop(), flood, p)
+        }
+    }
+}
+
+/** Region already painted: everything above a wavy front with three drips, sweeping top → bottom. */
+private fun floodPath(f: Float): Path {
+    val front = 56f + f * 430f
+    return Path().apply {
+        moveTo(-20f, -40f); lineTo(532f, -40f)
+        var x = 532f
+        while (x >= -20f) {
+            var y = front + 9f * sin(x / 38f + f * 7f)
+            for (d in DRIPS) { val k = (x - d) / 20f; y += 30f * f.coerceAtMost(0.8f) * kotlin.math.exp(-k * k) }
+            lineTo(x, y); x -= 8f
+        }
+        close()
+    }
+}
+
+private val DRIPS = floatArrayOf(176f, 292f, 352f)
+
+/** The paint drop falling onto the head (0→1), then a splash of four droplets while the flood starts. */
+private fun DrawScope.drawPaintDrop(drop: Float, flood: Float, p: TintyPalette) {
+    if (drop <= 0f) return
+    val color = p.scarf[0]
+    if (drop < 1f) {
+        val y = -190f + 270f * drop * drop // gravity; lands with its bottom on the head
+        translate(252f, y) { scale(1.5f, 1.5f, pivot = Offset.Zero) { drawPath(Geo.drop, Brush.linearGradient(listOf(p.top, p.bottom), Offset(-20f, -40f), Offset(20f, 24f))) } }
+    } else if (flood < 0.4f) {
+        val k = flood / 0.4f
+        for (i in 0 until 4) {
+            val a = -PI.toFloat() * (0.15f + 0.233f * i)
+            drawCircle(if (i % 2 == 0) color else p.bottom, 9f * (1f - k), Offset(252f + 70f * k * cos(a), 100f + 70f * k * sin(a) + 40f * k * k))
         }
     }
 }
@@ -259,7 +400,10 @@ private fun DrawScope.openMouth() {
     drawOval(TONGUE, Offset(EX - 8f, EY + 40f - 5f), Size(16f, 10f))
 }
 
-private fun DrawScope.drawScarf(p: TintyPalette, bp: BlurPaints, sway: Float) {
+private fun DrawScope.drawScarf(p: TintyPalette, from: TintyPalette?, chips: Float, bp: BlurPaints, sway: Float) {
+    // Chip i flips (squashes to a line and back) from the old color to the new one while chips passes i..i+1.
+    fun local(i: Int) = (chips - i).coerceIn(0f, 1f)
+    fun chip(i: Int) = if (from == null || local(i) >= 0.5f) p.scarf[i] else from.scarf[i]
     // Drop shadow of the whole drape (band, tails, knot), offset 3 down.
     bp.drop.color = p.deep.copy(alpha = 0.28f).toArgb()
     val nc = drawContext.canvas.nativeCanvas
@@ -273,7 +417,8 @@ private fun DrawScope.drawScarf(p: TintyPalette, bp: BlurPaints, sway: Float) {
     clipPath(Geo.band) {
         for (i in 0 until 4) {
             val x0 = SEG_X[i]; val x1 = SEG_X[i + 1]
-            drawRect(p.scarf[i], Offset(x0, 370f), Size(x1 - x0 + 0.6f, 120f))
+            val flip = if (from == null) 1f else kotlin.math.abs(1f - 2f * local(i)).coerceAtLeast(0.08f)
+            scale(1f, flip, pivot = Offset(256f, 412f)) { drawRect(chip(i), Offset(x0, 370f), Size(x1 - x0 + 0.6f, 120f)) }
         }
         drawRect(Geo.bandShade, Offset(0f, 370f), Size(512f, 120f))
         drawRect(Geo.bandSides, Offset(100f, 370f), Size(312f, 120f))
@@ -281,10 +426,10 @@ private fun DrawScope.drawScarf(p: TintyPalette, bp: BlurPaints, sway: Float) {
         drawPath(Geo.bandHighlight, Color.White, alpha = 0.5f, style = Geo.line25)
     }
     rotate(sway, TAIL_PIVOT) {
-        drawPath(Geo.ribbonA, p.scarf[3]); drawPath(Geo.ribbonA, Geo.ribbonAShade, alpha = 0.8f)
-        drawPath(Geo.ribbonB, p.scarf[0]); drawPath(Geo.ribbonB, Geo.ribbonBShade, alpha = 0.8f)
+        drawPath(Geo.ribbonA, chip(3)); drawPath(Geo.ribbonA, Geo.ribbonAShade, alpha = 0.8f)
+        drawPath(Geo.ribbonB, chip(0)); drawPath(Geo.ribbonB, Geo.ribbonBShade, alpha = 0.8f)
     }
-    drawRoundRect(p.scarf[1], Offset(322f, 400f), Size(38f, 34f), CornerRadius(13f))
+    drawRoundRect(chip(1), Offset(322f, 400f), Size(38f, 34f), CornerRadius(13f))
     drawRoundRect(Geo.knotShade, Offset(322f, 400f), Size(38f, 34f), CornerRadius(13f))
     drawPath(Geo.knotSmile, Color.Black, alpha = 0.15f, style = Geo.line3)
 }
@@ -293,12 +438,14 @@ private val TAIL_PIVOT = Offset(340f, 420f)
 // Chip edges: cylinder foreshortening (256 + 152·sin a), outer chips stretched to the band ends.
 private val SEG_X = FloatArray(5) { i -> 256f + 152f * sin(-PI.toFloat() / 2 + PI.toFloat() * i / 4) }.also { it[0] = 90f; it[4] = 422f }
 
-private fun DrawScope.drawHands(p: TintyPalette, bp: BlurPaints, e: TintyExpression) {
-    val hands = when (e) {
+private fun DrawScope.drawHands(p: TintyPalette, bp: BlurPaints, e: TintyExpression, prop: TintyProp) {
+    val byFace = when (e) {
         TintyExpression.Cheer -> HANDS_CHEER
         TintyExpression.Thinking -> HANDS_THINK
         else -> HANDS_DEFAULT
     }
+    // A held prop takes the right hand (last triple); the left hand keeps the expression's pose.
+    val hands = PROP_HAND[prop]?.let { byFace.copyOf().apply { it.copyInto(this, 3) } } ?: byFace
     bp.drop.color = p.deep.copy(alpha = 0.28f).toArgb()
     for (h in 0 until hands.size / 3) translate(hands[h * 3], hands[h * 3 + 1] + 3f) {
         rotate(hands[h * 3 + 2], Offset.Zero) { drawContext.canvas.nativeCanvas.drawOval(-16f, -22f, 16f, 22f, bp.drop) }
@@ -349,19 +496,19 @@ private fun DrawScope.drawExtras(p: TintyPalette, bp: BlurPaints, e: TintyExpres
 }
 
 private val CHIPS = floatArrayOf(380f, 132f, 10f, 424f, 186f, 20f, 440f, 252f, 30f)
-private val CHIP_LINE = Color(0xFFC9C2CF)
+internal val CHIP_LINE = Color(0xFFC9C2CF)
 private val TONGUE = Color(0xFFF27D8C)
 private val WHITE40 = Color.White.copy(alpha = 0.4f).toArgb()
 private val WHITE50 = Color.White.copy(alpha = 0.5f).toArgb()
 
-private fun DrawScope.star(x: Float, y: Float, r: Float, c: Color, alpha: Float = 1f) =
+internal fun DrawScope.star(x: Float, y: Float, r: Float, c: Color, alpha: Float = 1f) =
     translate(x, y) { scale(r, r, pivot = Offset.Zero) { drawPath(Geo.star, c, alpha) } }
 
 private fun DrawScope.zee(x: Float, baseline: Float, h: Float, p: TintyPalette) =
     translate(x, baseline - h) { scale(h, h, pivot = Offset.Zero) { drawPath(Geo.zee, p.zee, alpha = 0.7f, style = Geo.zeeStroke) } }
 
 /** Color-dependent brushes, rebuilt only when colors/expression change. */
-private class TintyPalette(c: TintyColors, sleep: Boolean) {
+internal class TintyPalette(c: TintyColors, sleep: Boolean) {
     private val c1 = if (sleep) mix(c.bodyTop, Color(0xFFB9B3D6), 0.3f) else c.bodyTop
     private val c2 = if (sleep) mix(c.bodyBottom, Color(0xFF8C86B8), 0.3f) else c.bodyBottom
     val deep = mix(c2, Color(0xFF1B1530), 0.45f)
@@ -372,10 +519,12 @@ private class TintyPalette(c: TintyColors, sleep: Boolean) {
     private val arm = mix(c1, c2, 0.72f)
     val hand = boxGradient(listOf(mix(arm, Color.White, 0.12f), mix(arm, deep, 0.3f)), Rect(-16f, -22f, 16f, 22f), 0f, 0f, 1f, 1f)
     val zee = mix(c2, INK, 0.4f)
+    val top = c1
+    val bottom = c2
 }
 
 /** Native paints with a Gaussian blur (SVG feGaussianBlur / feDropShadow). Blur is GPU-supported on API 28+, crisp below. */
-private class BlurPaints {
+internal class BlurPaints {
     private fun blur(sigma: Float) = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         maskFilter = BlurMaskFilter((sigma - 0.5f) / 0.57735f, BlurMaskFilter.Blur.NORMAL) // Android: sigma = 0.57735·r + 0.5
     }
@@ -386,7 +535,7 @@ private class BlurPaints {
 }
 
 /** Static geometry (512 box), parsed once. */
-private object Geo {
+internal object Geo {
     private fun p(d: String): Path = PathParser().parsePathString(d).toPath()
 
     val body = p("M250 106 C266 84 286 70 308 66 C318 65 320 74 312 80 C300 90 296 100 300 114 " +
@@ -406,6 +555,8 @@ private object Geo {
     val arcDown = p("M-13 -5 Q0 13 13 -5")
     val star = p("M0 -1 Q.28 -.28 1 0 Q.28 .28 0 1 Q-.28 .28 -1 0 Q-.28 -.28 0 -1 Z")
     val zee = p("M0 0 L.8 0 L0 1 L.8 1")
+    /** Falling paint drop (tip up), centered on its round bottom. */
+    val drop = p("M0 -46 C6 -30 24 -14 24 4 C24 18 13 26 0 26 C-13 26 -24 18 -24 4 C-24 -14 -6 -30 0 -46 Z")
 
     val line3 = Stroke(3f, cap = StrokeCap.Round)
     val line25 = Stroke(2.5f)
