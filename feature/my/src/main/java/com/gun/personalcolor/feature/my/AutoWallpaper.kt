@@ -64,7 +64,7 @@ internal fun encodeStyle(style: WallpaperRenderer.Style, dark: Boolean) =
     if (dark && style.supportsDark) "${style.name}_DARK" else style.name
 
 internal fun decodeStyle(value: String): Pair<WallpaperRenderer.Style, Boolean> =
-    (WallpaperRenderer.Style.entries.firstOrNull { it.name == value.removeSuffix("_DARK") } ?: WallpaperRenderer.Style.AURORA) to
+    (WallpaperRenderer.Style.entries.firstOrNull { it.name == value.removeSuffix("_DARK") } ?: WallpaperRenderer.Style.TINTY) to
         value.endsWith("_DARK")
 
 /** Renders at full screen size off the main thread and sets it. False if unsupported or it failed. */

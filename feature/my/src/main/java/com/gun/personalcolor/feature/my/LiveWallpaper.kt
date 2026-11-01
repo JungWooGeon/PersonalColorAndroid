@@ -10,8 +10,10 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.SystemClock
 import android.service.wallpaper.WallpaperService
+import android.os.Bundle
 import android.util.Log
 import android.view.Choreographer
+import android.view.MotionEvent
 import android.view.SurfaceHolder
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.WallpaperRenderer
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlin.math.hypot
 
 /** What the live wallpaper draws. [toneId] null = follow my tone. */
 internal data class LiveChoice(val style: WallpaperRenderer.Style, val dark: Boolean, val toneId: String?)
@@ -34,7 +37,7 @@ internal object LiveWallpaperPrefs {
 
     fun read(context: Context): LiveChoice = sp(context).let { p ->
         val (style, dark) = decodeStyle(p.getString("style", null) ?: "")
-        LiveChoice(if (style.animated) style else WallpaperRenderer.Style.AURORA, dark, p.getString("tone", null))
+        LiveChoice(if (style.animated) style else WallpaperRenderer.Style.TINTY, dark, p.getString("tone", null))
     }
 
     fun write(context: Context, choice: LiveChoice) =
@@ -61,7 +64,8 @@ internal suspend fun liveTone(context: Context, choice: LiveChoice): Tone? = wit
 
 /**
  * Animated versions of the soft styles. Draws on a hardware canvas at ~30 fps only while visible; stops (and drops the
- * sensor) as soon as it's hidden. Subtle parallax from home-screen page scrolling and device tilt.
+ * sensor) as soon as it's hidden. Parallax from home-screen page scrolling and device tilt; a tap on the wallpaper sends
+ * a ripple (and 틴티 hops); coming back after a while (unlock) wakes 틴티 up.
  */
 class PersonalColorLiveWallpaper : WallpaperService() {
     override fun onCreateEngine(): Engine = LiveEngine()
@@ -91,9 +95,40 @@ class PersonalColorLiveWallpaper : WallpaperService() {
         private var frameNs = 0L
         private var frames = 0
 
+        private val live = WallpaperRenderer.Live()
+        private var tapAt = 0L
+        private var hiddenAt = 0L
+        private var wakeAt = 0L
+        private var downAt = 0L
+        private var downX = 0f
+        private var downY = 0f
+
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             setOffsetNotificationsEnabled(true)
+            setTouchEventsEnabled(true)
             load()
+        }
+
+        private fun tap(x: Float, y: Float) {
+            val now = SystemClock.uptimeMillis()
+            if (now - tapAt < 300) return // the launcher's tap command and our own touch tracking report the same tap
+            tapAt = now; live.tapX = x; live.tapY = y
+        }
+
+        /** Launchers send this for a tap on empty wallpaper. */
+        override fun onCommand(action: String?, x: Int, y: Int, z: Int, extras: Bundle?, resultRequested: Boolean): Bundle? {
+            if (action == WallpaperManager.COMMAND_TAP) tap(x.toFloat(), y.toFloat())
+            return null
+        }
+
+        /** Fallback for launchers that don't send the tap command: a short touch that didn't move. */
+        override fun onTouchEvent(event: MotionEvent) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { downAt = event.eventTime; downX = event.x; downY = event.y }
+                MotionEvent.ACTION_UP -> if (event.eventTime - downAt < 300 && hypot(event.x - downX, event.y - downY) < width * .03f) {
+                    tap(event.x, event.y)
+                }
+            }
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -106,13 +141,19 @@ class PersonalColorLiveWallpaper : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             if (visible) {
                 load() // picks up a new style/tone chosen in the app
+                // Back after a while (screen off / unlock): 틴티 wakes up. A quick app switch doesn't replay it.
+                val now = SystemClock.uptimeMillis()
+                if (!running && now - hiddenAt > WAKE_AFTER_MS) wakeAt = now
                 if (!running) {
                     running = true
                     choreographer.postFrameCallback(this)
                     rest = null
                     rotationSensor?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
                 }
-            } else stop()
+            } else {
+                if (running) hiddenAt = SystemClock.uptimeMillis()
+                stop()
+            }
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) = stop()
@@ -155,10 +196,13 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                 shownX += (tiltX - shownX) * .15f; shownY += (tiltY - shownY) * .15f // smooth the ~16 Hz sensor
                 val tilt = width * .02f
                 // Wraps daily; float seconds stay precise and the design changes at midnight anyway.
-                val t = (SystemClock.uptimeMillis() - start) % 86_400_000L / 1000f
+                val now = SystemClock.uptimeMillis()
+                val t = (now - start) % 86_400_000L / 1000f
+                live.tapAge = if (tapAt > 0 && now - tapAt < 2000) (now - tapAt) / 1000f else -1f
+                live.wakeAge = if (wakeAt > 0 && now - wakeAt < 3000) (now - wakeAt) / 1000f else -1f
                 WallpaperRenderer.draw(canvas, tone, choice.style, width, height, choice.dark, LocalDate.now(), t,
-                    dx = (.5f - pageX) * width * .05f - shownX * tilt, dy = -shownY * tilt,
-                    night = LocalTime.now().hour.let { it >= 22 || it < 6 }) // 틴티 sleeps at night
+                    dx = (.5f - pageX) * width * .08f - shownX * tilt, dy = -shownY * tilt,
+                    night = LocalTime.now().hour.let { it >= 22 || it < 6 }, live = live) // slower, sleepy 틴티 at night
             } finally {
                 holder.unlockCanvasAndPost(canvas)
             }
@@ -188,5 +232,6 @@ class PersonalColorLiveWallpaper : WallpaperService() {
         const val FRAME_DELAY_MS = 25L
         /** ~20° of tilt gives the full shift. */
         const val MAX_TILT = .35f
+        const val WAKE_AFTER_MS = 20_000L
     }
 }

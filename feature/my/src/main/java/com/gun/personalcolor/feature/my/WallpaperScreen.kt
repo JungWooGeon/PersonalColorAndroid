@@ -115,7 +115,7 @@ import javax.inject.Inject
 data class WallpaperUiState(
     val tones: List<Tone> = emptyList(),
     val tone: Tone? = null,
-    val style: Style = Style.AURORA,
+    val style: Style = Style.TINTY,
     val dark: Boolean = false,
     /** The user's own tone; daily auto wallpaper needs it. */
     val myTone: Tone? = null,
@@ -149,7 +149,7 @@ class WallpaperViewModel @Inject constructor(
             val (style, dark) = when {
                 live -> choice.style to choice.dark
                 p.autoWallpaper -> decodeStyle(p.autoWallpaperStyle)
-                else -> Style.AURORA to false
+                else -> Style.TINTY to false
             }
             val tone = content.toneOrNull(routeToneId ?: choice.toneId.takeIf { live } ?: p.myToneId) ?: content.tones.firstOrNull()
             _state.update { it.copy(tone = tone, style = style, dark = dark, live = live) }
@@ -168,7 +168,7 @@ class WallpaperViewModel @Inject constructor(
     }
 
     fun select(tone: Tone) = _state.update { it.copy(tone = tone) }
-    fun setLive(live: Boolean) = _state.update { it.copy(live = live, style = if (live && !it.style.animated) Style.AURORA else it.style) }
+    fun setLive(live: Boolean) = _state.update { it.copy(live = live, style = if (live && !it.style.animated) Style.TINTY else it.style) }
 
     /** Saves the look for the live wallpaper service; the daily photo wallpaper turns off (it would replace the live one). */
     internal fun saveLive(): LiveChoice {
@@ -419,9 +419,10 @@ private fun LiveArt(tone: Tone, style: Style, dark: Boolean, modifier: Modifier)
         val start = withFrameNanos { it }
         while (true) withFrameNanos { value = (it - start) / 1e9f }
     }
+    val live = remember { WallpaperRenderer.Live() }
     Canvas(modifier) {
         val t = time.value
-        drawIntoCanvas { WallpaperRenderer.draw(it.nativeCanvas, tone, style, size.width.toInt(), size.height.toInt(), dark, t = t) }
+        drawIntoCanvas { WallpaperRenderer.draw(it.nativeCanvas, tone, style, size.width.toInt(), size.height.toInt(), dark, t = t, live = live) }
     }
 }
 
