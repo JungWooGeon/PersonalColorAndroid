@@ -352,14 +352,17 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTon
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val look = remember(outfit, tone, weather) { moodLook(outfit, tone, weather) }
+    // The words follow the picture: they change when the new scene starts to fade in, not when it's asked for.
+    var shownOutfit by remember { mutableStateOf(outfit) }
+    val latest by androidx.compose.runtime.rememberUpdatedState(look to outfit)
     PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
         Column {
-            MoodHero(look, description = "${look.line}. ${outfit.headline}")
+            MoodHero(look, description = "${look.line}. ${outfit.headline}", onShown = { if (it == latest.first) shownOutfit = latest.second })
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // The text follows the board: the old look fades out, the new one fades in as its pieces land.
                 AnimatedContent(
-                    outfit,
-                    transitionSpec = { fadeIn(tween(320, delayMillis = 220)) togetherWith fadeOut(tween(160)) using SizeTransform(clip = false) },
+                    shownOutfit,
+                    transitionSpec = { fadeIn(tween(900, delayMillis = 500)) togetherWith fadeOut(tween(600)) using SizeTransform(clip = false) },
                     label = "lookText",
                 ) { outfit ->
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {

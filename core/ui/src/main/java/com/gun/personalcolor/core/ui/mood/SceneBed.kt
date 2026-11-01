@@ -125,6 +125,7 @@ object SceneBed {
         ctx: Context, pieces: List<Pair<String, Int>>, weather: String, line: String, caption: String,
         wPx: Int, hPx: Int, phase: Int, locked: Boolean, mini: Boolean, pill: String? = if (locked) "광고 보고 열기" else null,
         rounded: Boolean = true,
+        hero: Boolean = false,
     ): Bitmap {
         val d = ctx.resources.displayMetrics.density
         if (ko == null) ko = runCatching { ResourcesCompat.getFont(ctx, DsR.font.nanum_myeongjo) }.getOrNull() ?: Typeface.SERIF
@@ -133,8 +134,10 @@ object SceneBed {
         val size = L?.optJSONArray("size")
         val bw = size?.optDouble(0, 760.0)?.toFloat() ?: 760f
         val bh = size?.optDouble(1, 1088.0)?.toFloat() ?: 1088f
-        val miniL = L?.optJSONObject("mini")
-        val region = (if (mini) miniL?.optJSONArray("crop")?.let(::rect) else null) ?: RectF(0f, 0f, bw, bh)
+        // A cropped view ("mini" 1x1, "hero" 4:5 in-app/share) has its own crop, layouts and text, relative to the crop.
+        val miniL = (if (mini) L?.optJSONObject("mini") else if (hero) L?.optJSONObject("hero") else null)
+        val cropped = miniL != null
+        val region = miniL?.optJSONArray("crop")?.let(::rect) ?: RectF(0f, 0f, bw, bh)
 
         val out = Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
@@ -152,12 +155,12 @@ object SceneBed {
         val drawPieces = if (locked) TEASER else pieces
         if (drawPieces.isNotEmpty() && L != null) {
             val (key, by) = cast(drawPieces, mini)
-            val slots = (if (mini) miniL?.optJSONObject("layouts") else L.optJSONObject("layouts"))?.optJSONObject(key)
+            val slots = (if (cropped) miniL?.optJSONObject("layouts") else L.optJSONObject("layouts"))?.optJSONObject(key)
             if (slots != null) {
                 // Locked: the teaser pieces go on their own layer, which is frosted before it joins the scene.
                 val layer = if (locked) Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888) else null
                 val gc = if (layer != null) Canvas(layer).apply { concat(m) } else c
-                if (mini) { gc.save(); gc.translate(region.left, region.top) }
+                if (cropped) { gc.save(); gc.translate(region.left, region.top) }
                 val drawn = by.mapNotNull { (role, p) -> slots.optJSONObject(role)?.let { Triple(role, p, it) } }
                     .sortedBy { it.third.optInt("z") }
                 val shadow = L.optJSONObject("contactShadow")
@@ -167,7 +170,7 @@ object SceneBed {
                     // The rim only on shoes and bags: on a coat it reads as a sticker outline.
                     placeGarment(gc, art, role, slot, shadow, grade, role in setOf("shoes", "bag") && lum(p.second) < .12f)
                 }
-                if (mini) gc.restore()
+                if (cropped) gc.restore()
                 if (layer != null) frost(c, layer)
             }
         }
@@ -201,14 +204,14 @@ object SceneBed {
 
         // Text, in base px through the same matrix.
         c.save(); c.concat(m)
-        if (mini) c.translate(region.left, region.top)
-        val text = (if (mini) miniL?.optJSONObject("text") else L?.optJSONObject("text"))
+        if (cropped) c.translate(region.left, region.top)
+        val text = (if (cropped) miniL?.optJSONObject("text") else L?.optJSONObject("text"))
         var pillAt: RectF? = null
         if (!mini) text?.optJSONObject("line")?.let { t -> pillAt = drawLine(c, line, t, w) }
         text?.optJSONObject("caption")?.let { t -> drawCaption(c, caption, t, w) }
         pill?.let { label ->
             val ink = colorOf(text?.optJSONObject("line")?.opt("color") ?: text?.optJSONObject("caption")?.opt("color"), w, Color.rgb(0x4A, 0x3A, 0x2E))
-            drawPill(c, label, pillAt, if (mini) RectF(0f, 0f, region.width(), region.height()) else region, if (mini) 30f else 38f, ink, w == "night")
+            drawPill(c, label, pillAt, if (cropped) RectF(0f, 0f, region.width(), region.height()) else region, if (mini) 30f else 38f, ink, w == "night")
         }
         c.restore()
         return if (rounded) round(out, 18 * d) else out
