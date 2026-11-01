@@ -32,8 +32,8 @@
    "saturation": 0.84
   },
   "night": {
-   "multiply": "#B8B0AA",
-   "saturation": 0.8
+   "multiply": "#D2BEA8",
+   "saturation": 0.86
   }
  },
  "contactShadow": {
@@ -407,6 +407,297 @@
      56
     ],
     "size": 40,
+    "color": {
+     "sunny": "#6E5848",
+     "cloudy": "#625A53",
+     "rain": "#4E4D57",
+     "night": "#CFC6B8"
+    }
+   }
+  }
+ },
+ "hero": {
+  "crop": [
+   0,
+   0,
+   760,
+   950
+  ],
+  "layouts": {
+   "outer_top_bottom": {
+    "acc": {
+     "rect": [
+      551,
+      304,
+      136,
+      452
+     ],
+     "rot": 18,
+     "z": 0,
+     "hanger": null,
+     "hook": null
+    },
+    "outer": {
+     "rect": [
+      101,
+      359,
+      294,
+      474
+     ],
+     "rot": -6,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "bottom": {
+     "rect": [
+      359,
+      436,
+      226,
+      435
+     ],
+     "rot": 4,
+     "z": 2,
+     "hanger": null,
+     "hook": null
+    },
+    "top": {
+     "rect": [
+      242,
+      355,
+      291,
+      274
+     ],
+     "rot": 11,
+     "z": 3,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      205,
+      851,
+      244,
+      68
+     ],
+     "rot": 5,
+     "z": 5,
+     "hanger": null,
+     "hook": null
+    },
+    "bag": {
+     "rect": [
+      504,
+      751,
+      201,
+      183
+     ],
+     "rot": -10,
+     "z": 6,
+     "hanger": null,
+     "hook": null
+    }
+   },
+   "top_bottom": {
+    "acc": {
+     "rect": [
+      551,
+      304,
+      136,
+      452
+     ],
+     "rot": 18,
+     "z": 0,
+     "hanger": null,
+     "hook": null
+    },
+    "bottom": {
+     "rect": [
+      323,
+      388,
+      246,
+      474
+     ],
+     "rot": 5,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "top": {
+     "rect": [
+      176,
+      330,
+      301,
+      287
+     ],
+     "rot": -9,
+     "z": 2,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      192,
+      847,
+      244,
+      68
+     ],
+     "rot": -6,
+     "z": 5,
+     "hanger": null,
+     "hook": null
+    },
+    "bag": {
+     "rect": [
+      504,
+      733,
+      201,
+      183
+     ],
+     "rot": 8,
+     "z": 6,
+     "hanger": null,
+     "hook": null
+    }
+   },
+   "dress": {
+    "acc": {
+     "rect": [
+      551,
+      304,
+      136,
+      452
+     ],
+     "rot": 18,
+     "z": 0,
+     "hanger": null,
+     "hook": null
+    },
+    "dress": {
+     "rect": [
+      213,
+      326,
+      334,
+      539
+     ],
+     "rot": 4,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      165,
+      847,
+      244,
+      68
+     ],
+     "rot": -6,
+     "z": 5,
+     "hanger": null,
+     "hook": null
+    },
+    "bag": {
+     "rect": [
+      491,
+      733,
+      201,
+      183
+     ],
+     "rot": 8,
+     "z": 6,
+     "hanger": null,
+     "hook": null
+    }
+   },
+   "outer_dress": {
+    "acc": {
+     "rect": [
+      551,
+      304,
+      136,
+      452
+     ],
+     "rot": 18,
+     "z": 0,
+     "hanger": null,
+     "hook": null
+    },
+    "outer": {
+     "rect": [
+      110,
+      344,
+      302,
+      487
+     ],
+     "rot": -6,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "dress": {
+     "rect": [
+      309,
+      381,
+      302,
+      487
+     ],
+     "rot": 4,
+     "z": 2,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      192,
+      851,
+      244,
+      68
+     ],
+     "rot": 5,
+     "z": 5,
+     "hanger": null,
+     "hook": null
+    },
+    "bag": {
+     "rect": [
+      504,
+      751,
+      201,
+      183
+     ],
+     "rot": -10,
+     "z": 6,
+     "hanger": null,
+     "hook": null
+    }
+   }
+  },
+  "text": {
+   "line": {
+    "rect": [
+     63,
+     112,
+     600,
+     160
+    ],
+    "size": 56,
+    "lineSpacing": 1.25,
+    "color": {
+     "sunny": "#4A3A2E",
+     "cloudy": "#45403B",
+     "rain": "#33323A",
+     "night": "#EDE6DA"
+    }
+   },
+   "caption": {
+    "rect": [
+     63,
+     60,
+     600,
+     46
+    ],
+    "size": 36,
     "color": {
      "sunny": "#6E5848",
      "cloudy": "#625A53",

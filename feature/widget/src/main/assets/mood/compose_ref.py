@@ -41,7 +41,7 @@ LAYOUT = {
     'garmentGrade': {'sunny': {'multiply': '#FFEFDC', 'saturation': 0.90},
                      'cloudy': {'multiply': '#F2EEE8', 'saturation': 0.84},
                      'rain': {'multiply': '#EDEBEA', 'saturation': 0.84},
-                     'night': {'multiply': '#B8B0AA', 'saturation': 0.80}},
+                     'night': {'multiply': '#D2BEA8', 'saturation': 0.86}},
     'contactShadow': {'dx': 6, 'dy': 10, 'blur': 18, 'alpha': 0.35},
     'layouts': {
         'outer_top_bottom': {'acc': ACC(), 'outer': slot(.30, .63, 545, .62, 6, 1), 'bottom': slot(.64, .69, 500, .52, -4, 2),
@@ -63,6 +63,17 @@ LAYOUT = {
              'text': {'caption': {'rect': [36, 28, 400, 56], 'size': 40,
                                   'color': {'sunny': '#6E5848', 'cloudy': '#625A53', 'rain': '#4E4D57', 'night': '#CFC6B8'}}}},
 }
+
+def _hero(k=.87, crop=(0, 0, 760, 950)):
+    """4:5 hero: the 2x2 layouts scaled by k about the top centre, so every piece fits inside the crop."""
+    ox = (crop[2] - W * k) / 2
+    sc = lambda s: dict(s, rect=[round(s['rect'][0] * k + ox), round(s['rect'][1] * k), round(s['rect'][2] * k), round(s['rect'][3] * k)])
+    lays = {n: {r: sc(s) for r, s in lay.items()} for n, lay in LAYOUT['layouts'].items()}
+    for lay in lays.values():
+        for s in lay.values():
+            x, y, w, h = s['rect']; assert x >= 0 and y >= 0 and x + w <= crop[2] and y + h <= crop[3], s
+    return {'crop': list(crop), 'layouts': lays, 'text': json.loads(json.dumps(LAYOUT['text']))}
+LAYOUT['hero'] = _hero()
 
 # ---------------------------------------------------------------- procedural helpers (from vA/mood.py) ----
 def blur(a, s):
@@ -147,8 +158,8 @@ WX = {
                    leak=((1, .8, .6), .08), lamp=None, soft=3.2, lightcol=(1, .95, .88), bounce=(.20, .14, .12)),
     'rain': dict(sheet=(234, 227, 218), sun=(1.0, 1.0, 1.0), fold=1.35, tex=1.9, sat=.82, mul=(.985, .99, 1.0), add=(.012, .010, .012),
                  leak=((.55, .7, .95), .08), lamp=((1, .62, .30), .62, (.98, .16, .70, .60)), soft=1.0, lightcol=(.85, .92, 1.0), bounce=(.35, .22, .16)),
-    'night': dict(sheet=(150, 146, 140), sun=(.60, .63, .72), fold=1.4, tex=1.6, sat=.80, mul=(.98, .97, 1.04), add=(.012, .012, .03),
-                  leak=None, lamp=((1, .58, .28), .50, (1.0, .08, .62, .50)), soft=1.4, lightcol=(.78, .86, 1.0), bounce=(.30, .18, .12)),
+    'night': dict(sheet=(150, 128, 110), sun=(.56, .50, .48), fold=1.4, tex=1.6, sat=.86, mul=(1.0, .97, .95), add=(.016, .012, .022),
+                  leak=((.45, .58, .95), .10), lamp=((1, .68, .34), .72, (.80, .62, .55, .45)), soft=1.4, lightcol=(1, .78, .48), bounce=(.26, .14, .08)),
 }
 
 def build_base(wx):
@@ -224,21 +235,23 @@ def text_draw(img, spec, txt, font, wx, spacing=1.25):
     for i, ln in enumerate(txt.split('\n')):
         dr.text((x, y + i * spec['size'] * spacing), ln, font=font, fill=col, anchor='la')
 
-def compose_A(look, wx, phase=0, line='', caption='', mini=False, L=None):
+def compose_A(look, wx, phase=0, line='', caption='', mini=False, L=None, view=None):
+    """view: None (2x2), 'mini' (1x1) or 'hero' (4:5 in-app hero / share print); crop views use crop-local rects."""
+    view = view or ('mini' if mini else None)
     """look: {role: (garment_key, '#RRGGBB')} with roles outer/top/bottom/dress/shoes/bag/acc."""
     L = L or json.loads((HERE / 'A_layout.json').read_text())
     roles = set(look)
-    if mini:
+    if view == 'mini':
         lay = L['mini']['layouts']['dress' if 'dress' in roles else 'top_bottom']
     else:
-        lay = L['layouts'][('outer_' if 'outer' in roles else '') + ('dress' if 'dress' in roles else 'top_bottom')]
+        lay = (L[view] if view else L)['layouts'][('outer_' if 'outer' in roles else '') + ('dress' if 'dress' in roles else 'top_bottom')]
         if 'outer' in roles and 'dress' not in roles and 'top' not in roles:
-            lay = L['layouts']['top_bottom']; look = {('top' if r == 'outer' else r): v for r, v in look.items()}
+            lay = (L[view] if view else L)['layouts']['top_bottom']; look = {('top' if r == 'outer' else r): v for r, v in look.items()}
     canvas = Image.open(HERE / f'A_{wx}_base.webp').convert('RGBA')
     # light is NOT premultiplied: upscale each channel on its own (Android: decode with inPremultiplied = false)
     light = Image.merge('RGBA', [c.resize(canvas.size, Image.BILINEAR) for c in Image.open(HERE / f'A_{wx}_light{phase}.webp').convert('RGBA').split()])
-    if mini:
-        cx, cy, cw, ch = L['mini']['crop']; canvas = canvas.crop((cx, cy, cx + cw, cy + ch)); light = light.crop((cx, cy, cx + cw, cy + ch))
+    if view:
+        cx, cy, cw, ch = L[view]['crop']; canvas = canvas.crop((cx, cy, cx + cw, cy + ch)); light = light.crop((cx, cy, cx + cw, cy + ch))
     cs, gg = L['contactShadow'], L['garmentGrade'][wx]
     for role, s in sorted(lay.items(), key=lambda kv: kv[1]['z']):
         if role not in look: continue
@@ -267,9 +280,9 @@ def compose_A(look, wx, phase=0, line='', caption='', mini=False, L=None):
     d = np.hypot(xx - ww / 2, yy - hh / 2) / np.hypot(ww / 2, hh / 2)                    # radial gradient, stops .45 -> 1
     img = img * (1 - L['vignette'] * np.clip((d - .45) / .55, 0, 1))[..., None]
     out = Image.fromarray((np.clip(img, 0, 1) * 255 + .5).astype(np.uint8))
-    T = L['mini']['text'] if mini else L['text']
+    T = L[view]['text'] if view else L['text']
     if caption: text_draw(out, T['caption'], caption, ImageFont.truetype(SERIF_IT[0], T['caption']['size'], index=SERIF_IT[1]), wx)
-    if line and not mini: text_draw(out, T['line'], line, ImageFont.truetype(str(MYEONG), T['line']['size']), wx, T['line']['lineSpacing'])
+    if line and view != 'mini': text_draw(out, T['line'], line, ImageFont.truetype(str(MYEONG), T['line']['size']), wx, T['line']['lineSpacing'])
     return out
 
 TODAY = {'outer': ('coat', '#1C2541'), 'top': ('knit', '#C41E3A'), 'bottom': ('long_skirt', '#9B9FA7'),
@@ -289,6 +302,8 @@ if __name__ == '__main__':
     for wx in WEATHERS:
         line, cap = COPY[wx]
         compose_A(TODAY, wx, 0, line, cap).save(HERE / f'reference/A_{wx}.png')
+    for wx in ('rain', 'sunny'):
+        compose_A(TODAY, wx, 0, *COPY[wx], view='hero').save(HERE / f'reference/A_hero_{wx}.png')
     compose_A(TODAY, 'rain', 0, '', '9° · rain', mini=True).save(HERE / 'reference/A_rain_mini.png')
     compose_A(SPRING, 'sunny', 0, '햇살 아래,\n복숭아 한 조각', 'Apr 6 · 17° · sunny day look').save(HERE / 'reference/A_sunny_spring.png')
     print('ok')
