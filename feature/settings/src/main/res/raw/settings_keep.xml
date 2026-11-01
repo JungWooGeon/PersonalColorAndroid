@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LicensesScreen looks up the app's generated raw/aboutlibraries by name; keep it from resource shrinking. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/aboutlibraries" />

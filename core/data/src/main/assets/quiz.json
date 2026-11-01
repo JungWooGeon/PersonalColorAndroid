@@ -1,0 +1,129 @@
+{
+  "questions": [
+    {
+      "id": "vein",
+      "text": "자연광에서 손목 안쪽 혈관 색은 어떤가요?",
+      "hint": "형광등이 아닌 창가 자연광에서 확인해 주세요.",
+      "options": [
+        {"text": "초록빛에 가까워요", "warmth": 1.0, "value": 0.0, "clarity": 0.0},
+        {"text": "파란빛이나 보랏빛에 가까워요", "warmth": -1.0, "value": 0.0, "clarity": 0.0},
+        {"text": "초록과 파랑이 섞여서 잘 모르겠어요", "warmth": 0.0, "value": 0.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "jewelry",
+      "text": "금 액세서리와 은 액세서리 중 어느 쪽이 더 잘 어울리나요?",
+      "hint": "맨얼굴에 대 보고 피부가 더 맑아 보이는 쪽을 골라 주세요.",
+      "options": [
+        {"text": "금(골드)이 더 잘 어울려요", "warmth": 1.0, "value": 0.0, "clarity": 0.0},
+        {"text": "은(실버)이 더 잘 어울려요", "warmth": -1.0, "value": 0.0, "clarity": 0.0},
+        {"text": "둘 다 비슷하게 어울려요", "warmth": 0.0, "value": 0.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "sun",
+      "text": "햇볕에 오래 있으면 피부가 어떻게 변하나요?",
+      "hint": "",
+      "options": [
+        {"text": "금방 갈색으로 고르게 타요", "warmth": 0.8, "value": -0.4, "clarity": 0.0},
+        {"text": "빨갛게 익고 잘 타지는 않아요", "warmth": -0.8, "value": 0.4, "clarity": 0.0},
+        {"text": "빨개졌다가 조금 타요", "warmth": 0.0, "value": 0.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "hair",
+      "text": "염색하지 않은 원래 머리카락 색은 어떤가요?",
+      "hint": "햇빛 아래에서 비쳐 보이는 색을 떠올려 주세요.",
+      "options": [
+        {"text": "밝은 갈색이고 노랗거나 붉게 비쳐요", "warmth": 0.6, "value": 0.8, "clarity": 0.0},
+        {"text": "짙은 갈색이고 붉은 기가 돌아요", "warmth": 0.6, "value": -0.8, "clarity": 0.0},
+        {"text": "부드러운 회갈색, 잿빛 갈색이에요", "warmth": -0.6, "value": 0.8, "clarity": 0.0},
+        {"text": "새까만 흑발에 가까워요", "warmth": -0.6, "value": -0.8, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "eye",
+      "text": "눈동자 색과 눈빛은 어떤 편인가요?",
+      "hint": "거울로 눈동자와 흰자의 경계를 살펴봐 주세요.",
+      "options": [
+        {"text": "밝은 갈색이고 맑게 반짝여요", "warmth": 0.3, "value": 0.6, "clarity": 0.5},
+        {"text": "흑갈색이고 흰자와 대비가 또렷해요", "warmth": -0.3, "value": -0.6, "clarity": 0.5},
+        {"text": "부드러운 갈색이고 경계가 은은해요", "warmth": 0.3, "value": 0.3, "clarity": -0.5},
+        {"text": "짙은 회갈색이고 차분한 느낌이에요", "warmth": -0.3, "value": -0.3, "clarity": -0.5}
+      ]
+    },
+    {
+      "id": "skin",
+      "text": "맨얼굴의 피부 밝기는 어느 쪽에 가까운가요?",
+      "hint": "파운데이션 호수를 떠올려도 좋아요.",
+      "options": [
+        {"text": "밝고 하얀 편이에요 (13~21호)", "warmth": 0.0, "value": 1.0, "clarity": 0.0},
+        {"text": "중간 정도예요 (21~23호)", "warmth": 0.0, "value": 0.0, "clarity": 0.0},
+        {"text": "어둡고 깊은 편이에요 (23호 이상)", "warmth": 0.0, "value": -1.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "white",
+      "text": "새하얀 흰색과 아이보리 중 어떤 옷을 입었을 때 칭찬을 더 받나요?",
+      "hint": "",
+      "options": [
+        {"text": "새하얀 흰색이 더 깨끗해 보인대요", "warmth": -0.8, "value": 0.0, "clarity": 0.3},
+        {"text": "아이보리나 크림색이 더 잘 어울린대요", "warmth": 0.8, "value": 0.0, "clarity": -0.3},
+        {"text": "둘 다 비슷해요", "warmth": 0.0, "value": 0.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "vivid",
+      "text": "어떤 색 옷을 입었을 때 얼굴이 가장 살아 보이나요?",
+      "hint": "",
+      "options": [
+        {"text": "쨍하고 선명한 원색", "warmth": 0.0, "value": 0.0, "clarity": 1.0},
+        {"text": "회색빛이 섞인 차분한 색", "warmth": 0.0, "value": 0.0, "clarity": -1.0},
+        {"text": "연하고 밝은 파스텔 색", "warmth": 0.0, "value": 0.8, "clarity": 0.0},
+        {"text": "짙고 깊은 어두운 색", "warmth": 0.0, "value": -0.8, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "black_brown",
+      "text": "블랙과 브라운 중 어떤 옷이 더 잘 어울리나요?",
+      "hint": "",
+      "options": [
+        {"text": "블랙이 더 세련돼 보여요", "warmth": -0.6, "value": 0.0, "clarity": 0.6},
+        {"text": "브라운이나 카멜이 더 편안해 보여요", "warmth": 0.6, "value": 0.0, "clarity": -0.6},
+        {"text": "둘 다 무거워 보여서 밝은 색이 나아요", "warmth": 0.0, "value": 0.8, "clarity": 0.0},
+        {"text": "둘 다 잘 소화하는 편이에요", "warmth": 0.0, "value": -0.8, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "lip",
+      "text": "아무것도 바르지 않은 입술 색은 어떤가요?",
+      "hint": "",
+      "options": [
+        {"text": "코랄이나 살구빛이 돌아요", "warmth": 0.8, "value": 0.0, "clarity": 0.0},
+        {"text": "푸른 기가 도는 핑크나 장밋빛이에요", "warmth": -0.8, "value": 0.0, "clarity": 0.0},
+        {"text": "옅고 혈색이 적은 편이에요", "warmth": 0.0, "value": 0.5, "clarity": -0.5},
+        {"text": "진하고 또렷한 편이에요", "warmth": 0.0, "value": -0.5, "clarity": 0.5}
+      ]
+    },
+    {
+      "id": "cheek",
+      "text": "운동하거나 더울 때 볼은 어떤 색으로 달아오르나요?",
+      "hint": "",
+      "options": [
+        {"text": "복숭아빛이나 주황빛으로 물들어요", "warmth": 0.8, "value": 0.0, "clarity": 0.0},
+        {"text": "분홍빛이나 붉은빛으로 달아올라요", "warmth": -0.8, "value": 0.0, "clarity": 0.0},
+        {"text": "거의 붉어지지 않아요", "warmth": 0.0, "value": 0.0, "clarity": 0.0}
+      ]
+    },
+    {
+      "id": "contrast",
+      "text": "피부·머리카락·눈동자 사이의 대비는 어떤 편인가요?",
+      "hint": "흑백 사진으로 찍어 보면 쉽게 알 수 있어요.",
+      "options": [
+        {"text": "대비가 강하고 이목구비가 또렷해요", "warmth": 0.0, "value": -0.3, "clarity": 1.0},
+        {"text": "중간 정도예요", "warmth": 0.0, "value": 0.0, "clarity": 0.0},
+        {"text": "대비가 약하고 전체적으로 부드러워요", "warmth": 0.0, "value": 0.3, "clarity": -1.0}
+      ]
+    }
+  ]
+}

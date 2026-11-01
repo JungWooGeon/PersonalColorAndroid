@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_today_color_label">오늘의 컬러</string>
+    <string name="widget_today_color_description">내 퍼스널컬러에 어울리는 오늘의 컬러를 매일 홈 화면에서 확인해요</string>
+    <string name="widget_preview_name">코랄 핑크</string>
+</resources>

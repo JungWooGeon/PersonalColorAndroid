@@ -1,21 +1,19 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Room instantiates generated *_Impl databases by reflection (WorkManager's WorkDatabase, pulled in by the ads SDK).
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep line numbers for readable stack traces (Play Console crash reports).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# MediaPipe builds its graph config from protobuf-lite messages via reflection, and calls Java from JNI.
+-keep class com.google.mediapipe.** { *; }
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+-dontwarn com.google.mediapipe.**
+# Flogger (used by MediaPipe) finds its caller on the stack by class name, so its names must survive R8.
+-keep class com.google.common.flogger.** { *; }
+-dontwarn com.google.common.flogger.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# OkHttp (via Kakao SDK) probes optional TLS providers that aren't on Android; safe to ignore.
+-dontwarn org.bouncycastle.jsse.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**

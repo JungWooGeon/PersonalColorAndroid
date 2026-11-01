@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Daily "오늘의 컬러·코디" notification (asked for on API 33+ when the user turns it on). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+</manifest>

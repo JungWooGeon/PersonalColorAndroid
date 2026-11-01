@@ -1,0 +1,189 @@
+package com.gun.personalcolor.core.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.gun.personalcolor.core.model.NamedColor
+import com.gun.personalcolor.core.model.Tone
+import kotlin.math.floor
+import kotlin.math.max
+
+fun hexColor(hex: String) = Color(android.graphics.Color.parseColor(hex))
+
+/** Readable text color on top of [bg]. */
+fun contentColorOn(bg: Color) = if (bg.luminance() > 0.45f) Color(0xFF1D1B1A) else Color.White
+
+/** Signature color of a tone: its most vivid mid-lightness best color (never white/black). */
+val Tone.accent get() = bestColors.map { hexColor(it.hex) }.maxBy { c ->
+    val max = maxOf(c.red, c.green, c.blue); val min = minOf(c.red, c.green, c.blue)
+    val l = (max + min) / 2
+    val sat = if (max == min) 0f else (max - min) / (1 - kotlin.math.abs(2 * l - 1))
+    sat * (1 - kotlin.math.abs(l - 0.55f))
+}
+val Tone.gradient get() = Brush.linearGradient(bestColors.take(4).map { hexColor(it.hex) })
+
+val SEASON_KO = mapOf("spring" to "봄", "summer" to "여름", "autumn" to "가을", "winter" to "겨울")
+val Tone.seasonKo get() = SEASON_KO[season].orEmpty()
+val Tone.temperatureKo get() = if (isWarm) "웜톤" else "쿨톤"
+
+/** Round gradient avatar of a tone's best colors. */
+@Composable
+fun ToneAvatar(tone: Tone, size: Dp = 44.dp, modifier: Modifier = Modifier) =
+    Box(modifier.size(size).clip(CircleShape).background(tone.gradient))
+
+/**
+ * Labelled swatches that fill the available width: as many columns as fit (min [minCell]), at least [minColumns].
+ * Names stay on one line, shrinking (down to 8sp) to fit the cell.
+ */
+@Composable
+fun SwatchGrid(colors: List<NamedColor>, modifier: Modifier = Modifier, minCell: Dp = 54.dp, minColumns: Int = 4, maxColumns: Int = 8, showNames: Boolean = true) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val gap = 10.dp
+        val fit = floor((maxWidth + gap) / (minCell + gap)).toInt().coerceIn(minColumns, max(minColumns, maxColumns))
+        // Nudge ±1 column if that avoids a ragged last row (12 → 6×2), keeping cells ≥ 44dp.
+        val cols = listOf(fit, fit + 1, fit - 1).firstOrNull { c ->
+            c >= minColumns && colors.size % c == 0 && (maxWidth - gap * (c - 1)) / c >= 44.dp
+        } ?: fit
+        val cell = (maxWidth - gap * (cols - 1)) / cols
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            colors.chunked(cols).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    row.forEach { c ->
+                        Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Swatch(c.hex, Modifier.fillMaxWidth().aspectRatio(1f))
+                            if (showNames) {
+                                Spacer(Modifier.height(4.dp))
+                                val label = MaterialTheme.typography.labelSmall.copy(textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                // One line (shrinking a little) when it can fit; long names wrap between words instead of being cut.
+                                if (fitsOneLine(c.name, cell)) {
+                                    BasicText(c.name, style = label, maxLines = 1,
+                                        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = label.fontSize))
+                                } else {
+                                    Text(splitAtMiddleSpace(c.name), style = label.copy(fontSize = 10.sp, lineHeight = 12.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Rough width of a Korean label at the smallest size (8.5sp per syllable, ~3dp per space).
+private fun fitsOneLine(name: String, cell: Dp) = name.count { it != ' ' } * 8.5f + name.count { it == ' ' } * 3f <= cell.value
+
+/** "그레이시 블루" → "그레이시\n블루": break at the space nearest the middle (never inside a word). */
+private fun splitAtMiddleSpace(name: String): String {
+    val spaces = name.indices.filter { name[it] == ' ' }
+    val at = spaces.minByOrNull { kotlin.math.abs(it - name.length / 2) } ?: return name
+    return name.substring(0, at) + "\n" + name.substring(at + 1)
+}
+
+/** Rounded color square with a hairline border (so whites show on white). */
+@Composable
+fun Swatch(hex: String, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(14.dp)) {
+    Box(modifier.clip(shape).background(hexColor(hex)).border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape))
+}
+
+/** Overlapping color dots. */
+@Composable
+fun ColorDots(colors: List<NamedColor>, size: Dp = 16.dp) {
+    Row(horizontalArrangement = Arrangement.spacedBy((-4).dp)) {
+        colors.forEach {
+            Box(Modifier.size(size).clip(CircleShape).background(hexColor(it.hex)).border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape))
+        }
+    }
+}
+
+/** Thin strip of all best colors. */
+@Composable
+fun GradientStrip(tone: Tone, modifier: Modifier = Modifier, height: Dp = 10.dp) {
+    Row(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(height / 2))) {
+        tone.bestColors.forEach { Box(Modifier.weight(1f).fillMaxHeight().background(hexColor(it.hex))) }
+    }
+}
+
+/** Small rounded label, e.g. "#화사한". */
+@Composable
+fun Tag(text: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surfaceVariant) {
+    Surface(modifier, shape = RoundedCornerShape(50), color = color) {
+        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+    }
+}
+
+/** Banner + season line + name + keyword tags + summary. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ToneHeader(tone: Tone, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Box(Modifier.fillMaxWidth().height(120.dp).clip(MaterialTheme.shapes.extraLarge).background(tone.gradient))
+        Spacer(Modifier.height(16.dp))
+        Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tone.nameKo, style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            tone.keywords.forEach { Tag("#$it") }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(tone.summary, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** Compact list card for a tone: avatar, names, summary, color strip. */
+@Composable
+fun ToneCard(tone: Tone, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable (() -> Unit)? = null) {
+    Surface(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ToneAvatar(tone)
+                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                    Text(tone.nameKo, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                trailing?.invoke()
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(tone.summary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(12.dp))
+            GradientStrip(tone)
+        }
+    }
+}

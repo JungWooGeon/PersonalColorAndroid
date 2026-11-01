@@ -1,0 +1,53 @@
+{
+  "note": "Our own seasonal mood palette for outfit accents. Not an official trend/Pantone forecast.",
+  "months": [
+    {"month": 1, "colors": [
+      {"name": "스노우 화이트", "hex": "#F3F2EE"}, {"name": "아이스 블루", "hex": "#CFE0EA"},
+      {"name": "딥 와인", "hex": "#6B2737"}, {"name": "차콜 그레이", "hex": "#4A4A4F"},
+      {"name": "클래식 네이비", "hex": "#26324F"}]},
+    {"month": 2, "colors": [
+      {"name": "로즈 쿼츠", "hex": "#E8C3C6"}, {"name": "라벤더 미스트", "hex": "#CBC3DC"},
+      {"name": "버건디", "hex": "#7A2638"}, {"name": "오트밀", "hex": "#DCCFB9"},
+      {"name": "포레스트 그린", "hex": "#2F4B3A"}]},
+    {"month": 3, "colors": [
+      {"name": "벚꽃 핑크", "hex": "#F4C9D0"}, {"name": "피스타치오", "hex": "#C6D8A8"},
+      {"name": "버터 옐로", "hex": "#F5E3A3"}, {"name": "하늘빛 블루", "hex": "#AFCDE6"},
+      {"name": "웜 베이지", "hex": "#DCC3A1"}]},
+    {"month": 4, "colors": [
+      {"name": "라일락", "hex": "#C8B3DB"}, {"name": "민트 그린", "hex": "#B5E0CF"},
+      {"name": "코랄 피치", "hex": "#F4A98E"}, {"name": "레몬 셔벗", "hex": "#F3EB9E"},
+      {"name": "소프트 데님", "hex": "#8DA6C4"}, {"name": "크림 화이트", "hex": "#F6F0E1"}]},
+    {"month": 5, "colors": [
+      {"name": "로즈 핑크", "hex": "#E58FA6"}, {"name": "프레시 그린", "hex": "#8CC08A"},
+      {"name": "스카이 블루", "hex": "#8FC3E8"}, {"name": "바닐라 크림", "hex": "#F3E7C6"},
+      {"name": "살구", "hex": "#F2B48A"}]},
+    {"month": 6, "colors": [
+      {"name": "아쿠아 블루", "hex": "#7FCCD6"}, {"name": "워터멜론", "hex": "#EE6F7B"},
+      {"name": "라임", "hex": "#C9DD6B"}, {"name": "샌드 베이지", "hex": "#D9C4A0"},
+      {"name": "화이트 린넨", "hex": "#F1ECE2"}]},
+    {"month": 7, "colors": [
+      {"name": "오션 블루", "hex": "#2F7FB8"}, {"name": "비비드 코랄", "hex": "#F26D5B"},
+      {"name": "트로피컬 그린", "hex": "#2FA67A"}, {"name": "선샤인 옐로", "hex": "#F7CE46"},
+      {"name": "퓨어 화이트", "hex": "#FAFAFA"}]},
+    {"month": 8, "colors": [
+      {"name": "터콰이즈", "hex": "#3FB8B0"}, {"name": "망고 오렌지", "hex": "#F59E3D"},
+      {"name": "라벤더", "hex": "#B7A3D6"}, {"name": "코코넛 화이트", "hex": "#F4F1EA"},
+      {"name": "서머 네이비", "hex": "#24345A"}]},
+    {"month": 9, "colors": [
+      {"name": "세이지 그린", "hex": "#9CAF8E"}, {"name": "머스터드", "hex": "#D2A23A"},
+      {"name": "테라코타", "hex": "#C0674A"}, {"name": "카멜", "hex": "#B88A5A"},
+      {"name": "더스티 로즈", "hex": "#C99198"}]},
+    {"month": 10, "colors": [
+      {"name": "버건디", "hex": "#7A2638"}, {"name": "올리브", "hex": "#7A7A3E"},
+      {"name": "펌킨 오렌지", "hex": "#D9773A"}, {"name": "초콜릿 브라운", "hex": "#5A3A2A"},
+      {"name": "골든 옐로", "hex": "#E0B54A"}]},
+    {"month": 11, "colors": [
+      {"name": "카멜 브라운", "hex": "#A9794C"}, {"name": "딥 와인", "hex": "#6B2737"},
+      {"name": "포레스트 그린", "hex": "#2F4B3A"}, {"name": "오트밀", "hex": "#DCCFB9"},
+      {"name": "모카", "hex": "#8B6B57"}, {"name": "차콜", "hex": "#3E3F44"}]},
+    {"month": 12, "colors": [
+      {"name": "홀리데이 레드", "hex": "#B3262E"}, {"name": "에버그린", "hex": "#24543F"},
+      {"name": "샴페인 골드", "hex": "#D8C08A"}, {"name": "아이보리", "hex": "#F3EBD8"},
+      {"name": "미드나잇 네이비", "hex": "#1E2742"}, {"name": "실버 그레이", "hex": "#B9BCC2"}]}
+  ]
+}

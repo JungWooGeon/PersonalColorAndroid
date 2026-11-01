@@ -1,0 +1,13 @@
+package com.gun.personalcolor
+
+import android.app.Application
+import com.gun.personalcolor.core.share.ToneShare
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class PcApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        ToneShare.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
+    }
+}
