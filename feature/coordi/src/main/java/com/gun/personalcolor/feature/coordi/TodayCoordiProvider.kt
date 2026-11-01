@@ -12,6 +12,7 @@ import com.gun.personalcolor.core.weather.TodayWeather
 import com.gun.personalcolor.core.weather.WeatherRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -54,7 +55,8 @@ class TodayCoordiProvider @Inject constructor(
     /** Null when no tone is set. Never throws. */
     suspend fun summary(): CoordiSummary? = try {
         content.toneOrNull(prefs.preferences.first().myToneId)?.let { tone ->
-            val w = weather.today()
+            // Slow location / network: fall back to the season-based outfit rather than keep the caller waiting.
+            val w = withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weather.today() }
             val date = LocalDate.now()
             val color = tone.bestColors[date.dayOfYear % tone.bestColors.size]
             CoordiSummary(
@@ -70,6 +72,7 @@ class TodayCoordiProvider @Inject constructor(
     }
 
     companion object {
+        private const val WEATHER_TIMEOUT_MS = 8_000L
         fun weatherLine(w: TodayWeather) = listOfNotNull(w.shortPlace, "${w.temp.roundToInt()}°C", w.condition).joinToString(" ")
     }
 }
