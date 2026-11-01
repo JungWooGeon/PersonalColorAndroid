@@ -65,13 +65,16 @@ class Billing @Inject constructor(@ApplicationContext private val context: Conte
         restore()
     }
 
-    /** Re-reads owned purchases from Play ("구매 복원"). */
-    fun restore() {
+    /** Re-reads owned purchases from Play ("구매 복원"). [onResult] may run on a background thread. */
+    fun restore(onResult: (RestoreResult) -> Unit = {}) {
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result, purchases ->
-            if (result.responseCode != BillingClient.BillingResponseCode.OK) return@queryPurchasesAsync
-            val owned = purchases.any { PRODUCT_ID in it.products && it.purchaseState == Purchase.PurchaseState.PURCHASED }
-            setAdFree(owned)
-            purchases.forEach(::handle)
+            val ok = result.responseCode == BillingClient.BillingResponseCode.OK
+            val owned = ok && purchases.any { PRODUCT_ID in it.products && it.purchaseState == Purchase.PurchaseState.PURCHASED }
+            if (ok) {
+                setAdFree(owned)
+                purchases.forEach(::handle)
+            } else Log.w(TAG, "restore: ${result.responseCode} ${result.debugMessage}")
+            onResult(restoreResult(ok, owned))
         }
     }
 
@@ -105,4 +108,12 @@ class Billing @Inject constructor(@ApplicationContext private val context: Conte
         private const val TAG = "Billing"
         private const val KEY_AD_FREE = "ad_free"
     }
+}
+
+enum class RestoreResult { RESTORED, NOTHING, FAILED }
+
+internal fun restoreResult(ok: Boolean, owned: Boolean) = when {
+    !ok -> RestoreResult.FAILED
+    owned -> RestoreResult.RESTORED
+    else -> RestoreResult.NOTHING
 }

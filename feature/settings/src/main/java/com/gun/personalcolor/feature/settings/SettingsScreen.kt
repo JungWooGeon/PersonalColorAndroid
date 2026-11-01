@@ -85,6 +85,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.gun.personalcolor.core.ads.LocalAdManager
+import com.gun.personalcolor.core.ads.RestoreResult
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.HistoryRepository
@@ -481,8 +482,14 @@ private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
             if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
         },
         onRestore = {
-            billing.restore()
-            scope.launch { snackbar.showSnackbar("구매 내역을 확인했어요") }
+            billing.restore { r ->
+                val msg = when (r) {
+                    RestoreResult.RESTORED -> "프리미엄을 다시 적용했어요"
+                    RestoreResult.NOTHING -> "복원할 구매 내역이 없어요"
+                    RestoreResult.FAILED -> "Google Play에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."
+                }
+                scope.launch { snackbar.showSnackbar(msg) }
+            }
         },
     )
 }

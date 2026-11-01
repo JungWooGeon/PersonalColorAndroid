@@ -63,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -168,6 +169,9 @@ internal fun HomeScreen(state: HomeState, a: HomeActions) {
     }
 }
 
+/** A swatch this close in luminance to the background needs an outline to be seen (black on dark, white on light). */
+internal fun blendsIn(swatchLum: Float, bgLum: Float) = kotlin.math.abs(swatchLum - bgLum) < 0.06f
+
 private val DateLabel = DateTimeFormatter.ofPattern("M월 d일 EEEE", Locale.KOREAN)
 private val HeroShape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
 
@@ -212,16 +216,22 @@ private fun HostHero(state: HomeState, colors: TintyColors, a: HomeActions) {
                     Text("${tone.nameKo}에게 잘 어울리는 색이에요", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(14.dp))
                     val chips = remember(tone, today) { (listOf(today) + tone.bestColors.filter { it != today }).take(6) }
+                    val bgLum = MaterialTheme.colorScheme.background.luminance()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         chips.forEachIndexed { i, c ->
                             val m = Modifier.weight(1f).aspectRatio(1.3f)
-                            Swatch(c.hex, if (i == 0) m.border(2.dp, MaterialTheme.colorScheme.onSurface, MaterialTheme.shapes.small) else m)
+                            val edge = when {
+                                i == 0 -> m.border(2.dp, MaterialTheme.colorScheme.onSurface, MaterialTheme.shapes.small)
+                                blendsIn(hexColor(c.hex).luminance(), bgLum) -> m.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                                else -> m
+                            }
+                            Swatch(c.hex, edge)
                         }
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         PcButton("오늘의 코디 보기", a.onCoordi, Modifier.weight(1.3f))
-                        PcOutlinedButton("${tone.nameKo} 가이드", { a.onTone(tone.id) }, Modifier.weight(1f))
+                        PcOutlinedButton("내 톤 가이드", { a.onTone(tone.id) }, Modifier.weight(1f))
                     }
                 } else {
                     Text("사진은 휴대폰 밖으로 나가지 않아요", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

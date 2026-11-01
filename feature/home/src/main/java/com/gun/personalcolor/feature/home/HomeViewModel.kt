@@ -1,6 +1,7 @@
 package com.gun.personalcolor.feature.home
 
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.data.ContentRepository
@@ -37,7 +38,7 @@ data class HomeState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(content: ContentRepository, prefs: UserPreferencesRepository, weather: WeatherRepository) : ViewModel() {
     // Weather only if location was granted earlier (오늘의 코디); home never asks. Null until/unless it arrives.
-    private val todayWeather = flow<TodayWeather?> { emit(weather.today()) }.onStart { emit(null) }.catch { emit(null) }
+    private val todayWeather = flow<TodayWeather?> { emit(withTimeoutOrNull(8_000) { weather.today() }) }.onStart { emit(null) }.catch { emit(null) }
 
     val state: StateFlow<HomeState> = combine(prefs.preferences, todayWeather) { p, w ->
         val my = content.toneOrNull(p.myToneId)

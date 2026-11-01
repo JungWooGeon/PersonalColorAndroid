@@ -2,6 +2,7 @@ package com.gun.personalcolor.feature.quiz
 
 import kotlinx.coroutines.CancellationException
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.analysis.Axes
@@ -20,10 +21,17 @@ import kotlin.math.abs
 class QuizViewModel @Inject constructor(
     content: ContentRepository,
     private val diagnose: QuizDiagnosisUseCase,
+    private val handle: SavedStateHandle,
 ) : ViewModel() {
     val questions: List<QuizQuestion> = content.quiz
-    private val _answers = MutableStateFlow<List<QuizOption>>(emptyList())
+    // Answers survive process death as option indices (the question index is just their count).
+    private val _answers = MutableStateFlow(decodeAnswers(questions, handle[KEY_ANSWERS]))
     val answers = _answers.asStateFlow()
+
+    private fun set(list: List<QuizOption>) {
+        _answers.value = list
+        handle[KEY_ANSWERS] = encodeAnswers(questions, list)
+    }
 
     /** True once the result is published; the screen navigates (with its *current* nav/activity, rotation-safe) and calls [resultShown]. */
     private val _done = MutableStateFlow(false)
@@ -32,7 +40,7 @@ class QuizViewModel @Inject constructor(
     fun answer(option: QuizOption) {
         if (_answers.value.size >= questions.size) return
         val now = _answers.value + option
-        _answers.value = now
+        set(now)
         if (now.size == questions.size) viewModelScope.launch {
             try {
                 diagnose(score(questions, now))
@@ -42,7 +50,7 @@ class QuizViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Couldn't publish: let the last answer be picked again instead of a spinner forever.
                 Log.w("QuizViewModel", "quiz diagnosis failed", e)
-                _answers.value = now.dropLast(1)
+                set(now.dropLast(1))
             }
         }
     }
@@ -52,9 +60,21 @@ class QuizViewModel @Inject constructor(
     /** Returns false when there is nothing to undo (caller leaves the screen). */
     fun undo(): Boolean {
         if (_answers.value.isEmpty()) return false
-        _answers.value = _answers.value.dropLast(1)
+        set(_answers.value.dropLast(1))
         return true
     }
+}
+
+private const val KEY_ANSWERS = "quiz_answers"
+
+internal fun encodeAnswers(questions: List<QuizQuestion>, answers: List<QuizOption>): IntArray =
+    IntArray(answers.size) { i -> questions[i].options.indexOf(answers[i]) }
+
+/** Stops at the first index that no longer fits (content changed); never restores a finished quiz, so the last pick is redone. */
+internal fun decodeAnswers(questions: List<QuizQuestion>, saved: IntArray?): List<QuizOption> {
+    val out = mutableListOf<QuizOption>()
+    for ((i, idx) in (saved ?: return out).withIndex()) out += questions.getOrNull(i)?.options?.getOrNull(idx) ?: break
+    return out.take((questions.size - 1).coerceAtLeast(0))
 }
 
 // ponytail: heuristic gain — real answers are mixed, so raw sums rarely reach the extremes. Tune with feedback data.

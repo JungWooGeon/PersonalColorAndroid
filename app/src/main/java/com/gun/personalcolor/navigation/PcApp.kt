@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.remember
@@ -38,6 +39,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.gun.personalcolor.core.designsystem.PcColors
 import com.gun.personalcolor.core.designsystem.PcTheme
@@ -149,7 +153,7 @@ private fun PcBottomBar(current: TopLevel, onSelect: (TopLevel) -> Unit) {
         Column {
             HorizontalDivider(color = cs.outlineVariant.copy(alpha = if (PcTheme.colors.isDark) 1f else 0.6f))
             Row(
-                Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(68.dp)
+                Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(68.dp).selectableGroup()
                     .drawBehind {
                         val w = size.width / TopLevel.entries.size
                         val iw = 60.dp.toPx(); val ih = 32.dp.toPx()
@@ -166,10 +170,12 @@ private fun PcBottomBar(current: TopLevel, onSelect: (TopLevel) -> Unit) {
                     val pop = remember { Animatable(1f) }
                     LaunchedEffect(selected) { if (selected) { pop.snapTo(0.8f); pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 600f)) } }
                     Column(
-                        Modifier.weight(1f).fillMaxHeight().selectable(selected, role = Role.Tab, interactionSource = null, indication = null) {
-                            if (!selected) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            onSelect(t)
-                        },
+                        // Label on the tab node itself: some OEMs clip child bounds near the nav bar, which hid the text from TalkBack.
+                        Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants = true) { contentDescription = t.label }
+                            .selectable(selected, role = Role.Tab, interactionSource = null, indication = null) {
+                                if (!selected) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                onSelect(t)
+                            },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Box(Modifier.padding(top = 8.dp).size(60.dp, 32.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }, contentAlignment = Alignment.Center) {
@@ -177,7 +183,7 @@ private fun PcBottomBar(current: TopLevel, onSelect: (TopLevel) -> Unit) {
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(t.label, maxLines = 1, style = MaterialTheme.typography.labelMedium,
-                            color = if (selected) cs.primary else cs.onSurfaceVariant)
+                            color = if (selected) cs.primary else cs.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
                     }
                 }
             }
