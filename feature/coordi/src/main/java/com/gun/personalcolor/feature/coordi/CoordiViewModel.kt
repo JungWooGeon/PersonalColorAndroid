@@ -13,6 +13,8 @@ import com.gun.personalcolor.core.weather.WeatherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,17 +69,31 @@ internal class CoordiViewModel @Inject constructor(
         refreshWeather()
     }
 
-    fun refreshWeather() = viewModelScope.launch {
+    private var fetch: Job? = null
+    private var fetchedAt = 0L
+
+    /** Calls while a fetch for the same permission state is running are dropped (grant callback + resume fire together). */
+    fun refreshWeather() {
         val permitted = WeatherRepository.hasPermission(context)
-        weather.value = WeatherState(loading = true, hasPermission = permitted)
-        // A failed or slow fetch (or a revoked permission mid-call) falls back to the season-based outfit.
-        val w = if (permitted) runCatching { withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weatherRepo.today() } }.getOrNull() else null
-        weather.value = WeatherState(loading = false, weather = w, hasPermission = permitted)
+        if (fetch?.isActive == true && weather.value.hasPermission == permitted) return
+        val justGranted = permitted && !weather.value.hasPermission
+        fetch?.cancel()
+        fetch = viewModelScope.launch {
+            weather.value = WeatherState(loading = true, hasPermission = permitted)
+            var w = if (permitted) load() else null
+            // Right after the grant there's often no location fix yet: give it one more try before the season fallback.
+            if (w == null && justGranted) { delay(GRANT_RETRY_DELAY_MS); w = load() }
+            fetchedAt = System.currentTimeMillis()
+            weather.value = WeatherState(loading = false, weather = w, hasPermission = permitted)
+        }
     }
 
-    /** Re-check on resume: the user may have granted location in system settings. */
+    // A failed or slow fetch (or a revoked permission mid-call) falls back to the season-based outfit.
+    private suspend fun load() = runCatching { withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weatherRepo.today() } }.getOrNull()
+
+    /** Re-check on resume: the user may have granted location in system settings, or the last try fell back to the season. */
     fun onResume() {
-        if (WeatherRepository.hasPermission(context) != weather.value.hasPermission) refreshWeather()
+        if (shouldRefreshOnResume(WeatherRepository.hasPermission(context), weather.value, System.currentTimeMillis() - fetchedAt)) refreshWeather()
     }
 
     fun nextOutfit() { variant.value++ }
@@ -85,5 +101,15 @@ internal class CoordiViewModel @Inject constructor(
     private companion object {
         const val DAY_MS = 24 * 60 * 60_000L
         const val WEATHER_TIMEOUT_MS = 8_000L
+        const val GRANT_RETRY_DELAY_MS = 1_500L
     }
+}
+
+private const val RESUME_RETRY_MS = 30_000L
+
+/** Permission changed, or permitted but the last result was the season fallback and it's been [RESUME_RETRY_MS] (debounce). */
+internal fun shouldRefreshOnResume(permitted: Boolean, w: WeatherState, sinceLastFetchMs: Long): Boolean = when {
+    permitted != w.hasPermission -> true
+    w.loading -> false
+    else -> permitted && w.weather == null && sinceLastFetchMs >= RESUME_RETRY_MS
 }

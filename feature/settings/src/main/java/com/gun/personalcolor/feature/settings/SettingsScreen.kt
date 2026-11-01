@@ -66,6 +66,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -475,20 +476,23 @@ private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
     val adFree by billing.adFree.collectAsStateWithLifecycle()
     val price by billing.price.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    var restoring by remember { mutableStateOf(false) }
     PremiumCard(
-        adFree, price,
+        adFree, price, restoring,
         onPurchase = {
             val started = activity != null && billing.purchase(activity)
             if (!started) scope.launch { snackbar.showSnackbar("지금은 구매할 수 없어요. 잠시 후 다시 시도해 주세요.") }
         },
         onRestore = {
+            if (restoring) return@PremiumCard
+            restoring = true
             billing.restore { r ->
                 val msg = when (r) {
                     RestoreResult.RESTORED -> "프리미엄을 다시 적용했어요"
                     RestoreResult.NOTHING -> "복원할 구매 내역이 없어요"
                     RestoreResult.FAILED -> "Google Play에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."
                 }
-                scope.launch { snackbar.showSnackbar(msg) }
+                scope.launch { restoring = false; snackbar.showSnackbar(msg) }
             }
         },
     )
@@ -496,7 +500,7 @@ private fun RemoveAdsGroup(snackbar: SnackbarHostState) {
 
 /** Soft aurora card with the drop corner: benefits + one-time purchase, or 틴티 cheering once it's bought. */
 @Composable
-private fun PremiumCard(adFree: Boolean, price: String?, onPurchase: () -> Unit, onRestore: () -> Unit) {
+private fun PremiumCard(adFree: Boolean, price: String?, restoring: Boolean, onPurchase: () -> Unit, onRestore: () -> Unit) {
     Column(Modifier.padding(horizontal = ScreenPadding).padding(top = 12.dp)) {
         PcCard(Modifier.fillMaxWidth(), shape = DropShape, elevation = 2) {
             Box(Modifier.aurora(PcTheme.colors)) {
@@ -523,7 +527,13 @@ private fun PremiumCard(adFree: Boolean, price: String?, onPurchase: () -> Unit,
                         }
                         Text((price?.let { "$it · " } ?: "") + "한 번만 결제하면 계속 써요", style = Muted)
                         PcButton("프리미엄 시작하기", onPurchase, Modifier.fillMaxWidth())
-                        TextButton(onRestore, Modifier.align(Alignment.CenterHorizontally)) { Text("구매 복원") }
+                        TextButton(onRestore, Modifier.align(Alignment.CenterHorizontally), enabled = !restoring) {
+                            if (restoring) {
+                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("확인 중…")
+                            } else Text("구매 복원")
+                        }
                     }
                 }
             }
@@ -590,5 +600,5 @@ internal fun timeLabel(hour: Int, minute: Int) =
 @Preview
 @Composable
 private fun PremiumPreview() = PcTheme {
-    Column { PremiumCard(false, "₩3,900", {}, {}); PremiumCard(true, null, {}, {}) }
+    Column { PremiumCard(false, "₩3,900", false, {}, {}); PremiumCard(true, null, false, {}, {}) }
 }

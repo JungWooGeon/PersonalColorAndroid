@@ -2,8 +2,6 @@ package com.gun.personalcolor.feature.result
 
 
 import android.Manifest
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,26 +17,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
+import com.gun.personalcolor.core.share.ImageShare
 import com.gun.personalcolor.core.ui.ImageSaver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-
-/** Shares a generated image through the app's FileProvider (cache dir). */
-internal fun shareImage(context: Context, bitmap: Bitmap, name: String, text: String? = null, chooserTitle: String = "공유") {
-    val file = File(context.cacheDir, "$name.png")
-    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "image/png"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        if (text != null) putExtra(Intent.EXTRA_TEXT, text)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(send, chooserTitle))
-}
 
 /**
  * Returns `save(name) { render() }`: asks for the storage permission on API<29, renders off the main thread,
@@ -57,7 +40,7 @@ internal fun rememberImageSave(snackbar: SnackbarHostState): (name: String, rend
                 snackbar.showSnackbar("저장하지 못했어요. 잠시 후 다시 시도해 주세요"); return@launch
             }
             val r = snackbar.showSnackbar("갤러리에 저장했어요", actionLabel = "공유", duration = SnackbarDuration.Short)
-            if (r == SnackbarResult.ActionPerformed) runCatching { shareImage(context, bmp, name) }
+            if (r == SnackbarResult.ActionPerformed) ImageShare.share(context, name) { bmp }
         }
     }
 

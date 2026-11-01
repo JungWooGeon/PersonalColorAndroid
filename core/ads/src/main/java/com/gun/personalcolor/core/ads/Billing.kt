@@ -2,6 +2,8 @@ package com.gun.personalcolor.core.ads
 
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
@@ -17,6 +19,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,8 +68,13 @@ class Billing @Inject constructor(@ApplicationContext private val context: Conte
         restore()
     }
 
-    /** Re-reads owned purchases from Play ("구매 복원"). [onResult] may run on a background thread. */
+    /**
+     * Re-reads owned purchases from Play ("구매 복원"). [onResult] runs exactly once, possibly on a background thread;
+     * without Play it reports FAILED after [RESTORE_TIMEOUT_MS] instead of waiting out the reconnection.
+     */
     fun restore(onResult: (RestoreResult) -> Unit = {}) {
+        val once = OnceResult(onResult)
+        Handler(Looper.getMainLooper()).postDelayed({ once(RestoreResult.FAILED) }, RESTORE_TIMEOUT_MS)
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result, purchases ->
             val ok = result.responseCode == BillingClient.BillingResponseCode.OK
             val owned = ok && purchases.any { PRODUCT_ID in it.products && it.purchaseState == Purchase.PurchaseState.PURCHASED }
@@ -74,7 +82,7 @@ class Billing @Inject constructor(@ApplicationContext private val context: Conte
                 setAdFree(owned)
                 purchases.forEach(::handle)
             } else Log.w(TAG, "restore: ${result.responseCode} ${result.debugMessage}")
-            onResult(restoreResult(ok, owned))
+            once(restoreResult(ok, owned))
         }
     }
 
@@ -107,6 +115,7 @@ class Billing @Inject constructor(@ApplicationContext private val context: Conte
         const val PRODUCT_ID = "premium"
         private const val TAG = "Billing"
         private const val KEY_AD_FREE = "ad_free"
+        private const val RESTORE_TIMEOUT_MS = 6_000L
     }
 }
 
@@ -116,4 +125,10 @@ internal fun restoreResult(ok: Boolean, owned: Boolean) = when {
     !ok -> RestoreResult.FAILED
     owned -> RestoreResult.RESTORED
     else -> RestoreResult.NOTHING
+}
+
+/** Delivers only the first result (Play's answer or the timeout, whichever comes first). */
+internal class OnceResult(private val onResult: (RestoreResult) -> Unit) : (RestoreResult) -> Unit {
+    private val done = AtomicBoolean(false)
+    override fun invoke(r: RestoreResult) { if (done.compareAndSet(false, true)) onResult(r) }
 }

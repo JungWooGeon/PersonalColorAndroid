@@ -23,9 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import android.Manifest
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
+import com.gun.personalcolor.core.share.ImageShare
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
@@ -354,6 +352,7 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTon
     val tinty = remember(tone) { tone.tintyColors }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var sharing by remember { mutableStateOf(false) }
     val look = remember(outfit, tone, weather) { moodLook(outfit, tone, weather) }
     // The words follow the picture: they change when the new scene starts to fade in, not when it's asked for.
     var shownOutfit by remember { mutableStateOf(outfit) }
@@ -391,15 +390,18 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTon
                     PcTonalButton("다른 코디 보기", onNext, Modifier.weight(1f), icon = Icons.Outlined.Refresh)
                     FilledTonalIconButton(
                         onClick = {
+                            if (sharing) return@FilledTonalIconButton
+                            sharing = true
                             scope.launch {
-                                val bmp = withContext(Dispatchers.Default) {
-                                    runCatching { renderMoodShare(context, look, "나의 컬러는?") }.getOrNull()
-                                } ?: return@launch
-                                runCatching { shareLook(context, bmp) }
+                                ImageShare.share(context, "today_look", "오늘의 코디 공유") { renderMoodShare(context, look, "나의 컬러는?") }
+                                sharing = false
                             }
                         },
                         modifier = Modifier.size(52.dp),
-                    ) { Icon(Icons.Outlined.Share, "코디 이미지 공유") }
+                    ) {
+                        if (sharing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Outlined.Share, "코디 이미지 공유")
+                    }
                 }
             }
         }
@@ -438,18 +440,6 @@ private fun Legend(slots: List<OutfitSlot>) {
             }
         }
     }
-}
-
-private fun shareLook(context: android.content.Context, bitmap: android.graphics.Bitmap) {
-    val file = File(context.cacheDir, "today_look.png")
-    file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "image/png"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(send, "오늘의 코디 공유"))
 }
 
 @Composable

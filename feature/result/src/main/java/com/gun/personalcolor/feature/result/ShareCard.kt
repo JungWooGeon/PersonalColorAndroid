@@ -3,7 +3,6 @@ package com.gun.personalcolor.feature.result
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
@@ -23,7 +22,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.model.Tone
+import com.gun.personalcolor.core.share.ImageShare
 import com.gun.personalcolor.core.share.ToneShare
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.gun.personalcolor.core.ui.ReportRenderer
 
 /** Share choices (KakaoTalk rich card, or the image card through any app) opened from [anchor]'s click. */
@@ -31,9 +39,13 @@ import com.gun.personalcolor.core.ui.ReportRenderer
 internal fun ShareMenu(tone: Tone, anchor: @Composable (open: () -> Unit) -> Unit) {
     val context = LocalContext.current
     val analytics = LocalAnalytics.current
+    val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf(false) }
-    Box {
-        anchor { open = true }
+    var busy by remember { mutableStateOf(false) }
+    Box(contentAlignment = Alignment.Center) {
+        // Rendering the card takes a moment: dim the anchor, show a spinner and ignore taps until the chooser opens.
+        Box(Modifier.alpha(if (busy) 0.35f else 1f)) { anchor { if (!busy) open = true } }
+        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = MaterialTheme.shapes.medium) {
             DropdownMenuItem(
                 text = { Text("카카오톡으로 공유", maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -50,7 +62,8 @@ internal fun ShareMenu(tone: Tone, anchor: @Composable (open: () -> Unit) -> Uni
                 onClick = {
                     open = false
                     analytics?.log("share", "channel" to "image", "tone" to tone.id)
-                    shareResult(context, tone)
+                    busy = true
+                    scope.launch { shareResult(context, tone); busy = false }
                 },
             )
         }
@@ -64,12 +77,9 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 /** Shares a result card image. The face photo is never included. Render, file or chooser failures only show a toast. */
-internal fun shareResult(context: Context, tone: Tone) {
-    runCatching {
-        val text = "나의 퍼스널컬러는 ${tone.nameKo}! #퍼스널컬러 #${tone.nameKo.replace(" ", "")}\n${ToneShare.pageUrl(tone.id)}"
-        shareImage(context, ReportRenderer.renderCard(context, tone), "result", text, chooserTitle = "결과 공유")
-    }.onFailure {
-        Log.w("ShareCard", "image share failed", it)
+internal suspend fun shareResult(context: Context, tone: Tone) {
+    val text = "나의 퍼스널컬러는 ${tone.nameKo}! #퍼스널컬러 #${tone.nameKo.replace(" ", "")}\n${ToneShare.pageUrl(tone.id)}"
+    if (!ImageShare.share(context, "result", "결과 공유", text) { ReportRenderer.renderCard(context, tone) }) {
         Toast.makeText(context, "공유하지 못했어요. 잠시 후 다시 시도해 주세요", Toast.LENGTH_SHORT).show()
     }
 }
