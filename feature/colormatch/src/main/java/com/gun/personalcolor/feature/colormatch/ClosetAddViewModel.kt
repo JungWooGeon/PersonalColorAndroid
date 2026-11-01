@@ -145,7 +145,7 @@ class ClosetAddViewModel @Inject constructor(
 
     fun setKind(k: String) { _state.update { it.copy(kind = k) }; refresh() }
     fun setName(n: String) = _state.update { it.copy(name = n.take(30), nameEdited = true) }
-    fun showError(message: String) = _state.update { it.copy(error = message) }
+    fun showError(message: String?) = _state.update { it.copy(error = message) }
 
     fun save() {
         val s = _state.value

@@ -22,9 +22,10 @@ import java.io.File
  * Returns an action that takes a photo with the system camera into cache/[fileName] and hands its Uri to [onPhoto].
  * The app declares CAMERA (for the guided diagnosis camera), so ACTION_IMAGE_CAPTURE throws SecurityException until
  * it's granted: ask first, and report a denial or a missing camera app through [onError] instead of crashing.
+ * [onError] gets null once the camera opens, so an earlier message (e.g. a denial before granting) goes away.
  */
 @Composable
-internal fun rememberCameraCapture(fileName: String, onPhoto: (Uri) -> Unit, onError: (String) -> Unit): () -> Unit {
+internal fun rememberCameraCapture(fileName: String, onPhoto: (Uri) -> Unit, onError: (String?) -> Unit): () -> Unit {
     val context = LocalContext.current
     var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
@@ -35,6 +36,7 @@ internal fun rememberCameraCapture(fileName: String, onPhoto: (Uri) -> Unit, onE
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(context.cacheDir, fileName))
             cameraUri = uri
             camera.launch(uri)
+            onError(null)
         } catch (_: ActivityNotFoundException) {
             onError("카메라 앱이 없어요. 앨범에서 골라 주세요.")
         } catch (e: RuntimeException) { // SecurityException (permission revoked meanwhile), FileProvider misconfig

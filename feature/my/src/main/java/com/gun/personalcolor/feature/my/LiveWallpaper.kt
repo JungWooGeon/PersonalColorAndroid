@@ -1,6 +1,11 @@
 package com.gun.personalcolor.feature.my
 
+import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.graphics.Color
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.ui.graphics.toArgb
 import android.appwidget.AppWidgetManager
 import android.os.Handler
 import android.os.Looper
@@ -20,6 +25,7 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.WallpaperRenderer
+import com.gun.personalcolor.core.ui.hexColor
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +39,22 @@ import java.time.LocalTime
 import kotlin.math.hypot
 
 /** What the live wallpaper draws. [toneId] null = follow my tone. */
-internal data class LiveChoice(val style: WallpaperRenderer.Style, val dark: Boolean, val toneId: String?)
+internal data class LiveChoice(val style: WallpaperRenderer.Style, val dark: Boolean, val toneId: String?) {
+    /** Light pastel wallpaper (the launcher should use dark clock/date text). */
+    val light get() = !(dark && style.supportsDark)
+}
+
+/** Launcher/system colors from the tone palette (today's color first), so the clock text stays readable on light 틴티. */
+@RequiresApi(27)
+internal fun liveWallpaperColors(tone: Tone, light: Boolean): WallpaperColors {
+    val today = WallpaperRenderer.todayColor(tone)
+    val cs = (listOf(today) + (tone.bestColors - today)).map { Color.valueOf(hexColor(it.hex).toArgb()) }
+    val primary = cs.firstOrNull() ?: Color.valueOf(Color.GRAY)
+    val secondary = cs.getOrNull(1); val tertiary = cs.getOrNull(2)
+    if (Build.VERSION.SDK_INT < 31) return WallpaperColors(primary, secondary, tertiary) // no hints before API 31
+    val hints = if (light) WallpaperColors.HINT_SUPPORTS_DARK_TEXT else WallpaperColors.HINT_SUPPORTS_DARK_THEME
+    return WallpaperColors(primary, secondary, tertiary, hints)
+}
 
 /** Small SharedPreferences of this module (keeps core:model untouched). */
 internal object LiveWallpaperPrefs {
@@ -109,6 +130,9 @@ class PersonalColorLiveWallpaper : WallpaperService() {
         private var tiltY = 0f
         private var shownX = 0f
         private var shownY = 0f
+
+        /** What [onComputeColors] last reported: tone, light/dark variant and day (today's color leads). */
+        private var colorsKey: Any? = null
 
         private var frameNs = 0L
         private var frames = 0
@@ -203,6 +227,8 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                 try {
                     choice = LiveWallpaperPrefs.read(applicationContext)
                     tone = liveTone(applicationContext, choice)
+                    val key = Triple(tone?.id, choice.light, LocalDate.now())
+                    if (key != colorsKey && Build.VERSION.SDK_INT >= 27) { colorsKey = key; notifyColorsChanged() }
                     drawFrame()
                 } catch (e: CancellationException) {
                     throw e
@@ -210,6 +236,11 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                     Log.w(TAG, "load failed", e) // keeps the last tone (or draws nothing) instead of killing the process
                 }
             }
+        }
+
+        override fun onComputeColors(): WallpaperColors? {
+            if (Build.VERSION.SDK_INT < 27) return null
+            return tone?.let { liveWallpaperColors(it, choice.light) }
         }
 
         override fun doFrame(frameTimeNanos: Long) {

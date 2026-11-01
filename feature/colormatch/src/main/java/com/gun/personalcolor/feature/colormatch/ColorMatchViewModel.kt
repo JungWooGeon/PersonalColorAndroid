@@ -122,7 +122,7 @@ class ColorMatchViewModel @Inject constructor(
         }
     }
 
-    fun showError(message: String) = _state.update { it.copy(error = message) }
+    fun showError(message: String?) = _state.update { it.copy(error = message) }
 
     /** Called on every drag frame; cheap: reads only the pixels inside the sample square. */
     fun pick(fx: Float, fy: Float, final: Boolean) {

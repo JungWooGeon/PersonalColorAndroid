@@ -239,7 +239,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
             panel("", lipColor, false, m) { r -> lipPatch?.draw(this, r) }
         }
         val lipControls: @Composable () -> Unit = {
-            Text("생기 있어 보이는 색이 잘 어울려요", style = Muted)
+            Text(lipHint(lipGroup), style = Muted)
             SectionCard(null) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(lipGroups.size) { i ->
@@ -301,6 +301,13 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
             }
         }
     }
+}
+
+/** Lip try-on hint for the chip group in [lipGroups] order: 0 my picks, 1 my WORST, then other tones. */
+internal fun lipHint(group: Int): String = when (group) {
+    0 -> "생기 있어 보이는 색이 잘 어울려요"
+    1 -> "얼굴이 칙칙해 보일 수 있어요"
+    else -> "다른 톤에 어울리는 립이에요. 내 톤과 비교해 보세요"
 }
 
 /** BEST / WORST verdict pill, or a neutral pill with another tone's name. */

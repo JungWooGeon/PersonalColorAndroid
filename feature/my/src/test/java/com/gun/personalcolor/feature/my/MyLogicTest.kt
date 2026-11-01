@@ -50,4 +50,10 @@ class MyLogicTest {
         assertFalse(Style.PALETTE in live)
         assertEquals(Style.entries.size, WallpaperUiState().styles.size)
     }
+
+    @Test fun liveChoice_light_onlyFalseForRealDarkVariant() {
+        assertTrue(LiveChoice(Style.TINTY, dark = false, toneId = null).light)
+        assertFalse(LiveChoice(Style.TINTY, dark = true, toneId = null).light)
+        Style.entries.filter { !it.supportsDark }.forEach { assertTrue(LiveChoice(it, dark = true, toneId = null).light) }
+    }
 }
