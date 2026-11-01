@@ -1,0 +1,412 @@
+{
+ "size": [
+  1520,
+  1056
+ ],
+ "lightScale": 4,
+ "shadeMax": {
+  "sunny": 0.069,
+  "cloudy": 0.073,
+  "rain": 0.02,
+  "night": 0.02
+ },
+ "lightMax": {
+  "sunny": 0.641,
+  "cloudy": 0.353,
+  "rain": 0.326,
+  "night": 0.314
+ },
+ "grainAlpha": 0.1,
+ "vignette": 0.22,
+ "garmentGrade": {
+  "sunny": {
+   "multiply": "#F2E2CC",
+   "saturation": 0.92
+  },
+  "cloudy": {
+   "multiply": "#D9D7D4",
+   "saturation": 0.88
+  },
+  "rain": {
+   "multiply": "#CFCCCB",
+   "saturation": 0.88
+  },
+  "night": {
+   "multiply": "#7A6E66",
+   "saturation": 0.85
+  }
+ },
+ "contactShadow": {
+  "dx": 22,
+  "dy": 14,
+  "blur": 18,
+  "alpha": 0.38
+ },
+ "darkRim": {
+  "_doc": "same as A: color luminance < lumBelow -> rim = alpha minus alpha shifted (+dx,+dy), blur, filled color at alpha, drawn over the garment (clipped to it)",
+  "lumBelow": 0.12,
+  "dx": 4,
+  "dy": 4,
+  "blur": 1,
+  "color": "#C4BCB1",
+  "alpha": 0.8
+ },
+ "hangers": {
+  "hanger": {
+   "file": "B_hanger.webp",
+   "anchor": [
+    30,
+    67
+   ]
+  },
+  "clip": {
+   "file": "B_clip_hanger.webp",
+   "anchor": [
+    114,
+    73
+   ]
+  },
+  "_doc": "draw the hanger image so that its anchor pixel lands on slot.hook (= garment top-center). peg: no graphic (base has the peg)."
+ },
+ "slotDoc": "garment aspect-fit inside rect, centered horizontally; align top = top edge at rect top (hangs from hook), bottom = sits on rect bottom; rot = clockwise degrees (Android Canvas.rotate) about rect center. acc = umbrella leaning by the window (rain only).",
+ "layouts": {
+  "outer_top_bottom": {
+   "outer": {
+    "rect": [
+     233,
+     196,
+     352,
+     590
+    ],
+    "rot": 0,
+    "z": 1,
+    "hanger": "hanger",
+    "hook": [
+     409,
+     196
+    ],
+    "align": "top"
+   },
+   "top": {
+    "rect": [
+     426,
+     196,
+     341,
+     409
+    ],
+    "rot": 0,
+    "z": 2,
+    "hanger": "hanger",
+    "hook": [
+     596,
+     196
+    ],
+    "align": "top"
+   },
+   "bottom": {
+    "rect": [
+     676,
+     202,
+     250,
+     500
+    ],
+    "rot": 0,
+    "z": 3,
+    "hanger": "clip",
+    "hook": [
+     801,
+     202
+    ],
+    "align": "top"
+   },
+   "bag": {
+    "rect": [
+     886,
+     153,
+     193,
+     170
+    ],
+    "rot": 0,
+    "z": 4,
+    "hanger": "peg",
+    "hook": [
+     982,
+     153
+    ],
+    "align": "top"
+   },
+   "shoes": {
+    "rect": [
+     386,
+     869,
+     204,
+     91
+    ],
+    "rot": 0,
+    "z": 5,
+    "hanger": null,
+    "hook": null,
+    "align": "bottom"
+   },
+   "acc": {
+    "rect": [
+     131,
+     443,
+     125,
+     488
+    ],
+    "rot": -173,
+    "z": 6,
+    "hanger": null,
+    "hook": null,
+    "align": "center"
+   }
+  },
+  "top_bottom": {
+   "top": {
+    "rect": [
+     426,
+     196,
+     341,
+     409
+    ],
+    "rot": 0,
+    "z": 2,
+    "hanger": "hanger",
+    "hook": [
+     596,
+     196
+    ],
+    "align": "top"
+   },
+   "bottom": {
+    "rect": [
+     676,
+     202,
+     250,
+     568
+    ],
+    "rot": 0,
+    "z": 3,
+    "hanger": "clip",
+    "hook": [
+     801,
+     202
+    ],
+    "align": "top"
+   },
+   "bag": {
+    "rect": [
+     886,
+     153,
+     193,
+     170
+    ],
+    "rot": 0,
+    "z": 4,
+    "hanger": "peg",
+    "hook": [
+     982,
+     153
+    ],
+    "align": "top"
+   },
+   "shoes": {
+    "rect": [
+     386,
+     869,
+     204,
+     91
+    ],
+    "rot": 0,
+    "z": 5,
+    "hanger": null,
+    "hook": null,
+    "align": "bottom"
+   },
+   "acc": {
+    "rect": [
+     131,
+     443,
+     125,
+     488
+    ],
+    "rot": -173,
+    "z": 6,
+    "hanger": null,
+    "hook": null,
+    "align": "center"
+   }
+  },
+  "dress": {
+   "dress": {
+    "rect": [
+     437,
+     196,
+     318,
+     636
+    ],
+    "rot": 0,
+    "z": 2,
+    "hanger": "hanger",
+    "hook": [
+     596,
+     196
+    ],
+    "align": "top"
+   },
+   "bag": {
+    "rect": [
+     886,
+     153,
+     193,
+     170
+    ],
+    "rot": 0,
+    "z": 4,
+    "hanger": "peg",
+    "hook": [
+     982,
+     153
+    ],
+    "align": "top"
+   },
+   "shoes": {
+    "rect": [
+     386,
+     869,
+     204,
+     91
+    ],
+    "rot": 0,
+    "z": 5,
+    "hanger": null,
+    "hook": null,
+    "align": "bottom"
+   },
+   "acc": {
+    "rect": [
+     131,
+     443,
+     125,
+     488
+    ],
+    "rot": -173,
+    "z": 6,
+    "hanger": null,
+    "hook": null,
+    "align": "center"
+   }
+  },
+  "outer_dress": {
+   "outer": {
+    "rect": [
+     233,
+     196,
+     352,
+     590
+    ],
+    "rot": 0,
+    "z": 1,
+    "hanger": "hanger",
+    "hook": [
+     409,
+     196
+    ],
+    "align": "top"
+   },
+   "dress": {
+    "rect": [
+     659,
+     196,
+     284,
+     625
+    ],
+    "rot": 0,
+    "z": 2,
+    "hanger": "hanger",
+    "hook": [
+     801,
+     196
+    ],
+    "align": "top"
+   },
+   "bag": {
+    "rect": [
+     886,
+     153,
+     193,
+     170
+    ],
+    "rot": 0,
+    "z": 4,
+    "hanger": "peg",
+    "hook": [
+     982,
+     153
+    ],
+    "align": "top"
+   },
+   "shoes": {
+    "rect": [
+     386,
+     869,
+     204,
+     91
+    ],
+    "rot": 0,
+    "z": 5,
+    "hanger": null,
+    "hook": null,
+    "align": "bottom"
+   },
+   "acc": {
+    "rect": [
+     131,
+     443,
+     125,
+     488
+    ],
+    "rot": -173,
+    "z": 6,
+    "hanger": null,
+    "hook": null,
+    "align": "center"
+   }
+  }
+ },
+ "text": {
+  "line": {
+   "rect": [
+    1105,
+    372,
+    385,
+    170
+   ],
+   "size": 52,
+   "lineSpacing": 1.5,
+   "breakAfter": ", ",
+   "color": {
+    "sunny": "#52362A",
+    "cloudy": "#3A3532",
+    "rain": "#2E2826",
+    "night": "#F3EADB"
+   }
+  },
+  "caption": {
+   "rect": [
+    1107,
+    572,
+    385,
+    40
+   ],
+   "size": 27,
+   "color": {
+    "sunny": "#7E5C44",
+    "cloudy": "#574E48",
+    "rain": "#584E48",
+    "night": "#E0D2BE"
+   }
+  }
+ }
+}
