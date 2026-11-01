@@ -116,6 +116,9 @@ import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.Swatch
 import com.gun.personalcolor.core.ui.Tag
 import com.gun.personalcolor.core.weather.TodayWeather
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import com.gun.personalcolor.core.weather.WeatherCodes
 import com.gun.personalcolor.core.weather.WeatherRepository
 import kotlin.math.roundToInt
@@ -208,8 +211,8 @@ private fun Content(
     val board: @Composable ColumnScope.() -> Unit = {
         when {
             outfit == null || tone == null -> LoadingCard()
-            !unlocked -> LockedCard(onUnlock)
-            else -> OutfitCard(outfit, tone, { onTone(tone.id) }, onNext)
+            !unlocked -> LockedCard(state.weather.weather, onUnlock)
+            else -> OutfitCard(outfit, tone, state.weather.weather, { onTone(tone.id) }, onNext)
         }
     }
     val details: @Composable ColumnScope.() -> Unit = {
@@ -344,15 +347,14 @@ private fun LocationCard(onResult: () -> Unit) {
 
 /** Lookbook card: the flat-lay on top, then the headline, 틴티's styling note, a color legend and the actions. */
 @Composable
-private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: () -> Unit) {
+private fun OutfitCard(outfit: Outfit, tone: Tone, weather: TodayWeather?, onTone: () -> Unit, onNext: () -> Unit) {
     val tinty = remember(tone) { tone.tintyColors }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val dark = PcTheme.colors.isDark
-    val surface = MaterialTheme.colorScheme.surfaceContainer
+    val look = remember(outfit, tone, weather) { moodLook(outfit, tone, weather) }
     PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
         Column {
-            LookBoard(outfit.slots, tinty)
+            MoodHero(look, description = "${look.line}. ${outfit.headline}")
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // The text follows the board: the old look fades out, the new one fades in as its pieces land.
                 AnimatedContent(
@@ -363,20 +365,18 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: (
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Eyebrow(remember { todayLabel() })
-                                Spacer(Modifier.height(2.dp))
-                                Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(remember { todayLabel() }, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.height(4.dp))
+                                Text(outfit.headline, style = MaterialTheme.typography.titleLarge.copy(fontFamily = Myeongjo, fontWeight = FontWeight.Normal),
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
-                            Tag("내 톤 · ${tone.nameKo}", Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone), color = MaterialTheme.colorScheme.primaryContainer)
+                            Text("내 톤 · ${tone.nameKo}", Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone).padding(horizontal = 6.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
                         StylistNote(stylingNote(outfit.slots, outfit.headline.hashCode()), tinty)
                         Legend(outfit.slots)
                         if (outfit.extras.isNotEmpty()) {
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Text("챙길 것", style = Muted, maxLines = 1)
-                                outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
-                            }
+                            Text("챙길 것  ·  ${outfit.extras.joinToString(", ")}", style = Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -385,12 +385,8 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: (
                     FilledTonalIconButton(
                         onClick = {
                             scope.launch {
-                                val bmp = withContext(Dispatchers.IO) {
-                                    val photos = outfit.slots.associateWith { s -> s.imageFile?.takeIf { s.fromCloset }?.let { loadLookPhoto(context, it) } }
-                                    runCatching {
-                                        renderLookShare(outfit.slots, photos, lookPalette(tinty, dark, surface), "TODAY'S LOOK  ·  ${java.time.LocalDate.now().let { "${it.monthValue}월 ${it.dayOfMonth}일" }}",
-                                            outfit.headline, "나의 컬러는?")
-                                    }.getOrNull()
+                                val bmp = withContext(Dispatchers.Default) {
+                                    runCatching { renderMoodShare(context, look, "나의 컬러는?") }.getOrNull()
                                 } ?: return@launch
                                 runCatching { shareLook(context, bmp) }
                             }
@@ -402,6 +398,8 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: (
         }
     }
 }
+
+private val Myeongjo = FontFamily(Font(com.gun.personalcolor.core.designsystem.R.font.nanum_myeongjo))
 
 private fun todayLabel(): String = java.time.LocalDate.now().let { "${it.monthValue}월 ${it.dayOfMonth}일 코디" }
 
@@ -430,7 +428,7 @@ private fun Legend(slots: List<OutfitSlot>) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Text(if (slot.fromCloset) slot.color.name else slot.item, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (slot.fromCloset) Tag("내 옷", color = MaterialTheme.colorScheme.primaryContainer)
+                if (slot.fromCloset) Text("내 옷", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -516,21 +514,9 @@ private fun LoadingCard() {
 
 /** Teaser after the trial: placeholder outfit (no real data, so nothing leaks where blur is unsupported) + unlock. */
 @Composable
-private fun LockedCard(onUnlock: () -> Unit) {
-    SectionCard("오늘의 코디") {
-        Box {
-            Column(Modifier.blur(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                repeat(3) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small))
-                        Spacer(Modifier.width(16.dp))
-                        Box(Modifier.fillMaxWidth(0.6f).height(16.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp)))
-                    }
-                }
-            }
-            IconTile(Icons.Outlined.Lock, Modifier.align(Alignment.Center), size = 56.dp, drop = true)
-        }
-        Text("오늘의 코디가 준비됐어요", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun LockedCard(weather: TodayWeather?, onUnlock: () -> Unit) {
+    SectionCard(null) {
+        MoodHero(remember(weather) { lockedMoodLook(weather) })
         Text("짧은 광고 하나만 보면 무료예요.", style = Muted)
         PcButton("광고 보고 오늘의 코디 보기", onUnlock, Modifier.fillMaxWidth())
         Text("프리미엄이면 광고 없이 무제한이에요", style = MaterialTheme.typography.labelMedium,
