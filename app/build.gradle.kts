@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.navigationSuite)
     implementation(libs.androidx.compose.material.icons)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
 
 }
 dependencies { testImplementation(libs.junit) }

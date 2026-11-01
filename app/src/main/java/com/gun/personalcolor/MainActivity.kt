@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
     /** Route requested by a deep link / launcher extra, consumed by PcApp once the nav host exists. */
     private val pendingRoute = MutableStateFlow<Any?>(null)
     private val vm: MainViewModel by viewModels()
+    private val forcedUpdate = ForcedUpdate(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -65,7 +66,10 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         ads.gatherConsent(this)
-        if (savedInstanceState == null) handleIntent(intent)
+        if (savedInstanceState == null) {
+            handleIntent(intent)
+            forcedUpdate.check() // async; never holds the splash
+        }
         setContent {
             val prefs by vm.prefs.collectAsStateWithLifecycle()
             val p = prefs ?: return@setContent
@@ -121,6 +125,12 @@ class MainActivity : ComponentActivity() {
             is DeepLink.ToneLink -> ToneRoute(link.id)
             null -> return
         }
+    }
+
+    /** Also resumes an immediate update left in progress (Play's recommended onResume check). */
+    override fun onResume() {
+        super.onResume()
+        forcedUpdate.check()
     }
 
     /** Leaving the app (e.g. after watching an ad or buying premium): bring the home-screen widget up to date. */
