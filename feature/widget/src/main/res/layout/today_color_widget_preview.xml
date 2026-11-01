@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Static widget-picker preview (API 31+) of the 4x2 layout: color card + mini flat-lay. -->
+<!-- Static widget-picker preview (API 31+) of the 4x2 layout: today's color + mini flat-lay. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -11,18 +11,17 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="0.8"
-        android:background="@drawable/widget_preview_swatch"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="2dp">
 
         <TextView
             android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:maxLines="1"
             android:text="@string/widget_today_color_label"
-            android:textColor="#1D1B1A"
-            android:textSize="11sp" />
+            android:textColor="@color/widget_accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -30,9 +29,15 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_preview_name"
-            android:textColor="#1D1B1A"
+            android:textColor="@color/widget_ink"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/widget_preview_swatch" />
     </LinearLayout>
 
     <LinearLayout

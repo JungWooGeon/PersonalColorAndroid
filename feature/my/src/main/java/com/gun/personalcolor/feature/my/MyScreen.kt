@@ -2,7 +2,6 @@ package com.gun.personalcolor.feature.my
 
 import androidx.compose.material.icons.outlined.Widgets
 import com.gun.personalcolor.core.ads.NativeAdCard
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,13 +26,12 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Wallpaper
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -57,7 +55,17 @@ import com.gun.personalcolor.core.ads.RewardRequest
 import com.gun.personalcolor.core.ads.rememberRewardGate
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
+import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.ListRow
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.PcSnackbarHost
+import com.gun.personalcolor.core.designsystem.PcTonalButton
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.aurora
+import com.gun.personalcolor.core.designsystem.elevation
+import com.gun.personalcolor.core.ui.softBrush
+import com.gun.personalcolor.core.ui.tintyColors
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
@@ -131,72 +139,87 @@ fun MyScreen(
                     toneCard(Modifier)
                     rest()
                 }
-                Card {
-                    ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷", icon = Icons.Outlined.Checkroom, onClick = onCloset)
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    ListRow("배경화면 만들기", subtitle = "내 톤 컬러로 만드는 배경화면", icon = Icons.Outlined.Wallpaper,
-                        onClick = { onWallpaper(state.myTone?.id) })
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    if (onAddWidget != null) {
-                        ListRow("위젯 추가", subtitle = "홈 화면에서 오늘의 컬러 보기", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column {
+                    SectionHeader("더 즐기기")
+                    Card {
+                        ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷", icon = Icons.Outlined.Checkroom, onClick = onCloset)
+                        RowDivider()
+                        ListRow("배경화면 만들기", subtitle = "내 톤 컬러와 틴티로 꾸며요", icon = Icons.Outlined.Wallpaper,
+                            onClick = { onWallpaper(state.myTone?.id) })
+                        RowDivider()
+                        if (onAddWidget != null) {
+                            ListRow("위젯 추가", subtitle = "홈 화면에서 오늘의 컬러 보기", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
+                            RowDivider()
+                        }
+                        ListRow("진단 기록", subtitle = if (state.entries.isEmpty()) "아직 없어요" else "${state.entries.size}번 진단했어요",
+                            icon = Icons.Outlined.History, onClick = onHistory)
+                        RowDivider()
+                        ListRow("설정", icon = Icons.Outlined.Settings, onClick = onSettings)
                     }
-                    ListRow("설정", icon = Icons.Outlined.Settings, onClick = onSettings)
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(pad).padding(16.dp))
+            PcSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(pad).padding(16.dp))
         }
     }
 }
 
 @Composable
 private fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) =
-    Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column { content() } }
+    PcCard(modifier.fillMaxWidth()) { Column { content() } }
 
+/** Hairline between rows, inset to the text (past the icon tile). */
+@Composable
+private fun RowDivider() = HorizontalDivider(Modifier.padding(start = 66.dp, end = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+/** My tone hero: pastel wash of the tone with its 틴티 (the one 틴티 on this screen). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MyToneCard(tone: Tone, onGuide: () -> Unit, onAnalyze: () -> Unit, onReport: () -> Unit, onWallpaper: () -> Unit, modifier: Modifier) = Card(modifier) {
-    Box(Modifier.fillMaxWidth().height(96.dp).background(tone.gradient)) {
-        Tag("내 퍼스널컬러", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.surface)
-    }
-    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column {
-            Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(tone.nameKo, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun MyToneCard(tone: Tone, onGuide: () -> Unit, onAnalyze: () -> Unit, onReport: () -> Unit, onWallpaper: () -> Unit, modifier: Modifier) =
+    Box(modifier.fillMaxWidth().elevation(MaterialTheme.shapes.extraLarge, PcTheme.colors.isDark, 1)
+        .clip(MaterialTheme.shapes.extraLarge).background(MaterialTheme.colorScheme.surfaceContainer).background(tone.softBrush())) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Eyebrow("내 퍼스널컬러")
+                    Text(tone.nameKo, style = MaterialTheme.typography.headlineLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Tinty(Modifier.size(104.dp), remember(tone) { tone.tintyColors }, TintyExpression.Default)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                tone.keywords.forEach { Tag("#$it", color = MaterialTheme.colorScheme.surfaceContainer) }
+            }
+            ColorDots(tone.bestColors.take(8), size = 22.dp)
+            ButtonPair(Modifier.padding(top = 4.dp),
+                first = { PcButton("가이드 보기", onGuide, it) },
+                second = { PcOutlinedButton("다시 진단", onAnalyze, it) })
+            ButtonPair(
+                first = { PcTonalButton("리포트 저장", onReport, it, icon = Icons.Outlined.Download) },
+                second = { PcTonalButton("배경화면", onWallpaper, it, icon = Icons.Outlined.Wallpaper) })
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            tone.keywords.forEach { Tag("#$it") }
-        }
-        ColorDots(tone.bestColors.take(8), size = 22.dp)
-        ButtonPair(Modifier.padding(top = 6.dp),
-            first = { PcButton("가이드 보기", onGuide, it) },
-            second = { PcOutlinedButton("다시 진단", onAnalyze, it) })
-        ButtonPair(
-            first = { TonalButton("리포트 저장", Icons.Outlined.Download, onReport, it) },
-            second = { TonalButton("배경화면", Icons.Outlined.Wallpaper, onWallpaper, it) })
-    }
-}
-
-@Composable
-private fun TonalButton(text: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier) =
-    FilledTonalButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = MaterialTheme.shapes.medium) {
-        Icon(icon, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 
+/** Before diagnosis: brand 틴티 on an aurora wash, two ways to start. */
 @Composable
-private fun NoToneCard(onAnalyze: () -> Unit, onQuiz: () -> Unit, onTones: () -> Unit, modifier: Modifier) = Card(modifier) {
-    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("아직 내 퍼스널컬러가 없어요", style = MaterialTheme.typography.titleLarge, maxLines = 2)
-        Text("사진이나 질문으로 금방 찾아요", style = Muted)
-        PcButton("사진으로 진단", onAnalyze, Modifier.fillMaxWidth().padding(top = 6.dp), icon = Icons.Outlined.CameraAlt)
-        PcOutlinedButton("셀프 진단", onQuiz, Modifier.fillMaxWidth(), icon = Icons.Outlined.Checklist)
-        TextButton(onClick = onTones, modifier = Modifier.fillMaxWidth()) { Text("도감에서 고르기", maxLines = 1) }
+private fun NoToneCard(onAnalyze: () -> Unit, onQuiz: () -> Unit, onTones: () -> Unit, modifier: Modifier) =
+    Box(modifier.fillMaxWidth().elevation(MaterialTheme.shapes.extraLarge, PcTheme.colors.isDark, 1)
+        .clip(MaterialTheme.shapes.extraLarge).background(MaterialTheme.colorScheme.surfaceContainer).aurora(PcTheme.colors)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Eyebrow("내 퍼스널컬러")
+                    Text("아직 찾지 않았어요", style = MaterialTheme.typography.headlineSmall, maxLines = 2)
+                    Spacer(Modifier.height(4.dp))
+                    Text("사진이나 질문으로 금방 찾아요", style = Muted)
+                }
+                Tinty(Modifier.size(96.dp))
+            }
+            PcButton("사진으로 진단", onAnalyze, Modifier.fillMaxWidth().padding(top = 6.dp), icon = Icons.Outlined.CameraAlt)
+            PcOutlinedButton("질문으로 셀프 진단", onQuiz, Modifier.fillMaxWidth(), icon = Icons.Outlined.Checklist)
+            TextButton(onClick = onTones, modifier = Modifier.fillMaxWidth()) { Text("도감에서 직접 고르기", maxLines = 1) }
+        }
     }
-}
 
 @Composable
 private fun Stats(state: MyUiState) {
@@ -210,8 +233,8 @@ private fun Stats(state: MyUiState) {
 
 @Composable
 private fun StatTile(value: String, label: String, modifier: Modifier) =
-    Surface(modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 14.dp)) {
+    PcCard(modifier, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 14.dp)) {
             // Shrinks long tone names / dates instead of wrapping on 320dp phones.
             BasicText(value, maxLines = 1, autoSize = TextAutoSize.StepBased(12.sp, 22.sp),
                 style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onSurface))
@@ -224,14 +247,14 @@ private fun StatTile(value: String, label: String, modifier: Modifier) =
 private fun Favorites(favorites: List<Tone>, onTone: (String) -> Unit, onTones: () -> Unit) = Column {
     SectionHeader("즐겨찾는 톤")
     if (favorites.isEmpty()) {
-        Text("도감에서 ☆를 눌러 모아요", style = Muted)
+        Text("도감에서 마음에 드는 톤을 모아 보세요", style = Muted)
         TextButton(onClick = onTones) { Text("도감 보기", maxLines = 1) }
     } else {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(favorites, key = { it.id }) { tone ->
                 Surface(onClick = { onTone(tone.id) }, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.background) {
                     Column(Modifier.width(88.dp)) {
-                        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.medium).background(tone.gradient))
+                        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.large).background(tone.gradient))
                         Text(tone.nameKo, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                     }

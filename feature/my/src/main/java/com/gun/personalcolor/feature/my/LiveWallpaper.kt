@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** What the live wallpaper draws. [toneId] null = follow my tone. */
 internal data class LiveChoice(val style: WallpaperRenderer.Style, val dark: Boolean, val toneId: String?)
@@ -156,7 +157,8 @@ class PersonalColorLiveWallpaper : WallpaperService() {
                 // Wraps daily; float seconds stay precise and the design changes at midnight anyway.
                 val t = (SystemClock.uptimeMillis() - start) % 86_400_000L / 1000f
                 WallpaperRenderer.draw(canvas, tone, choice.style, width, height, choice.dark, LocalDate.now(), t,
-                    dx = (.5f - pageX) * width * .05f - shownX * tilt, dy = -shownY * tilt)
+                    dx = (.5f - pageX) * width * .05f - shownX * tilt, dy = -shownY * tilt,
+                    night = LocalTime.now().hour.let { it >= 22 || it < 6 }) // 틴티 sleeps at night
             } finally {
                 holder.unlockCanvasAndPost(canvas)
             }

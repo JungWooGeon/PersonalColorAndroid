@@ -10,7 +10,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import com.gun.personalcolor.core.designsystem.PcTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,7 +37,6 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 
 internal val ResultSource.label get() = if (this == ResultSource.AI) "AI 사진 진단" else "셀프 진단"
 
@@ -45,27 +45,27 @@ internal val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
 internal val DAY_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("M월 d일 HH:mm")
 internal val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy년 M월")
 
-/** "여름 뮤트 21% · 가을 뮤트 15%" — the runner-up candidates, or null. */
+/** "비슷한 톤 · 여름 뮤트, 가을 뮤트" — the runner-up candidates by name only (no percentages shown to users), or null. */
 internal fun HistoryEntry.runnersUp(tones: Map<String, Tone>): String? =
-    top.drop(1).take(2).mapNotNull { p -> tones[p.toneId]?.let { "${it.nameKo} ${(p.probability * 100).roundToInt()}%" } }
-        .joinToString(" · ").ifEmpty { null }
+    top.drop(1).take(2).mapNotNull { p -> tones[p.toneId]?.nameKo }
+        .joinToString(", ").ifEmpty { null }?.let { "비슷한 톤 · $it" }
 
 /** Avatar + tone name + one or two small lines + chevron. */
 @Composable
 internal fun ToneEntryRow(tone: Tone, subtitle: String, onClick: () -> Unit, modifier: Modifier = Modifier, extra: String? = null) {
     Surface(onClick = onClick, modifier = modifier, color = Color.Transparent) {
         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            ToneAvatar(tone, size = 40.dp)
+            ToneAvatar(tone, size = 44.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(tone.nameKo, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tone.nameKo, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (extra != null) Text(extra, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = PcTheme.colors.ink3)
         }
     }
 }

@@ -36,7 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gun.personalcolor.core.analytics.TrackScreen
-import com.gun.personalcolor.core.designsystem.EmptyState
+import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.TintyEmptyState
@@ -64,12 +64,16 @@ fun HistoryScreen(
 
     PcScaffold(
         "진단 기록", onBack,
-        actions = { if (entries.isNotEmpty()) TextButton(onClick = { confirmClear = true }) { Text("전체 삭제", maxLines = 1) } },
+        actions = {
+            if (entries.isNotEmpty()) TextButton(onClick = { confirmClear = true }) {
+                Text("전체 삭제", maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
     ) { pad ->
         when {
             state.loading -> Unit
             entries.isEmpty() -> TintyEmptyState(
-                "아직 진단 기록이 없어요", "진단하면 여기에 쌓여요",
+                "아직 진단 기록이 없어요", "진단하면 여기에 차곡차곡 쌓여요",
                 Modifier.padding(pad), TintyExpression.Default,
                 action = { PcButton("진단하기", onAnalyze) },
             )
@@ -81,9 +85,8 @@ fun HistoryScreen(
                 var adPlaced = false
                 entries.groupBy { it.dateTime().format(MONTH) }.forEach { (month, group) ->
                     stickyHeader(key = month) {
-                        Text(month, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
-                                .padding(horizontal = ScreenPadding, vertical = 10.dp))
+                        Eyebrow(month, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+                            .padding(start = ScreenPadding, end = ScreenPadding, top = 16.dp, bottom = 6.dp))
                     }
                     items(group, key = { it.timeMillis }) { e ->
                         SwipeRow(e, state, onTone = { onTone(e.toneId) }, onRequestDelete = { pendingDelete = e.timeMillis })

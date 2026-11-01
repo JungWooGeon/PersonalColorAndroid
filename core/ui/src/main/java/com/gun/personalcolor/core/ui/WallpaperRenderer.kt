@@ -16,6 +16,9 @@ import com.gun.personalcolor.core.model.Tone
 import java.time.LocalDate
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.tintyBitmap
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -31,7 +34,9 @@ object WallpaperRenderer {
 
     /** [supportsDark]: has a dark variant worth offering. [animated]: has a moving version for the live wallpaper. */
     enum class Style(val supportsDark: Boolean, val animated: Boolean = false) {
-        AURORA(true, true), GLOW(true, true), WAVE(true, true), PALETTE(false), MINIMAL(false), BOKEH(true, true)
+        AURORA(true, true), GLOW(true, true), WAVE(true, true), PALETTE(false), MINIMAL(false), BOKEH(true, true),
+        /** Aurora with the tone's 틴티 standing just above the dock. */
+        TINTY(true, true),
     }
 
     /** Same rule as the home screen and the widget. */
@@ -49,10 +54,11 @@ object WallpaperRenderer {
      * Draws one full frame. [t] (seconds) moves the animated styles; t = 0 is exactly the still image.
      * [dx]/[dy] shift the moving layer for parallax (px; the art overscans a little so edges never show).
      * Allocates only a few shaders per frame, so it is cheap enough to call at 30 fps on a hardware canvas.
+     * [night]: 틴티 sleeps (TINTY style, used by the live wallpaper late at night).
      */
     fun draw(
         c: Canvas, tone: Tone, style: Style, width: Int, height: Int, dark: Boolean = false, date: LocalDate = LocalDate.now(),
-        t: Float = 0f, dx: Float = 0f, dy: Float = 0f,
+        t: Float = 0f, dx: Float = 0f, dy: Float = 0f, night: Boolean = false,
     ) {
         val palette = tone.bestColors.map { Color.parseColor(it.hex) }
         val art = Art(c, width.toFloat(), height.toFloat(), palette, date.dayOfYear % palette.size,
@@ -64,8 +70,41 @@ object WallpaperRenderer {
             Style.PALETTE -> art.palette()
             Style.MINIMAL -> art.minimal()
             Style.BOKEH -> art.bokeh()
+            Style.TINTY -> {
+                art.aurora()
+                // Pastel wash so 틴티 never sits on its own body color (BRAND_SYSTEM §6-4); dark keeps the deep aurora.
+                if (!art.dark) c.drawColor(Color.argb(150, 255, 255, 255))
+            }
         }
         art.grain()
+        if (style == Style.TINTY) drawTinty(c, tone, width.toFloat(), height.toFloat(), t, dx, if (night) TintyExpression.Sleep else TintyExpression.Default)
+    }
+
+    /**
+     * 틴티 centered above the dock (~40% of the width incl. its 15% margin), bouncing gently when [t] > 0.
+     * Drawn from a cached bitmap: the vector character is far too heavy to redraw at 30 fps.
+     */
+    private fun drawTinty(c: Canvas, tone: Tone, w: Float, h: Float, t: Float, dx: Float, expression: TintyExpression) {
+        val size = (w * .4f).roundToInt().coerceAtLeast(16)
+        val bmp = tintyBitmapFor(tone, size, expression)
+        val up = if (t > 0f) .5f - .5f * cos(2 * PI.toFloat() * t / 1.6f) else 0f // 1.6 s idle bounce
+        val sq = if (t > 0f) 1f - up else 0f
+        val left = (w - size) / 2 + dx * .5f
+        val top = h * .86f - size - size * .045f * up
+        c.save()
+        c.scale(1f + .028f * sq, 1f - .032f * sq, left + size / 2f, top + size * .88f)
+        c.drawBitmap(bmp, left, top, tintyPaint)
+        c.restore()
+    }
+
+    private val tintyPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private var tintyCache: Pair<String, Bitmap>? = null
+
+    @Synchronized
+    private fun tintyBitmapFor(tone: Tone, size: Int, expression: TintyExpression): Bitmap {
+        val key = "${tone.id}/$size/$expression"
+        tintyCache?.let { (k, b) -> if (k == key) return b }
+        return tintyBitmap(size, tone.tintyColors, expression).also { tintyCache = key to it }
     }
 
     /** 256px tile of ~2% monochrome noise, repeated over the whole image. */

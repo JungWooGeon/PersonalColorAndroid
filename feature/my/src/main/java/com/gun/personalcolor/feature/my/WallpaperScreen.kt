@@ -32,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -43,9 +44,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,7 +83,11 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.designsystem.BottomActions
+import com.gun.personalcolor.core.designsystem.IconTile
 import com.gun.personalcolor.core.designsystem.ListRow
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.PcSnackbarHost
+import com.gun.personalcolor.core.designsystem.elevation
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
@@ -122,7 +125,8 @@ data class WallpaperUiState(
     val live: Boolean = false,
 ) {
     val showDark get() = dark && style.supportsDark
-    val styles get() = if (live) Style.entries.filter { it.animated } else Style.entries
+    /** 틴티 first: it's the brand look; the rest keep their order. */
+    val styles get() = Style.entries.sortedBy { it != Style.TINTY }.filter { !live || it.animated }
 }
 
 @HiltViewModel
@@ -196,6 +200,7 @@ internal val Style.label get() = when (this) {
     Style.PALETTE -> "팔레트"
     Style.MINIMAL -> "미니멀"
     Style.BOKEH -> "보케"
+    Style.TINTY -> "틴티"
 }
 
 @Composable
@@ -357,14 +362,14 @@ internal fun WallpaperScreen(
                     Options(state, ratio, busy, onStyle, onTone, onDark, onAuto, onTarget)
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = pad.calculateBottomPadding()).padding(16.dp))
+            PcSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = pad.calculateBottomPadding()).padding(16.dp))
         }
     }
     if (picking) {
         ModalBottomSheet(onDismissRequest = { picking = false }) {
             Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
-                Text("어디에 설정할까요?", style = MaterialTheme.typography.titleMedium, maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                Text("어디에 설정할까요?", style = MaterialTheme.typography.titleLarge, maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 WallpaperTarget.entries.forEach { t ->
                     val icon = when (t) {
                         WallpaperTarget.HOME -> Icons.Outlined.Home
@@ -398,7 +403,8 @@ private fun PhonePreview(state: WallpaperUiState, ratio: Float, modifier: Modifi
         else -> Color(0xFF1D1B1A)
     }
     val shape = RoundedCornerShape(30.dp)
-    Box(modifier.clip(shape).background(MaterialTheme.colorScheme.surfaceVariant).border(5.dp, Color(0xFF1C1C1E), shape)) {
+    Box(modifier.elevation(shape, PcTheme.colors.isDark, 2).clip(shape).background(MaterialTheme.colorScheme.surfaceVariant)
+        .border(5.dp, Color(0xFF1C1C1E), shape)) {
         if (state.live && tone != null) LiveArt(tone, state.style, state.showDark, Modifier.fillMaxSize())
         else image?.let { Image(it, contentDescription = "배경화면 미리보기", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
         Text("9:41", fontSize = 40.sp, fontWeight = FontWeight.Light, color = clock, maxLines = 1,
@@ -434,19 +440,22 @@ private fun ModeSwitch(live: Boolean, onLive: (Boolean) -> Unit) {
 @Composable
 private fun StyleThumb(tone: Tone?, style: Style, dark: Boolean, ratio: Float, selected: Boolean, onClick: () -> Unit) {
     val image = rememberRender(tone, style, dark && style.supportsDark, 140, ratio)
-    val shape = RoundedCornerShape(14.dp)
+    val shape = MaterialTheme.shapes.small
+    val cs = MaterialTheme.colorScheme
     Column(Modifier.width(72.dp).clip(MaterialTheme.shapes.medium).clickable(onClick = onClick).padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier.width(60.dp).aspectRatio(ratio).clip(shape).background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(if (selected) 2.5.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape),
-        ) {
-            image?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        // Selected: violet ring with a small gap, like a focus ring.
+        Box(Modifier.border(2.dp, if (selected) cs.primary else Color.Transparent, RoundedCornerShape(15.dp)).padding(3.dp)) {
+            Box(
+                Modifier.width(56.dp).aspectRatio(ratio).clip(shape).background(cs.surfaceVariant).border(1.dp, cs.outlineVariant, shape),
+            ) {
+                image?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(style.label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) cs.primary else cs.onSurfaceVariant)
     }
 }
 
@@ -491,14 +500,14 @@ private fun Options(
 }
 
 @Composable
-private fun LiveInfoCard() = Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
-    Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Outlined.Lock, contentDescription = null)
+private fun LiveInfoCard() = PcCard(Modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconTile(Icons.Outlined.Lock, size = 40.dp)
         Spacer(Modifier.width(14.dp))
         Column {
             Text("매일 오늘의 컬러로 바뀌어요", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("잠금 화면에는 같은 디자인이 사진으로 적용돼요", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = .75f))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -506,14 +515,16 @@ private fun LiveInfoCard() = Surface(shape = MaterialTheme.shapes.large, color =
 @Composable
 private fun AutoWallpaperCard(state: WallpaperUiState, busy: Boolean, onAuto: (Boolean) -> Unit, onTarget: (WallpaperTarget) -> Unit) {
     val available = state.myTone != null && !busy
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    PcCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTile(Icons.Outlined.Autorenew, size = 40.dp)
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("매일 자동으로 바꾸기", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("매일 자동으로 바꾸기", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         if (state.myTone != null) "매일 오늘의 컬러로 새 배경화면을 만들어요" else "내 톤을 먼저 설정하면 쓸 수 있어요",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = .75f),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -535,7 +546,7 @@ private fun AutoWallpaperCard(state: WallpaperUiState, busy: Boolean, onAuto: (B
 
 @Composable
 private fun Option(label: String, content: @Composable () -> Unit) = Column {
-    Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+    Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
     Spacer(Modifier.height(10.dp))
     content()
 }
