@@ -5,16 +5,16 @@
  ],
  "lightScale": 4,
  "shadeMax": {
-  "sunny": 0.069,
+  "sunny": 0.179,
   "cloudy": 0.073,
-  "rain": 0.02,
-  "night": 0.02
+  "rain": 0.054,
+  "night": 0.07
  },
  "lightMax": {
-  "sunny": 0.641,
+  "sunny": 0.732,
   "cloudy": 0.353,
-  "rain": 0.326,
-  "night": 0.314
+  "rain": 0.439,
+  "night": 0.351
  },
  "grainAlpha": 0.1,
  "vignette": 0.22,
