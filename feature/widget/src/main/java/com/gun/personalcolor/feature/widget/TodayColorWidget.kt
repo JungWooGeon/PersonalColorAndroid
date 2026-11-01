@@ -100,7 +100,7 @@ class TodayLookSquareReceiver : LookWidgetProvider(WidgetSize.Square)
 class TodayLookMiniReceiver : LookWidgetProvider(WidgetSize.Mini)
 
 /** How much of the scene background covers the wallpaper; garments and text stay solid. */
-private const val SCENE_ALPHA = 0.55f
+private const val SCENE_ALPHA = 0.35f
 
 private const val TAG = "LookWidget"
 
