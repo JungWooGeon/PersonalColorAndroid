@@ -35,6 +35,7 @@ object ReportRenderer {
 
     @Suppress("UNUSED_PARAMETER") // kept for future localized strings/resources
     fun render(context: Context, tone: Tone): Bitmap {
+        useBrandFont(context)
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         c.drawColor(BG)
@@ -113,30 +114,47 @@ object ReportRenderer {
         return bmp
     }
 
-    /** 1080×1350 share card: cream + tone aurora, cheering 틴티, tone name, 12 best colors. */
-    fun renderCard(tone: Tone): Bitmap {
+    /**
+     * 1080×1350 share card, the same picture as the result reveal's last frame: the tone's wash, 틴티 cheering in the
+     * tone's colors with a burst of best-color confetti, the name, and 12 best colors.
+     */
+    fun renderCard(context: Context, tone: Tone): Bitmap {
+        useBrandFont(context)
         val w = 1080; val h = 1350
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        c.drawColor(BG)
         val tc = tone.tintyColors
-        // Aurora: two soft blobs of the tone behind 틴티.
-        fun blob(cx: Float, cy: Float, r: Float, color: Int) = c.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(cx, cy, r, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply {
+            shader = LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), lift(tc.bodyTop, 0.74f), lift(tc.bodyBottom, 0.78f), Shader.TileMode.CLAMP)
         })
-        blob(w * 0.72f, 360f, 520f, lift(tc.bodyBottom, 0.6f))
-        blob(w * 0.28f, 560f, 480f, lift(tc.bodyTop, 0.6f))
-
+        // A soft white halo behind 틴티 so it pops off the wash.
+        c.drawCircle(w / 2f, 440f, 330f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(w / 2f, 440f, 330f, 0x99FFFFFF.toInt(), 0x00FFFFFF, Shader.TileMode.CLAMP)
+        })
+        // Confetti: deterministic per tone, in its best colors, fanning up and out from 틴티.
+        val rnd = java.util.Random(tone.id.hashCode().toLong())
+        val colors = tone.bestColors.map { Color.parseColor(it.hex) }
+        val piece = Paint(Paint.ANTI_ALIAS_FLAG)
+        repeat(30) { i ->
+            val a = Math.toRadians(-170.0 + 160.0 * rnd.nextDouble())
+            val d = 250f + 230f * rnd.nextFloat()
+            val x = w / 2f + (kotlin.math.cos(a) * d).toFloat(); val y = 470f + (kotlin.math.sin(a) * d * 0.8).toFloat()
+            val s = 14f + 14f * rnd.nextFloat()
+            piece.color = colors[i % colors.size]
+            c.save(); c.rotate(rnd.nextFloat() * 360f, x, y)
+            if (rnd.nextBoolean()) c.drawCircle(x, y, s * 0.45f, piece) else c.drawRoundRect(RectF(x - s / 2, y - s * 0.3f, x + s / 2, y + s * 0.3f), 4f, 4f, piece)
+            c.restore()
+        }
         val center = paint(40f, true, ACCENT).apply { textAlign = Paint.Align.CENTER }
-        c.drawText("나의 퍼스널컬러는", w / 2f, 140f, center)
-        drawTintyOn(c, (w - 480f) / 2f, 170f, 480f, tc, TintyExpression.Cheer)
-        val name = fit(tone.nameKo, 112f, 56f, true, w - 2 * M)
-        c.drawText(name.second, w / 2f, 790f, paint(name.first, true, INK).apply { textAlign = Paint.Align.CENTER })
+        c.drawText("나의 퍼스널컬러는", w / 2f, 130f, center)
+        drawTintyOn(c, (w - 500f) / 2f, 180f, 500f, tc, TintyExpression.Cheer)
+        val name = fit(tone.nameKo, 116f, 56f, true, w - 2 * M)
+        c.drawText(name.second, w / 2f, 800f, paint(name.first, true, INK).apply { textAlign = Paint.Align.CENTER })
         val sub = "${tone.nameEn} · ${tone.seasonKo} ${tone.temperatureKo}"
-        c.drawText(ellipsize(sub, paint(36f, false, MUTED), w - 2 * M), w / 2f, 852f, paint(36f, false, MUTED).apply { textAlign = Paint.Align.CENTER })
+        c.drawText(ellipsize(sub, paint(36f, false, MUTED), w - 2 * M), w / 2f, 862f, paint(36f, false, MUTED).apply { textAlign = Paint.Align.CENTER })
 
         // Best colors: white card with 2 rows of 6 chips.
-        val card = RectF(M, 892f, w - M, 1242f)
+        val card = RectF(M, 902f, w - M, 1252f)
         c.drawRoundRect(card, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
         val gap = 16f; val pad = 36f
         val size = (card.width() - 2 * pad - gap * 5) / 6
@@ -145,8 +163,14 @@ object ReportRenderer {
             val t = card.top + pad + (i / 6) * (size + gap)
             swatch(c, RectF(l, t, l + size, t + size), col.hex, 24f)
         }
-        c.drawText("나의 컬러는?", w / 2f, h - 64f, paint(30f, true, FAINT).apply { textAlign = Paint.Align.CENTER })
+        c.drawText("나의 컬러는? · 틴티", w / 2f, h - 46f, paint(28f, true, MUTED).apply { textAlign = Paint.Align.CENTER })
         return bmp
+    }
+
+    /** Pretendard (bundled variable font) for the images too; system font if it can't be loaded. */
+    private var face: Typeface? = null
+    private fun useBrandFont(context: Context) {
+        if (face == null) face = runCatching { context.resources.getFont(com.gun.personalcolor.core.designsystem.R.font.pretendard) }.getOrNull()
     }
 
     private fun lift(color: androidx.compose.ui.graphics.Color, t: Float): Int {
@@ -156,7 +180,9 @@ object ReportRenderer {
 
     private fun paint(size: Float, bold: Boolean, color: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = size; this.color = color
-        typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        val f = face
+        if (f != null) { typeface = f; fontVariationSettings = if (bold) "'wght' 760" else "'wght' 420" }
+        else typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
     }
 
     private fun ellipsize(s: String, p: TextPaint, maxW: Float) = TextUtils.ellipsize(s, p, maxW, TextUtils.TruncateAt.END).toString()

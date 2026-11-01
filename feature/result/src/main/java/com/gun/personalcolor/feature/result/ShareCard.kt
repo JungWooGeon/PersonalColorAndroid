@@ -67,7 +67,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 
 /** Shares a result card image. The face photo is never included. */
 internal fun shareResult(context: Context, tone: Tone) {
-    val bmp = ReportRenderer.renderCard(tone)
+    val bmp = ReportRenderer.renderCard(context, tone)
     val file = File(context.cacheDir, "result.png")
     file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)

@@ -52,12 +52,15 @@ class FaceAnalyzer @Inject constructor(@ApplicationContext private val context: 
         )
     }
 
+    /** [onStep]: 1 = photo loaded, finding the face · 2 = face found, measuring colors (drives the loading captions). */
     @Synchronized
-    fun analyze(input: PhotoInput): FaceOutcome {
+    fun analyze(input: PhotoInput, onStep: (Int) -> Unit = {}): FaceOutcome {
         val bitmap = BitmapLoader.load(context, input.uri) ?: return FaceOutcome.BadImage
+        onStep(1)
         val faces = landmarker.detect(BitmapImageBuilder(bitmap).build()).faceLandmarks()
         if (faces.isEmpty()) return FaceOutcome.NoFace
         if (faces.size > 1) return FaceOutcome.ManyFaces
+        onStep(2)
         val points = faces[0].map { Offset(it.x(), it.y()) }
         val photo = FacePhoto(bitmap, points)
         return FaceOutcome.Done(photo, PersonalColorAnalyzer.analyze(Sampler(bitmap, points).samples(input.whiteRef)))

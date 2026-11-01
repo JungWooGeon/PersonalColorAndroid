@@ -55,11 +55,15 @@ class AnalyzePhotoUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(uris: List<Uri>): PhotoFailure? = analyze(uris.map { PhotoInput(it) })
 
-    /** Same, with optional white-paper reference points (guided camera). */
-    suspend fun analyze(inputs: List<PhotoInput>): PhotoFailure? {
+    /**
+     * Same, with optional white-paper reference points (guided camera). [onStep] reports real progress
+     * (1 finding the face · 2 measuring colors · 3 choosing the tone; may repeat per photo) from a background thread.
+     */
+    suspend fun analyze(inputs: List<PhotoInput>, onStep: (Int) -> Unit = {}): PhotoFailure? {
         val outcomes = withContext(Dispatchers.Default) {
-            inputs.map { input -> runCatching { faces.analyze(input) }.getOrElse { analytics.error(it); FaceOutcome.BadImage } }
+            inputs.map { input -> runCatching { faces.analyze(input, onStep) }.getOrElse { analytics.error(it); FaceOutcome.BadImage } }
         }
+        onStep(3)
         val ok = outcomes.mapNotNull { o -> (o as? FaceOutcome.Done)?.let { d -> (d.result as? AnalysisResult.Success)?.let { d.photo to it } } }
         if (ok.isEmpty()) {
             val failure = failureOf(outcomes.first())

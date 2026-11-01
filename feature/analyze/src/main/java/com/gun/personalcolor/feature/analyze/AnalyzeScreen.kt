@@ -1,5 +1,40 @@
 package com.gun.personalcolor.feature.analyze
 
+import com.gun.personalcolor.core.designsystem.PcDialog
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.gun.personalcolor.core.designsystem.DropGlyph
+import com.gun.personalcolor.core.designsystem.PcColors
+import com.gun.personalcolor.core.designsystem.PcMotion
+import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.TintyProp
+import com.gun.personalcolor.core.designsystem.TintyHeader
+import com.gun.personalcolor.core.designsystem.TintyWorking
+import com.gun.personalcolor.core.designsystem.tintyEntrance
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -100,6 +135,7 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
     val analytics = LocalAnalytics.current
     val state by vm.state.collectAsStateWithLifecycle()
     val showGuide by vm.showGuide.collectAsStateWithLifecycle()
+    val step by vm.step.collectAsStateWithLifecycle()
 
     val run = { inputs: List<PhotoInput> ->
         vm.analyze(inputs) {
@@ -131,12 +167,10 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
         }
     }
     if (rationale) {
-        AlertDialog(
-            onDismissRequest = { rationale = false },
-            title = { Text("카메라 권한이 필요해요") },
-            text = { Text("얼굴과 조명을 확인해 잘 나온 순간에 자동으로 찍어요.") },
-            confirmButton = { TextButton(onClick = { rationale = false; permission.launch(Manifest.permission.CAMERA) }) { Text("허용하기") } },
-            dismissButton = { TextButton(onClick = { rationale = false; pick() }) { Text("앨범에서 고르기") } },
+        PcDialog(
+            "카메라 권한이 필요해요", "얼굴과 조명을 확인해 잘 나온 순간에 자동으로 찍어요.", "허용하기",
+            onConfirm = { rationale = false; permission.launch(Manifest.permission.CAMERA) },
+            onDismiss = { rationale = false; pick() }, dismissText = "앨범에서 고르기", prop = TintyProp.Magnifier,
         )
     }
 
@@ -155,7 +189,7 @@ internal fun AnalyzeRoute(onBack: () -> Unit, onResult: () -> Unit, onQuiz: () -
             analytics?.log("capture", "mode" to if (s.auto) "auto" else "manual", "white_ref" to if (whiteRef != null) "yes" else "no")
             run(listOf(PhotoInput(s.uri, whiteRef)))
         }
-        else -> AnalyzeScreen(state, showGuide, onBack, { gated(takePhoto) }, { gated(pick) }, onQuiz)
+        else -> AnalyzeScreen(state, showGuide, onBack, { gated(takePhoto) }, { gated(pick) }, onQuiz, step)
     }
 }
 
@@ -167,6 +201,7 @@ internal fun AnalyzeScreen(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
     onQuiz: () -> Unit,
+    step: Int = 0,
 ) {
     PcScaffold(
         title = "AI 사진 진단",
@@ -180,7 +215,7 @@ internal fun AnalyzeScreen(
     ) { pad ->
         AnimatedContent(state, label = "analyze") { s ->
             when (s) {
-                AnalyzeState.Working -> Centered(pad) { Working() }
+                AnalyzeState.Working -> Centered(pad) { Working(step) }
                 is AnalyzeState.Failed -> Centered(pad) {
                     val (title, message) = s.failure.message()
                     Box(Modifier.size(176.dp).aurora(PcTheme.colors), contentAlignment = Alignment.Center) {
@@ -199,19 +234,71 @@ internal fun AnalyzeScreen(
     }
 }
 
-/** 틴티 thinking while short step lines take turns (they're cosmetic; analysis takes a second or two). */
+private val CAPTIONS = listOf("사진을 살펴보고 있어요", "얼굴을 찾고 있어요", "피부·눈동자·입술 색을 재고 있어요", "12톤 중에서 고르고 있어요", "찾았어요!")
+private val ORBIT = TintyColors.Brand.scarf + listOf(PcColors.Peach, PcColors.Lavender)
+
+/**
+ * 틴티 at work with a magnifier while paint chips orbit it; the caption follows the real steps (see AnalyzeViewModel)
+ * and four drops in the season colors fill up. At the end 틴티 cheers and the chips burst outward.
+ */
 @Composable
-private fun Working() {
-    val steps = remember { listOf("피부 톤을 보고 있어요", "눈동자와 입술 색을 재고 있어요", "어울리는 톤을 찾고 있어요") }
-    var step by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { while (step < steps.lastIndex) { delay(1200); step++ } }
-    TintyLoading(size = 168.dp)
-    Spacer(Modifier.height(20.dp))
-    AnimatedContent(step, label = "step") { i ->
-        Text(steps[i], style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+private fun Working(step: Int) {
+    val found = step >= AnalyzeViewModel.FOUND
+    val spin = rememberInfiniteTransition("orbit").animateFloat(0f, 360f, infiniteRepeatable(tween(4200, easing = LinearEasing)), label = "a")
+    val burst by animateFloatAsState(if (found) 1f else 0f, tween(700, easing = PcMotion.Out), label = "burst")
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(found) { if (found) haptic.performHapticFeedback(HapticFeedbackType.Confirm) }
+    Box(Modifier.size(280.dp, 250.dp), contentAlignment = Alignment.Center) {
+        Orbit(spin::value, burst, front = false)
+        if (found) Tinty(Modifier.size(180.dp).tintyEntrance(), expression = TintyExpression.Cheer)
+        else TintyWorking(Modifier.size(180.dp), prop = TintyProp.Magnifier)
+        Orbit(spin::value, burst, front = true)
     }
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(12.dp))
+    AnimatedContent(
+        step, label = "step",
+        transitionSpec = {
+            ((fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 3 }) togetherWith (fadeOut(tween(140)) + slideOutVertically(tween(160)) { -it / 3 }))
+                .using(SizeTransform(clip = false))
+        },
+        modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center,
+    ) { i -> Text(CAPTIONS[i.coerceIn(0, CAPTIONS.lastIndex)], style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+    Spacer(Modifier.height(16.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+        repeat(4) { i ->
+            val done = step > i || found
+            val current = step == i && !found
+            val fill by animateColorAsState(if (done) TintyColors.Brand.scarf[i] else MaterialTheme.colorScheme.outlineVariant, tween(PcMotion.BASE), label = "drop")
+            val pulse = if (current) rememberInfiniteTransition("pulse").animateFloat(0.82f, 1.12f, infiniteRepeatable(tween(420), RepeatMode.Reverse), label = "p").value else 1f
+            DropGlyph(fill, Modifier.size(14.dp, 18.dp).graphicsLayer { scaleX = pulse; scaleY = pulse; transformOrigin = TransformOrigin(0.5f, 0.9f) })
+        }
+    }
+    Spacer(Modifier.height(16.dp))
     Text("사진은 휴대폰 안에서만 봐요", style = Muted, textAlign = TextAlign.Center)
+}
+
+/** Half of the orbit: chips behind 틴티 ([front] false) or in front. They fly outward and fade when [burst] → 1. */
+@Composable
+private fun BoxScope.Orbit(angle: () -> Float, burst: Float, front: Boolean) {
+    val dark = PcTheme.colors.isDark
+    val card = MaterialTheme.colorScheme.surfaceContainerLowest
+    Canvas(Modifier.matchParentSize()) {
+        val c = Offset(size.width / 2, size.height * 0.56f)
+        val rx = size.width * 0.44f * (1f + burst * 0.5f); val ry = size.height * 0.16f * (1f + burst * 0.9f)
+        val u = 1.dp.toPx()
+        ORBIT.forEachIndexed { i, color ->
+            val a = Math.toRadians((angle() + i * 360.0 / ORBIT.size)).toFloat()
+            val depth = kotlin.math.sin(a) // > 0: in front of 틴티
+            if ((depth > 0f) != front) return@forEachIndexed
+            val s = (0.78f + 0.26f * depth) * u
+            val p = Offset(c.x + rx * kotlin.math.cos(a), c.y + ry * depth - burst * 30f * u)
+            val alpha = (1f - burst) * (0.65f + 0.35f * (depth + 1f) / 2f)
+            rotate(18f * kotlin.math.cos(a), p) {
+                drawRoundRect(if (dark) card else Color.White, p - Offset(11f * s, 14f * s), Size(22f * s, 28f * s), CornerRadius(4f * s), alpha = alpha)
+                drawRoundRect(color, p - Offset(8f * s, 11f * s), Size(16f * s, 15f * s), CornerRadius(3f * s), alpha = alpha)
+            }
+        }
+    }
 }
 
 @Composable
@@ -222,13 +309,7 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
             .readableWidth().padding(horizontal = ScreenPadding).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(Modifier.padding(top = 4.dp)) {
-            Eyebrow("12톤 퍼스널컬러")
-            Spacer(Modifier.height(4.dp))
-            Text("사진 한 장이면 돼요", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(6.dp))
-            Text("피부·눈동자·입술·머리카락 색으로 어울리는 톤을 찾아요.", style = Muted)
-        }
+        TintyHeader("사진 한 장이면 돼요", "피부·눈동자·입술·머리카락 색으로\n어울리는 톤을 찾아요", TintyProp.Magnifier, Modifier.padding(top = 4.dp))
 
         SectionCard("이렇게 찍어 주세요") {
             Step(1, Icons.Outlined.WbSunny, "낮에 창가 자연광에서", "노란 조명은 피해 주세요")
