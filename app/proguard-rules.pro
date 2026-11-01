@@ -27,3 +27,7 @@
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
 -if interface * { @retrofit2.http.* public *** *(...); }
 -keep,allowoptimization,allowshrinking,allowobfuscation class <3>
+
+# ML Kit (subject segmentation for closet cut-outs) discovers its components by reflection.
+# Without this, R8 strips the registrars' no-arg constructors and SubjectSegmentation.getClient() fails in release.
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
