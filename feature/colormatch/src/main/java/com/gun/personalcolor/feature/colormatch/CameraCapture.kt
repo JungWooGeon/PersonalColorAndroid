@@ -2,6 +2,7 @@ package com.gun.personalcolor.feature.colormatch
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
@@ -26,7 +27,9 @@ import java.io.File
 internal fun rememberCameraCapture(fileName: String, onPhoto: (Uri) -> Unit, onError: (String) -> Unit): () -> Unit {
     val context = LocalContext.current
     var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) cameraUri?.let(onPhoto) }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        cameraUri?.let { if (ok) onPhoto(it) else deleteCameraPhoto(context, it) } // cancelled: drop the empty/partial file
+    }
     val launch = {
         try {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(context.cacheDir, fileName))
@@ -46,4 +49,13 @@ internal fun rememberCameraCapture(fileName: String, onPhoto: (Uri) -> Unit, onE
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launch()
         else permission.launch(Manifest.permission.CAMERA)
     }
+}
+
+/**
+ * Deletes [uri] if it is this app's camera photo in the cache (photos aren't kept; the screen holds the decoded
+ * bitmap). Album picks belong to other providers and are never touched. Call once the photo has been decoded.
+ */
+internal fun deleteCameraPhoto(context: Context, uri: Uri) {
+    if (uri.authority != "${context.packageName}.files") return
+    runCatching { context.contentResolver.delete(uri, null, null) }.onFailure { Log.w("CameraCapture", "delete failed", it) }
 }

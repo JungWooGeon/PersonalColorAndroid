@@ -105,6 +105,7 @@ class ClosetAddViewModel @Inject constructor(
                     Log.w(TAG, "photo load failed", e); null
                 }
             }
+            deleteCameraPhoto(context, uri) // not reached if a newer photo cancelled this load: that one may reuse the file
             if (result == null) {
                 _state.update { it.copy(processing = false, error = "사진을 불러오지 못했어요. 다른 사진으로 해 볼까요?") }
                 return@launch

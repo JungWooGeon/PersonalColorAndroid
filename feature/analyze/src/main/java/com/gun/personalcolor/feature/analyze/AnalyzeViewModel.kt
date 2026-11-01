@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.analyze
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,7 @@ import com.gun.personalcolor.core.domain.AnalyzePhotoUseCase
 import com.gun.personalcolor.core.domain.PhotoFailure
 import com.gun.personalcolor.core.vision.PhotoInput
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +37,7 @@ sealed interface AnalyzeState {
 
 @HiltViewModel
 class AnalyzeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val analyzePhoto: AnalyzePhotoUseCase,
     prefs: UserPreferencesRepository,
 ) : ViewModel() {
@@ -43,7 +46,11 @@ class AnalyzeViewModel @Inject constructor(
 
     val showGuide = prefs.preferences.map { it.showPhotoGuide }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
-    fun openCamera() { _state.value = AnalyzeState.Camera }
+    /** New capture session: nothing uses an older guided capture now (album/failed/tips state), so drop leftovers. */
+    fun openCamera() {
+        GuidedPhotos.sweep(context.cacheDir)
+        _state.value = AnalyzeState.Camera
+    }
 
     fun captured(uri: Uri, auto: Boolean) { _state.value = AnalyzeState.WhiteRef(uri, auto) }
 
@@ -67,6 +74,9 @@ class AnalyzeViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.w("AnalyzeViewModel", "analysis failed", e)
                 PhotoFailure.BadImage
+            } finally {
+                // The diagnosis holds the decoded bitmap (result, report, drape use that), never the file.
+                inputs.forEach { GuidedPhotos.delete(it.uri) }
             }
             if (failure == null) {
                 real.value = 3; captions.join()
@@ -88,10 +98,13 @@ class AnalyzeViewModel @Inject constructor(
 
     /** One step back: white ref → camera, camera/failure → tips. */
     fun back() {
-        _state.value = when (_state.value) {
-            is AnalyzeState.WhiteRef -> AnalyzeState.Camera
+        _state.value = when (val s = _state.value) {
+            is AnalyzeState.WhiteRef -> AnalyzeState.Camera.also { GuidedPhotos.delete(s.uri) } // retake
             AnalyzeState.Working, AnalyzeState.Done -> return
             else -> AnalyzeState.Idle
         }
     }
+
+    /** Leaving mid-flow: drop the capture awaiting its white point (a running analysis deletes its own). */
+    override fun onCleared() { (_state.value as? AnalyzeState.WhiteRef)?.let { GuidedPhotos.delete(it.uri) } }
 }

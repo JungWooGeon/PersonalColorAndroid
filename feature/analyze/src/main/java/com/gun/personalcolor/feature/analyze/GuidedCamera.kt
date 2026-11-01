@@ -110,6 +110,28 @@ private val CameraInk = Color(0xCC2B2236)
 private const val AUTO_CAPTURE_MS = 1200
 
 /**
+ * Guided captures are temporary (the privacy policy keeps no photo originals): the analysis keeps only the decoded
+ * bitmap in memory, so the JPEG is deleted once analysis ends, on retake, and any leftovers at app/camera start.
+ */
+object GuidedPhotos {
+    private const val PREFIX = "guided_"
+    internal fun newFile(cacheDir: File) = File(cacheDir, "$PREFIX${System.currentTimeMillis()}.jpg")
+
+    /** Deletes [uri] if it is a guided capture; album photos (content://) are never touched. */
+    fun delete(uri: Uri) {
+        if (uri.scheme != "file") return
+        runCatching { uri.path?.let(::File)?.takeIf { it.name.startsWith(PREFIX) }?.delete() }
+            .onFailure { Log.w("GuidedPhotos", "delete failed", it) }
+    }
+
+    /** Deletes every guided capture in [cacheDir]. Only call when no capture is in use. */
+    fun sweep(cacheDir: File) {
+        runCatching { cacheDir.listFiles { f -> f.name.startsWith(PREFIX) && f.name.endsWith(".jpg") }?.forEach { it.delete() } }
+            .onFailure { Log.w("GuidedPhotos", "sweep failed", it) }
+    }
+}
+
+/**
  * In-app camera that checks face position and lighting ~5 times a second and shoots automatically once
  * everything has looked right for [AUTO_CAPTURE_MS]. Assumes CAMERA permission is granted.
  * [onCaptured] gets the saved JPEG (cache dir) and whether it was an auto capture.
@@ -184,7 +206,7 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
     fun shoot(auto: Boolean) {
         if (capturing) return
         capturing = true
-        val file = File(context.cacheDir, "guided_${System.currentTimeMillis()}.jpg")
+        val file = GuidedPhotos.newFile(context.cacheDir)
         // Save the real (unmirrored) image; only the preview is mirrored for the front camera.
         val options = ImageCapture.OutputFileOptions.Builder(file)
             .setMetadata(ImageCapture.Metadata().apply { isReversedHorizontal = false })

@@ -95,6 +95,7 @@ class ColorMatchViewModel @Inject constructor(
             val bmp = withContext(Dispatchers.Default) {
                 try { BitmapLoader.load(context, uri, 1600)?.let { scaleDown(it, 1600) } } catch (e: OutOfMemoryError) { null }
             }
+            deleteCameraPhoto(context, uri)
             if (bmp == null) {
                 _state.update { it.copy(photoLoading = false, error = "사진을 불러오지 못했어요. 다른 사진을 골라 주세요.") }
                 return@launch
