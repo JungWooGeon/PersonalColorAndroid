@@ -161,15 +161,31 @@ fun EmptyState(
     message: String? = null,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
-) {
+) = EmptyStateLayout(title, message, modifier, action) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceVariant) {
+        Icon(icon, null, Modifier.padding(18.dp).size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** [EmptyState] with 틴티 instead of an icon, for the main empty/error states of a screen. */
+@Composable
+fun TintyEmptyState(
+    title: String,
+    message: String? = null,
+    modifier: Modifier = Modifier,
+    expression: TintyExpression = TintyExpression.Surprised,
+    colors: TintyColors = TintyColors.Brand,
+    action: (@Composable () -> Unit)? = null,
+) = EmptyStateLayout(title, message, modifier, action) { Tinty(Modifier.size(128.dp), colors, expression) }
+
+@Composable
+private fun EmptyStateLayout(title: String, message: String?, modifier: Modifier, action: (@Composable () -> Unit)?, art: @Composable () -> Unit) {
     Column(
         modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceVariant) {
-            Icon(icon, null, Modifier.padding(18.dp).size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        art()
         Spacer(Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         if (message != null) {

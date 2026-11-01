@@ -42,7 +42,6 @@ import androidx.compose.material.icons.rounded.Checkroom
 import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,6 +75,8 @@ import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyEmptyState
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.readableWidth
@@ -127,9 +128,9 @@ fun ClosetScreen(
         }
     }) { pad ->
         when {
-            state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+            state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { TintyLoading() }
             state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-                EmptyState(Icons.Rounded.Checkroom, "옷장이 비어 있어요", "내 옷을 찍어 두면 어울리는지 한눈에 볼 수 있어요", action = {
+                TintyEmptyState("옷장이 비어 있어요", "내 옷을 찍어 두면 어울리는지 한눈에 볼 수 있어요", action = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PcButton("옷 추가", onAdd, icon = Icons.Rounded.Add)
                         TextButton(onColorMatch, Modifier.heightIn(min = 48.dp)) {

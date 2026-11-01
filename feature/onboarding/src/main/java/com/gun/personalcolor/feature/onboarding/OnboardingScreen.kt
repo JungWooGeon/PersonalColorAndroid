@@ -79,6 +79,7 @@ import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
+import com.gun.personalcolor.core.designsystem.Tinty
 import com.gun.personalcolor.core.designsystem.readableWidth
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.accent
@@ -296,7 +297,7 @@ private fun CenterBadge(icon: ImageVector, size: Dp, modifier: Modifier = Modifi
         }
     }
 
-/** 12 tone colors around a face. */
+/** 12 tone colors around 틴티. */
 @Composable
 private fun ToneRingArt(tones: List<Tone>) {
     val colors = tones.colors(fallbackColors())
@@ -309,7 +310,7 @@ private fun ToneRingArt(tones: List<Tone>) {
                     .border(2.dp, MaterialTheme.colorScheme.background, CircleShape))
             }
         }
-        CenterBadge(Icons.Outlined.Face, s * 0.36f)
+        Tinty(Modifier.size(s * 0.6f))
     }
 }
 

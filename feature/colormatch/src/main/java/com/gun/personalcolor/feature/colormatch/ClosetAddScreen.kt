@@ -43,7 +43,6 @@ import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -88,6 +87,9 @@ import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.TintyLoading
+import com.gun.personalcolor.core.ui.tintyColors
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.SectionCard
@@ -208,10 +210,10 @@ private fun PhotoPart(state: ClosetAddUiState, onCamera: () -> Unit, onAlbum: ()
         Alignment.Center,
     ) {
         when {
-            state.processing -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                CircularProgressIndicator()
-                Text("배경 지우는 중… 처음엔 조금 걸릴 수 있어요", style = Muted)
-            }
+            state.processing -> TintyLoading(
+                Modifier.padding(16.dp), "배경 지우는 중… 처음엔 조금 걸릴 수 있어요",
+                remember(state.tone) { state.tone?.tintyColors ?: TintyColors.Brand }, size = 112.dp,
+            )
             photo != null -> CutoutPicker(photo, state.point, state.photoColor, onPickPoint)
             else -> Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Rounded.PhotoCamera, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)

@@ -26,14 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FaceRetouchingOff
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -71,6 +69,9 @@ import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.SectionCard
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.designsystem.readableWidth
 import com.gun.personalcolor.core.domain.PhotoFailure
 import com.gun.personalcolor.core.vision.PhotoInput
@@ -167,17 +168,15 @@ internal fun AnalyzeScreen(
         AnimatedContent(state, label = "analyze") { s ->
             when (s) {
                 AnalyzeState.Working -> Centered(pad) {
-                    CircularProgressIndicator(Modifier.size(56.dp), strokeWidth = 5.dp)
-                    Spacer(Modifier.height(24.dp))
+                    TintyLoading(size = 160.dp)
+                    Spacer(Modifier.height(16.dp))
                     Text("얼굴을 분석하고 있어요", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(4.dp))
                     Text("잠시만 기다려 주세요", style = Muted, textAlign = TextAlign.Center)
                 }
                 is AnalyzeState.Failed -> Centered(pad) {
-                    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Icon(Icons.Outlined.ErrorOutline, null, Modifier.padding(16.dp).size(36.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                    }
-                    Spacer(Modifier.height(20.dp))
+                    Tinty(Modifier.size(128.dp), expression = TintyExpression.Surprised)
+                    Spacer(Modifier.height(16.dp))
                     val (title, message) = s.failure.message()
                     Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(6.dp))

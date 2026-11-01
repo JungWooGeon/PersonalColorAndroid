@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -59,6 +58,7 @@ import com.gun.personalcolor.core.analysis.ColorMath
 import com.gun.personalcolor.core.analysis.Rgb
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.vision.BitmapLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -102,7 +102,7 @@ internal fun WhiteRefScreen(uri: Uri, onRetake: () -> Unit, onDone: (Offset?) ->
 @Composable
 private fun Photo(bitmap: Bitmap?, marker: Offset?, onTap: (Offset) -> Unit, modifier: Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
-        if (bitmap == null) { CircularProgressIndicator(color = Color.White); return@Box }
+        if (bitmap == null) { TintyLoading(size = 112.dp); return@Box }
         // The box has the photo's aspect ratio, so tap position / size = normalized image coordinates.
         Box(
             Modifier.aspectRatio(bitmap.width.toFloat() / bitmap.height).pointerInput(Unit) {

@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import com.gun.personalcolor.core.ads.LocalAdManager
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.readableWidth
@@ -72,14 +74,19 @@ internal fun QuizScreen(questions: List<QuizQuestion>, answered: Int, onBack: ()
                 Text("${index + 1} / ${questions.size}", style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp))
             }
-            AnimatedContent(
-                index,
-                transitionSpec = {
-                    val dir = if (targetState > initialState) 1 else -1
-                    (slideInHorizontally { it / 4 * dir } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 * dir } + fadeOut())
-                },
-                label = "question",
-            ) { i -> Question(questions[i], onAnswer) }
+            // All answered: the result (and maybe an ad) is on its way.
+            if (answered >= questions.size) {
+                Box(Modifier.fillMaxSize(), Alignment.Center) { TintyLoading(message = "결과를 정리하고 있어요") }
+            } else {
+                AnimatedContent(
+                    index,
+                    transitionSpec = {
+                        val dir = if (targetState > initialState) 1 else -1
+                        (slideInHorizontally { it / 4 * dir } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 * dir } + fadeOut())
+                    },
+                    label = "question",
+                ) { i -> Question(questions[i], onAnswer) }
+            }
         }
     }
 }

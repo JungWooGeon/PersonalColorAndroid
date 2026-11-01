@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gun.personalcolor.core.designsystem.TintyColors
 import com.gun.personalcolor.core.model.NamedColor
 import com.gun.personalcolor.core.model.Tone
 import kotlin.math.floor
@@ -186,4 +187,42 @@ fun ToneCard(tone: Tone, onClick: () -> Unit, modifier: Modifier = Modifier, tra
             GradientStrip(tone)
         }
     }
+}
+
+// 틴티 per tone (same picks as the character spec): body = 2 representative best colors, scarf = 4 contrasting ones.
+private val TINTY_PICK = mapOf(
+    "spring_light" to listOf("피치", "웜 핑크", "라이트 민트", "버터 옐로", "아쿠아 블루", "라이트 코랄"),
+    "spring_true" to listOf("골든 옐로", "코랄", "터콰이즈", "애플 그린", "웜 레드", "오렌지"),
+    "spring_bright" to listOf("레몬 옐로", "비비드 코랄", "클리어 블루", "아쿠아 민트", "비비드 그린", "클리어 레드"),
+    "summer_light" to listOf("파우더 핑크", "라벤더", "베이비 블루", "파스텔 아쿠아", "로즈 핑크", "페리윙클"),
+    "summer_true" to listOf("소프트 로즈", "라벤더", "미디엄 블루", "스카이 블루", "블루 그린", "라즈베리"),
+    "summer_mute" to listOf("더스티 로즈", "그레이시 블루", "블루 세이지", "모브", "슬레이트 블루", "소프트 플럼"),
+    "autumn_mute" to listOf("살몬 베이지", "세이지 그린", "소프트 머스터드", "소프트 카멜", "올리브 그린", "소프트 테라코타"),
+    "autumn_true" to listOf("머스터드", "펌킨 오렌지", "올리브 그린", "러스트", "카멜", "테라코타"),
+    "autumn_deep" to listOf("브론즈", "와인 레드", "딥 틸", "딥 올리브", "다크 체리 레드", "토바코 브라운"),
+    "winter_bright" to listOf("핫핑크", "바이올렛", "쿨 터콰이즈", "코발트 블루", "에메랄드 그린", "퓨어 화이트"),
+    "winter_true" to listOf("마젠타", "로열 블루", "크림슨", "퓨어 화이트", "미드나잇 네이비", "파인 그린"),
+    "winter_deep" to listOf("로열 퍼플", "딥 사파이어", "쿨 레드", "퓨어 화이트", "와인", "에그플랜트"),
+)
+
+/** 틴티 dressed in this tone. Deep body colors are lifted toward white just enough that the eyes stay readable. */
+val Tone.tintyColors: TintyColors get() {
+    val byName = bestColors.associate { it.name to hexColor(it.hex) }
+    // If tones.json renames colors, fall back to the first 6 mid-lightness best colors.
+    val picked = TINTY_PICK[id]?.mapNotNull { byName[it] }?.takeIf { it.size == 6 }
+        ?: bestColors.map { hexColor(it.hex) }.filter { it.luminance() in 0.03f..0.92f }.take(6)
+    if (picked.size < 6) return TintyColors.Brand
+    return TintyColors(
+        bodyTop = picked[0].liftTo(0.16f),
+        bodyBottom = picked[1].liftTo(0.09f),
+        scarf = picked.subList(2, 6),
+        blush = makeup.blushColors.firstOrNull()?.let { hexColor(it.hex) } ?: Color(0xFFF4A3A0),
+    )
+}
+
+private fun Color.liftTo(minLuminance: Float): Color {
+    var t = 0f
+    fun at(t: Float) = Color(red + (1 - red) * t, green + (1 - green) * t, blue + (1 - blue) * t)
+    while (at(t).luminance() < minLuminance && t < 0.9f) t += 0.02f
+    return at(t)
 }

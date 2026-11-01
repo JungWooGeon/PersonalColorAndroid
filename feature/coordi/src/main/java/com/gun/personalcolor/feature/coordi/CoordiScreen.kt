@@ -1,5 +1,8 @@
 package com.gun.personalcolor.feature.coordi
 
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.TintyEmptyState
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import android.Manifest
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -163,10 +166,9 @@ internal fun CoordiScreen(
     PcScaffold("오늘의 코디", onBack) { padding ->
         val tone = state.tone
         when {
-            tone == null && !state.loading -> EmptyState(
-                Icons.Outlined.Palette, "내 퍼스널컬러를 먼저 알려 주세요",
-                "내 톤과 날씨에 맞는 코디를 매일 추천해요.",
-                Modifier.padding(padding),
+            tone == null && !state.loading -> TintyEmptyState(
+                "내 퍼스널컬러를 먼저 알려 주세요", "내 톤과 날씨에 맞는 코디를 매일 추천해요.",
+                Modifier.padding(padding), TintyExpression.Default,
             ) { PcButton("퍼스널컬러 진단하기", onAnalyze) }
             else -> Content(state, tone, unlocked, showTrial, padding, onTone, onCloset, onLocationResult, onUnlock, onNext)
         }
@@ -492,7 +494,7 @@ private fun TipCard(tip: String) {
 @Composable
 private fun LoadingCard() {
     SectionCard(null) {
-        Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) { TintyLoading(size = 120.dp) }
     }
 }
 

@@ -105,6 +105,11 @@ import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.TintyEmptyState
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.TintyLoading
+import com.gun.personalcolor.core.ui.tintyColors
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.SectionCard
@@ -217,7 +222,7 @@ fun ColorMatchScreen(
     }) { pad ->
         val tone = state.refTone
         when {
-            !state.ready -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+            !state.ready -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { TintyLoading() }
             tone == null -> NoToneState(pad, onAnalyze, onPickTone = openSheet, onTones = onTones)
             state.source == ColorSource.NONE -> Intro(pad, tone, state, onCamera, onAlbum, onManual, openSheet)
             else -> Checker(pad, tone, state, onCamera, onAlbum, onManual, onBackToPhoto, onPick, onPickEnd, onHsv, openSheet, onTone) { saveSheet = true }
@@ -249,8 +254,8 @@ fun ColorMatchScreen(
 @Composable
 private fun NoToneState(pad: PaddingValues, onAnalyze: () -> Unit, onPickTone: () -> Unit, onTones: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-        EmptyState(
-            icon = Icons.Rounded.Palette,
+        TintyEmptyState(
+            expression = TintyExpression.Default,
             title = "먼저 내 톤을 알려주세요",
             message = "내 톤에 어울리는지 알려줘요.",
             action = {
@@ -401,7 +406,7 @@ private fun PhotoArea(state: ColorMatchUiState, onPick: (Float, Float, Boolean) 
     val photo = state.photo
     Box(modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHighest), Alignment.Center) {
         if (photo != null) PhotoPicker(photo, state.pointX, state.pointY, state.color, onPick, onPickEnd)
-        if (state.photoLoading) CircularProgressIndicator()
+        if (state.photoLoading) TintyLoading(colors = remember(state.refTone) { state.refTone?.tintyColors ?: TintyColors.Brand }, size = 112.dp)
     }
 }
 

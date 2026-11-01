@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -72,6 +71,7 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.designsystem.isWideWindow
 import com.gun.personalcolor.core.designsystem.readableWidth
 import com.gun.personalcolor.core.domain.DiagnosisSession
@@ -183,7 +183,8 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                     Box(Modifier.fillMaxWidth().aspectRatio(ratio).clip(MaterialTheme.shapes.large)) {
                         Surface(Modifier.fillMaxSize(), color = bg) {}
                         if (cutout.loading) {
-                            CircularProgressIndicator(Modifier.align(Alignment.Center).size(32.dp), strokeWidth = 3.dp)
+                            // One Tinty for the side-by-side drape panels (drawn over the row below); the lip panel gets its own.
+                            if (extra != null) TintyLoading(Modifier.align(Alignment.Center), size = 104.dp)
                         } else {
                             DrapedPhoto(
                                 photo, cutout.mask, bg,
@@ -199,9 +200,12 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
             }
 
         val drapePanels: @Composable (Modifier) -> Unit = { m ->
-            Row(m, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                panel("BEST", best, true, Modifier.weight(1f), null)
-                panel(rightLabel, right, true, Modifier.weight(1f), null)
+            Box(m) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    panel("BEST", best, true, Modifier.weight(1f), null)
+                    panel(rightLabel, right, true, Modifier.weight(1f), null)
+                }
+                if (cutout.loading) TintyLoading(Modifier.align(Alignment.Center), size = 104.dp)
             }
         }
         val drapeControls: @Composable () -> Unit = {

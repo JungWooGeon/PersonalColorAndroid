@@ -65,6 +65,9 @@ import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.ui.tintyColors
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.SectionCard
 import com.gun.personalcolor.core.designsystem.isExpandedWindow
@@ -117,6 +120,7 @@ internal fun ResultRoute(
             ) {
                 val summary: @Composable (Modifier) -> Unit = { m ->
                     Column(m, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Tinty(Modifier.align(Alignment.CenterHorizontally).size(148.dp), remember(tone) { tone.tintyColors }, TintyExpression.Cheer)
                         Text(if (diagnosis.source == ResultSource.QUIZ) "셀프 진단 결과" else if (diagnosis.photoCount > 1) "사진 ${diagnosis.photoCount}장 분석 결과" else "AI 사진 진단 결과",
                             style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         ToneHeader(tone)

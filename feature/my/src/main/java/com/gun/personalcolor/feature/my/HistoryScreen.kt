@@ -39,6 +39,8 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.EmptyState
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.TintyEmptyState
+import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.readableWidth
@@ -66,9 +68,9 @@ fun HistoryScreen(
     ) { pad ->
         when {
             state.loading -> Unit
-            entries.isEmpty() -> EmptyState(
-                Icons.Outlined.History, "아직 진단 기록이 없어요", "진단하면 여기에 쌓여요",
-                Modifier.padding(pad),
+            entries.isEmpty() -> TintyEmptyState(
+                "아직 진단 기록이 없어요", "진단하면 여기에 쌓여요",
+                Modifier.padding(pad), TintyExpression.Default,
                 action = { PcButton("진단하기", onAnalyze) },
             )
             else -> LazyColumn(

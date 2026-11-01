@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +57,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.PcTheme
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.ui.tintyColors
 import com.gun.personalcolor.core.designsystem.ScreenPadding
 import com.gun.personalcolor.core.designsystem.SectionHeader
 import com.gun.personalcolor.core.designsystem.isWideWindow
@@ -142,11 +146,17 @@ internal fun HomeScreen(state: HomeState, a: HomeActions) {
 private fun MyToneCard(tone: Tone, onClick: () -> Unit, modifier: Modifier) {
     Box(modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraLarge).background(tone.gradient).clickable(onClick = onClick)) {
         Column(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.25f)).padding(20.dp)) {
-            Text("내 퍼스널컬러", style = MaterialTheme.typography.labelLarge, color = Color(0xFF1D1B1A).copy(alpha = 0.75f))
-            Text(tone.nameKo, style = MaterialTheme.typography.headlineMedium, color = Color(0xFF1D1B1A), maxLines = 1)
-            Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.keywords.take(3).joinToString(" ") { "#$it" }}",
-                style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1D1B1A).copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("내 퍼스널컬러", style = MaterialTheme.typography.labelLarge, color = Color(0xFF1D1B1A).copy(alpha = 0.75f))
+                    Text(tone.nameKo, style = MaterialTheme.typography.headlineMedium, color = Color(0xFF1D1B1A), maxLines = 1)
+                    Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.keywords.take(3).joinToString(" ") { "#$it" }}",
+                        style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1D1B1A).copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                val colors = remember(tone) { tone.tintyColors }
+                Tinty(Modifier.size(84.dp), colors, TintyExpression.Happy)
+            }
+            Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ColorDots(tone.bestColors.take(6), 22.dp)
                 Spacer(Modifier.weight(1f))
@@ -180,6 +190,8 @@ private val HeroGradient = Brush.linearGradient(listOf(Color(0xFFFFCBB0), Color(
 private fun PhotoHero(onClick: () -> Unit, compact: Boolean, modifier: Modifier) {
     val ink = Color(0xFF1D1B1A)
     Box(modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraLarge).background(HeroGradient).clickable(onClick = onClick)) {
+        // 틴티 greets first-time users; once a tone is set it lives on the tone card instead.
+        if (!compact) Tinty(Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp).size(116.dp))
         Column(Modifier.padding(22.dp)) {
             Text(if (compact) "다시 진단해 볼까요?" else "AI 퍼스널컬러 진단", style = MaterialTheme.typography.headlineSmall, color = ink)
             Spacer(Modifier.height(6.dp))
