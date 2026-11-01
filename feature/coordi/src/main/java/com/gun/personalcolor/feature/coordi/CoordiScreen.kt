@@ -211,6 +211,9 @@ private fun Content(
             PcButton("다른 코디 보기", onNext, Modifier.fillMaxWidth(), icon = Icons.Outlined.Refresh)
             PcOutlinedButton("내 옷장", onCloset, Modifier.fillMaxWidth(), icon = Icons.Outlined.Checkroom)
         }
+        var catalog by rememberSaveable { mutableStateOf(false) }
+        TextButton({ catalog = true }, Modifier.align(Alignment.CenterHorizontally)) { Text("추천하는 옷 종류 보기") }
+        if (catalog) ClothingCatalogSheet(tone) { catalog = false }
         NativeAdCard()
         Text("날씨 데이터: Open-Meteo.com", style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
@@ -350,13 +353,13 @@ private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit) {
 }
 
 /**
- * Flat-lay board: garments on the left/right columns, the point item small under the first piece.
+ * Flat-lay board: the first garment big on the left with shoes and the point item small under it, the rest on the right.
  * Closet pieces show the user's cut-out photo (or the illustration in the item's color) with a "내 옷" tag.
  */
 @Composable
 private fun OutfitBoard(slots: List<OutfitSlot>) {
-    val point = slots.firstOrNull { it.label == "포인트" }
-    val clothes = slots - setOfNotNull(point)
+    val smalls = slots.filter { it.label == "신발" || it.label == "포인트" }
+    val clothes = slots - smalls.toSet()
     val first = clothes.firstOrNull() ?: return
     val rest = clothes.drop(1)
     Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
@@ -364,14 +367,15 @@ private fun OutfitBoard(slots: List<OutfitSlot>) {
             val col = (maxWidth - 16.dp) / 2
             val big = (col * 0.86f).coerceAtMost(200.dp)
             val mid = (if (rest.size >= 2) col * 0.72f else col * 0.86f).coerceAtMost(180.dp)
+            val small = (col * 0.46f).coerceAtMost(104.dp)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     BoardPiece(first, big)
-                    if (point != null && rest.isNotEmpty()) BoardPiece(point, (col * 0.5f).coerceAtMost(110.dp))
+                    if (rest.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { smalls.forEach { BoardPiece(it, small) } }
                 }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     rest.forEach { BoardPiece(it, mid) }
-                    if (point != null && rest.isEmpty()) BoardPiece(point, (col * 0.6f).coerceAtMost(130.dp))
+                    if (rest.isEmpty()) smalls.forEach { BoardPiece(it, (col * 0.6f).coerceAtMost(130.dp)) }
                 }
             }
         }
@@ -397,7 +401,7 @@ private fun BoardPiece(slot: OutfitSlot, size: Dp) {
         Text(slot.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         Text(
             if (slot.fromCloset) slot.color.name else slot.item,
-            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = size + 24.dp),
         )
     }

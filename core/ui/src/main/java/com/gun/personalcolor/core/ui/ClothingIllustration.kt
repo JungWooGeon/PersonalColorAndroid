@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.tooling.preview.Preview
@@ -339,7 +340,33 @@ private fun buildArt(kind: String): Art = Art().apply {
             line { mirrored(*q(50f, 23.5f, 37f, 28f, 29f, 50f)); moveTo(50f, 23.5f); lineTo(50f, 50f) }
             thick(2.4f, Tint.Outline) { moveTo(50f, 23f); lineTo(50f, 16f) }
         }
-        else -> fill { addOval(androidx.compose.ui.geometry.Rect(20f, 20f, 80f, 80f)) }
+        else -> EXTRA_ART[kind]?.let { svgArt(it) } ?: fill { addOval(androidx.compose.ui.geometry.Rect(20f, 20f, 80f, 80f)) }
+    }
+}
+
+/** Kinds drawn from SVG path data (ClothingArt*.kt). One string per layer, see [svgArt]. */
+private val EXTRA_ART: Map<String, List<String>> by lazy { OUTER_DRESS_ART + TOP_BOTTOM_ART + SHOE_ART + ACCESSORY_ART }
+
+/**
+ * Layer string = code + SVG path data (100×100 space), drawn in order:
+ * F base fill · I inner (shade) fill · W light fill (soles, lenses…) · O outline-color fill — all fills get the outline stroke;
+ * L detail line · S strong (outline-color) line · D "x y r" dot · T<width><B|I|W|O> thick stroke (straps, handles).
+ */
+private fun Art.svgArt(layers: List<String>) = layers.forEach { layer ->
+    val code = layer.substringBefore(' ')
+    val d = layer.substringAfter(' ')
+    fun path() = PathParser().parsePathString(d).toPath()
+    when (code[0]) {
+        'F' -> ops += Op.Fill(path(), Tint.Base)
+        'I' -> ops += Op.Fill(path(), Tint.Inner)
+        'W' -> ops += Op.Fill(path(), Tint.Light)
+        'O' -> ops += Op.Fill(path(), Tint.Outline)
+        'L' -> ops += Op.Line(path(), false)
+        'S' -> ops += Op.Line(path(), true)
+        'D' -> d.trim().split(Regex("\\s+")).map(String::toFloat).let { (x, y, r) -> dot(x, y, r) }
+        'T' -> ops += Op.Thick(path(), code.drop(1).dropLast(1).toFloat(), when (code.last()) {
+            'I' -> Tint.Inner; 'W' -> Tint.Light; 'O' -> Tint.Outline; else -> Tint.Base
+        })
     }
 }
 

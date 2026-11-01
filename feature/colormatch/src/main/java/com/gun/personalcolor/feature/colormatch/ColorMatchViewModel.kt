@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.gun.personalcolor.core.analysis.Rgb
 import com.gun.personalcolor.core.data.ClosetRepository
 import com.gun.personalcolor.core.data.ContentRepository
-import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.ClosetItem
 import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.model.Tone
@@ -111,8 +110,8 @@ class ColorMatchViewModel @Inject constructor(
         val tone = s.refTone ?: return
         val v = s.verdict ?: return
         viewModelScope.launch {
-            // Prefill the kind only when the category maps to exactly one (원피스 → dress).
-            val kind = CLOTHING_KINDS.entries.singleOrNull { it.value.second == category }?.key
+            // Prefill the kind only where the category alone says enough (원피스 → dress).
+            val kind = if (category == "원피스") "dress" else null
             closet.add(ClosetItem(System.currentTimeMillis(), color.toHex(), name.trim(), category, tone.id, v.level.verdict, v.score, kind = kind))
         }
     }

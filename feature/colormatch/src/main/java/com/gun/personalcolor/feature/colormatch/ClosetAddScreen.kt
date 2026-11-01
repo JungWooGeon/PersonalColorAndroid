@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.colormatch
 
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.horizontalScroll
 import com.gun.personalcolor.core.ui.ClothingIllustration
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
@@ -336,12 +338,34 @@ private fun VerdictCard(hex: String, state: ClosetAddUiState) {
     }
 }
 
-/** Single-select kind chips from [CLOTHING_KINDS]. */
+private val KIND_GROUPS = CLOTHING_KINDS.entries.groupBy({ it.value.second }, { it.key })
+
+/** Single-select kind picker: a category row (상의, 하의, 신발 …), then that category's kinds. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun KindChips(selected: String?, onSelect: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CLOTHING_KINDS.forEach { (key, v) -> FilterChip(key == selected, { onSelect(key) }, { Text(v.first, maxLines = 1) }) }
+    var group by rememberSaveable(selected == null) {
+        mutableStateOf(selected?.let { CLOTHING_KINDS[it]?.second } ?: KIND_GROUPS.keys.first())
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            KIND_GROUPS.keys.forEach { g ->
+                val on = g == group
+                Surface(
+                    onClick = { group = g }, shape = RoundedCornerShape(50),
+                    color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHighest,
+                ) {
+                    Text(g, Modifier.padding(horizontal = 14.dp, vertical = 7.dp), maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (on) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KIND_GROUPS[group].orEmpty().forEach { key ->
+                FilterChip(key == selected, { onSelect(key) }, { Text(CLOTHING_KINDS[key]!!.first, maxLines = 1) })
+            }
+        }
     }
 }
 
