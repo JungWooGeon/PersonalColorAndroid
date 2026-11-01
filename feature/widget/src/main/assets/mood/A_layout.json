@@ -1,0 +1,419 @@
+{
+ "size": [
+  760,
+  1088
+ ],
+ "lightScale": 4,
+ "shadeMax": {
+  "sunny": 0.38,
+  "cloudy": 0.22,
+  "rain": 0.26,
+  "night": 0.3
+ },
+ "lightMax": {
+  "sunny": 0.24,
+  "cloudy": 0.1,
+  "rain": 0.14,
+  "night": 0.22
+ },
+ "grainAlpha": 0.22,
+ "vignette": 0.3,
+ "garmentGrade": {
+  "sunny": {
+   "multiply": "#FFEFDC",
+   "saturation": 0.9
+  },
+  "cloudy": {
+   "multiply": "#F2EEE8",
+   "saturation": 0.84
+  },
+  "rain": {
+   "multiply": "#EDEBEA",
+   "saturation": 0.84
+  },
+  "night": {
+   "multiply": "#B8B0AA",
+   "saturation": 0.8
+  }
+ },
+ "contactShadow": {
+  "dx": 6,
+  "dy": 10,
+  "blur": 18,
+  "alpha": 0.35
+ },
+ "layouts": {
+  "outer_top_bottom": {
+   "acc": {
+    "rect": [
+     576,
+     349,
+     156,
+     520
+    ],
+    "rot": 18,
+    "z": 0,
+    "hanger": null,
+    "hook": null
+   },
+   "outer": {
+    "rect": [
+     59,
+     413,
+     338,
+     545
+    ],
+    "rot": -6,
+    "z": 1,
+    "hanger": null,
+    "hook": null
+   },
+   "bottom": {
+    "rect": [
+     356,
+     501,
+     260,
+     500
+    ],
+    "rot": 4,
+    "z": 2,
+    "hanger": null,
+    "hook": null
+   },
+   "top": {
+    "rect": [
+     221,
+     408,
+     334,
+     315
+    ],
+    "rot": 11,
+    "z": 3,
+    "hanger": null,
+    "hook": null
+   },
+   "shoes": {
+    "rect": [
+     179,
+     978,
+     281,
+     78
+    ],
+    "rot": 5,
+    "z": 5,
+    "hanger": null,
+    "hook": null
+   },
+   "bag": {
+    "rect": [
+     523,
+     863,
+     231,
+     210
+    ],
+    "rot": -10,
+    "z": 6,
+    "hanger": null,
+    "hook": null
+   }
+  },
+  "top_bottom": {
+   "acc": {
+    "rect": [
+     576,
+     349,
+     156,
+     520
+    ],
+    "rot": 18,
+    "z": 0,
+    "hanger": null,
+    "hook": null
+   },
+   "bottom": {
+    "rect": [
+     314,
+     446,
+     283,
+     545
+    ],
+    "rot": 5,
+    "z": 1,
+    "hanger": null,
+    "hook": null
+   },
+   "top": {
+    "rect": [
+     146,
+     379,
+     346,
+     330
+    ],
+    "rot": -9,
+    "z": 2,
+    "hanger": null,
+    "hook": null
+   },
+   "shoes": {
+    "rect": [
+     164,
+     973,
+     281,
+     78
+    ],
+    "rot": -6,
+    "z": 5,
+    "hanger": null,
+    "hook": null
+   },
+   "bag": {
+    "rect": [
+     523,
+     842,
+     231,
+     210
+    ],
+    "rot": 8,
+    "z": 6,
+    "hanger": null,
+    "hook": null
+   }
+  },
+  "dress": {
+   "acc": {
+    "rect": [
+     576,
+     349,
+     156,
+     520
+    ],
+    "rot": 18,
+    "z": 0,
+    "hanger": null,
+    "hook": null
+   },
+   "dress": {
+    "rect": [
+     188,
+     375,
+     384,
+     620
+    ],
+    "rot": 4,
+    "z": 1,
+    "hanger": null,
+    "hook": null
+   },
+   "shoes": {
+    "rect": [
+     133,
+     973,
+     281,
+     78
+    ],
+    "rot": -6,
+    "z": 5,
+    "hanger": null,
+    "hook": null
+   },
+   "bag": {
+    "rect": [
+     508,
+     842,
+     231,
+     210
+    ],
+    "rot": 8,
+    "z": 6,
+    "hanger": null,
+    "hook": null
+   }
+  },
+  "outer_dress": {
+   "acc": {
+    "rect": [
+     576,
+     349,
+     156,
+     520
+    ],
+    "rot": 18,
+    "z": 0,
+    "hanger": null,
+    "hook": null
+   },
+   "outer": {
+    "rect": [
+     70,
+     395,
+     347,
+     560
+    ],
+    "rot": -6,
+    "z": 1,
+    "hanger": null,
+    "hook": null
+   },
+   "dress": {
+    "rect": [
+     298,
+     438,
+     347,
+     560
+    ],
+    "rot": 4,
+    "z": 2,
+    "hanger": null,
+    "hook": null
+   },
+   "shoes": {
+    "rect": [
+     164,
+     978,
+     281,
+     78
+    ],
+    "rot": 5,
+    "z": 5,
+    "hanger": null,
+    "hook": null
+   },
+   "bag": {
+    "rect": [
+     523,
+     863,
+     231,
+     210
+    ],
+    "rot": -10,
+    "z": 6,
+    "hanger": null,
+    "hook": null
+   }
+  }
+ },
+ "text": {
+  "line": {
+   "rect": [
+    63,
+    112,
+    600,
+    160
+   ],
+   "size": 56,
+   "lineSpacing": 1.25,
+   "color": {
+    "sunny": "#4A3A2E",
+    "cloudy": "#45403B",
+    "rain": "#33323A",
+    "night": "#EDE6DA"
+   }
+  },
+  "caption": {
+   "rect": [
+    63,
+    60,
+    600,
+    46
+   ],
+   "size": 36,
+   "color": {
+    "sunny": "#6E5848",
+    "cloudy": "#625A53",
+    "rain": "#4E4D57",
+    "night": "#CFC6B8"
+   }
+  }
+ },
+ "mini": {
+  "crop": [
+   150,
+   250,
+   480,
+   696
+  ],
+  "layouts": {
+   "top_bottom": {
+    "bottom": {
+     "rect": [
+      201,
+      205,
+      192,
+      370
+     ],
+     "rot": 4,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "top": {
+     "rect": [
+      72,
+      142,
+      260,
+      245
+     ],
+     "rot": 12,
+     "z": 2,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      223,
+      600,
+      187,
+      52
+     ],
+     "rot": 6,
+     "z": 3,
+     "hanger": null,
+     "hook": null
+    }
+   },
+   "dress": {
+    "dress": {
+     "rect": [
+      110,
+      137,
+      279,
+      450
+     ],
+     "rot": 4,
+     "z": 1,
+     "hanger": null,
+     "hook": null
+    },
+    "shoes": {
+     "rect": [
+      223,
+      600,
+      187,
+      52
+     ],
+     "rot": 6,
+     "z": 2,
+     "hanger": null,
+     "hook": null
+    }
+   }
+  },
+  "text": {
+   "caption": {
+    "rect": [
+     44,
+     616,
+     400,
+     56
+    ],
+    "size": 40,
+    "color": {
+     "sunny": "#6E5848",
+     "cloudy": "#625A53",
+     "rain": "#4E4D57",
+     "night": "#CFC6B8"
+    }
+   }
+  }
+ }
+}
