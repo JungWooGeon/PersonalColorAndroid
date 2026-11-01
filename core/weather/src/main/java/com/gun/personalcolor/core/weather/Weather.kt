@@ -11,13 +11,21 @@ import kotlinx.serialization.json.Json
     val feelsLike: Double,
     val min: Double,
     val max: Double,
-    val precipProb: Int,          // 0..100, today's max
+    val precipProb: Int,          // 0..100, max over the rest of today (from the current hour)
     val condition: String,        // Korean label, e.g. "맑음"
     val code: Int,                // WMO weather code
     val uv: Double?,
     val wind: Double,             // km/h
     val fetchedAtMillis: Long,
+    /** Today's most significant WMO code (Open-Meteo daily), null in old caches. */
+    val dayCode: Int? = null,
 ) {
+    /** Rain or snow now, or a ≥50% chance later today: bring an umbrella. */
+    val wet: Boolean get() = WeatherCodes.isWet(code) || precipProb >= 50
+    /** The wet weather today is snow (now or in the day's forecast). */
+    val snowy: Boolean get() = WeatherCodes.icon(code) == WeatherCodes.SNOW ||
+        (!WeatherCodes.isWet(code) && dayCode?.let { WeatherCodes.icon(it) } == WeatherCodes.SNOW)
+
     /** Icon key, see [WeatherCodes.icon]. */
     val icon: String get() = WeatherCodes.icon(code)
     /** Last word of the place, e.g. "망원동" — for short lines. */
@@ -66,9 +74,15 @@ object WeatherCodes {
 
 // --- Open-Meteo response ---
 
-@Serializable internal data class Forecast(val current: Current, val daily: Daily)
+@Serializable internal data class Forecast(val current: Current, val daily: Daily, val hourly: Hourly? = null)
+
+@Serializable internal data class Hourly(
+    val time: List<String> = emptyList(),
+    @SerialName("precipitation_probability") val precipProb: List<Double?> = emptyList(),
+)
 
 @Serializable internal data class Current(
+    val time: String? = null,       // "2026-11-01T09:15", local
     @SerialName("temperature_2m") val temp: Double,
     @SerialName("apparent_temperature") val feelsLike: Double? = null,
     @SerialName("weather_code") val code: Int = 3,
@@ -80,6 +94,7 @@ object WeatherCodes {
     @SerialName("temperature_2m_min") val min: List<Double?> = emptyList(),
     @SerialName("precipitation_probability_max") val precipProb: List<Double?> = emptyList(),
     @SerialName("uv_index_max") val uv: List<Double?> = emptyList(),
+    @SerialName("weather_code") val code: List<Int?> = emptyList(),
 )
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -87,18 +102,23 @@ private val json = Json { ignoreUnknownKeys = true }
 internal fun parseForecast(body: String, place: String?, now: Long): TodayWeather {
     val f = json.decodeFromString<Forecast>(body)
     val c = f.current
+    // The daily max covers the whole day (past hours and late night too), so "구름 조금" could sit next to 100%.
+    // Use the hours from now on; fall back to the daily max when hourly data is missing.
+    val hour = c.time?.take(13)
+    val rest = f.hourly?.let { h -> h.time.indices.filter { hour == null || h.time[it].take(13) >= hour }.mapNotNull { h.precipProb.getOrNull(it) } }
     return TodayWeather(
         placeLabel = place,
         temp = c.temp,
         feelsLike = c.feelsLike ?: c.temp,
         min = f.daily.min.firstOrNull() ?: c.temp,
         max = f.daily.max.firstOrNull() ?: c.temp,
-        precipProb = f.daily.precipProb.firstOrNull()?.toInt() ?: 0,
+        precipProb = (rest?.maxOrNull() ?: f.daily.precipProb.firstOrNull())?.toInt() ?: 0,
         condition = WeatherCodes.label(c.code),
         code = c.code,
         uv = f.daily.uv.firstOrNull(),
         wind = c.wind ?: 0.0,
         fetchedAtMillis = now,
+        dayCode = f.daily.code.firstOrNull(),
     )
 }
 

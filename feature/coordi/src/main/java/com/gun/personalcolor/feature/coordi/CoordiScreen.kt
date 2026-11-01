@@ -296,7 +296,7 @@ private fun WeatherCard(ws: WeatherState, layerLine: String?) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tag("체감 ${w.feelsLike.roundToInt()}°")
                 Tag("최저 ${w.min.roundToInt()}° · 최고 ${w.max.roundToInt()}°")
-                Tag("강수확률 ${w.precipProb}%")
+                Tag("오늘 강수확률 ${w.precipProb}%")
                 w.uv?.let { Tag("자외선 ${uvLabel(it)}") }
             }
         }

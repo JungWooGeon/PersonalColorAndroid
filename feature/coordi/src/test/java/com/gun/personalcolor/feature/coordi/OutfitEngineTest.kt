@@ -61,7 +61,7 @@ class OutfitEngineTest {
     }
 
     @Test fun negativeVariantStillPicksAMood() {
-        assertTrue(OutfitEngine.closestMood(moods, tone, variant = -1) in moods)
+        assertTrue(OutfitEngine.closestMood(moods, tone, variant = -1) in tone.bestColors)
     }
 
     @Test fun deterministicPerDay() {
@@ -86,7 +86,7 @@ class OutfitEngineTest {
         // "방수" only where it makes sense.
         for (v in 0..20) OutfitEngine.build(tone, weather(7.0, rain = 70), date, moods, variant = v).slots
             .forEach { assertTrue(it.item, "방수" !in it.item || it.kind == "windbreaker") }
-        assertTrue(rainy.tip.contains("70%"))
+        assertTrue(rainy.tip.contains("비 소식"))
         val sunny = OutfitEngine.build(tone, weather(25.0, uv = 8.0), date, moods)
         assertTrue("선글라스" in sunny.extras)
     }
@@ -98,7 +98,7 @@ class OutfitEngineTest {
     }
 
     @Test fun moodClosestToPaletteAvoidsWorst() {
-        assertEquals("카멜 브라운", OutfitEngine.closestMood(moods, tone)!!.name)
+        assertEquals("카멜", OutfitEngine.closestMood(moods, tone)!!.name) // nearest best color to 카멜 브라운
     }
 
     @Test fun prefersClosetItems() {
@@ -248,5 +248,30 @@ class OutfitEngineTest {
         listOf("muffler", "beanie", "coat", "short_coat", "duffle", "trench", "tweed", "blazer", "cardigan", "blouse", "crop_tee", "slip_dress",
             "denim_skirt", "long_skirt", "long_boots", "mary_jane", "loafers", "sandals", "flats", "shoulder_bag", "umbrella")
             .forEach { assertTrue("never picked: $it", it in seen) }
+    }
+
+    // Regression: a winter bright user got 오트밀 (a generic month color). The mood color is always the tone's own.
+    @Test fun moodColorIsAlwaysFromTheTonePalette() {
+        val file = listOf("../../feature/coordi/src/main/assets/coordi_season_moods.json", "src/main/assets/coordi_season_moods.json",
+            "feature/coordi/src/main/assets/coordi_season_moods.json").map(::File).first { it.exists() }
+        val json = Json { ignoreUnknownKeys = true }
+        val months = json.parseToJsonElement(file.readText()).let { (it as JsonObject).getValue("months").jsonArray }
+            .map { m -> (m as JsonObject).getValue("colors").jsonArray.map { json.decodeFromJsonElement(NamedColor.serializer(), it) } }
+        assertEquals(12, months.size)
+        for (t in tones) for ((i, month) in months.withIndex()) for (v in 0..5) {
+            val o = OutfitEngine.build(t, weather(10.0), date.withMonth(i + 1), month, variant = v)
+            assertTrue("${t.id} month ${i + 1}: ${o.moodColor}", o.moodColor in t.bestColors)
+        }
+    }
+
+    // Rain is decided from the same data the weather card shows: wet now, or a ≥50% chance for the rest of today.
+    @Test fun rainFollowsCurrentConditionOrChance() {
+        fun w(code: Int, prob: Int, dayCode: Int? = null) = TodayWeather(null, 10.0, 10.0, 5.0, 15.0, prob, "", code, 2.0, 5.0, 0L, dayCode)
+        fun umbrella(x: TodayWeather) = OutfitEngine.build(tone, x, date, moods).slots.any { it.kind == "umbrella" }
+        assertTrue(!umbrella(w(0, 10)) && !umbrella(w(2, 40)))
+        assertTrue(umbrella(w(61, 20)) && umbrella(w(0, 60)))
+        assertTrue(OutfitEngine.build(tone, w(71, 80), date, moods).tip.contains("눈 소식"))
+        assertTrue(OutfitEngine.build(tone, w(3, 80, dayCode = 73), date, moods).tip.contains("눈 소식"))
+        assertTrue(OutfitEngine.build(tone, w(0, 80, dayCode = 63), date, moods).tip.contains("비 소식"))
     }
 }

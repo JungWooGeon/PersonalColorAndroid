@@ -14,7 +14,7 @@ object MoodCopy {
         if (hour >= 22 || hour < 6) return "night"
         val c = condition.orEmpty()
         return when {
-            listOf("비", "눈", "소나기", "진눈깨비").any { it in c } -> "rain"
+            listOf("비", "눈", "소나기", "진눈깨비", "뇌우").any { it in c } -> "rain"
             listOf("흐", "구름", "안개", "황사", "박무", "연무").any { it in c } -> "cloudy"
             else -> "sunny"
         }
@@ -35,6 +35,7 @@ object MoodCopy {
         return when {
             day == "rain" -> "${if (condition.orEmpty().contains("눈")) "눈" else "비"} 오는 날, $color 한 방울"
             temp != null && temp <= 5 -> "$color${ro(color)} 따뜻하게"
+            day == "cloudy" && condition.orEmpty().contains("구름 조금") -> "구름 사이로, $color 한 조각"
             day == "cloudy" -> "흐린 날엔 $color${ro(color)}"
             else -> "햇살 아래, $color 한 조각"
         }

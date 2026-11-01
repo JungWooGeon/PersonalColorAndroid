@@ -70,8 +70,8 @@ internal class CoordiViewModel @Inject constructor(
     fun refreshWeather() = viewModelScope.launch {
         val permitted = WeatherRepository.hasPermission(context)
         weather.value = WeatherState(loading = true, hasPermission = permitted)
-        // A failed fetch (or a revoked permission mid-call) falls back to the season-based outfit.
-        val w = if (permitted) runCatching { withTimeoutOrNull(15_000) { weatherRepo.today() } }.getOrNull() else null
+        // A failed or slow fetch (or a revoked permission mid-call) falls back to the season-based outfit.
+        val w = if (permitted) runCatching { withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weatherRepo.today() } }.getOrNull() else null
         weather.value = WeatherState(loading = false, weather = w, hasPermission = permitted)
     }
 
@@ -82,5 +82,8 @@ internal class CoordiViewModel @Inject constructor(
 
     fun nextOutfit() { variant.value++ }
 
-    private companion object { const val DAY_MS = 24 * 60 * 60_000L }
+    private companion object {
+        const val DAY_MS = 24 * 60 * 60_000L
+        const val WEATHER_TIMEOUT_MS = 8_000L
+    }
 }

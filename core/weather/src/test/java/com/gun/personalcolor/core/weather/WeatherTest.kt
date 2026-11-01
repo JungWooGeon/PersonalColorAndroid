@@ -45,4 +45,25 @@ class WeatherTest {
         assertEquals("제주특별자치도", shortPlace("제주특별자치도", null, null, null))
         assertNull(shortPlace(null, null, null, null))
     }
+
+    // Regression: "구름 조금" next to "강수확률 100%" — the daily max counted hours already past. Only the rest of today counts.
+    @Test fun precipChanceIsForTheRestOfToday() {
+        val body = """
+            {"current":{"time":"2026-11-01T14:15","temperature_2m":14.3,"weather_code":2},
+             "hourly":{"time":["2026-11-01T00:00","2026-11-01T06:00","2026-11-01T14:00","2026-11-01T15:00","2026-11-01T21:00"],
+               "precipitation_probability":[100,90,10,20,40]},
+             "daily":{"precipitation_probability_max":[100],"weather_code":[61]}}
+        """.trimIndent()
+        val w = parseForecast(body, null, 0L)
+        assertEquals(40, w.precipProb)
+        assertEquals(61, w.dayCode)
+        assertEquals(false, w.wet)
+        // No hourly block (old response shape): the daily max.
+        assertEquals(100, parseForecast(body.replace(Regex("\"hourly\":\\{[^}]*},"), ""), null, 0L).precipProb)
+        assertEquals(true, w.copy(code = 61).wet)
+        assertEquals(true, w.copy(precipProb = 50).wet)
+        assertEquals(true, w.copy(code = 71).snowy)
+        assertEquals(true, w.copy(dayCode = 73).snowy)
+        assertEquals(false, w.copy(code = 61, dayCode = 73).snowy)
+    }
 }

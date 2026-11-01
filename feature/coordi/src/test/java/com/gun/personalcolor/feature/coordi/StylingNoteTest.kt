@@ -39,4 +39,19 @@ class StylingNoteTest {
         assertTrue(stylingNote(combos[0], Int.MIN_VALUE).isNotBlank())
         assertTrue(stylingNote(listOf(slot("신발", "shoes")), -7).isNotBlank())
     }
+
+    // Regression: "흐린 날일수록…" on a sunny day. The umbrella can mean rain later or snow, so no line names the sky.
+    @Test fun stylingNoteNeverNamesTheWeather() {
+        val sky = listOf("흐린", "맑은", "비 오는", "눈 오는", "햇살", "구름")
+        combos.forEach { slots -> repeat(6) { seed ->
+            val note = stylingNote(slots, seed)
+            assertTrue(note, sky.none { it in note })
+        } }
+    }
+
+    @Test fun neutralTopNeverBringsOutTheFace() {
+        val grey = listOf(OutfitSlot("원피스", NamedColor("그레이", "#A3A6AD"), "그레이 니트 원피스", kind = "knit_dress"),
+            OutfitSlot("가방", NamedColor("코발트 블루", "#0047AB"), "코발트 블루 숄더백", kind = "shoulder_bag"))
+        repeat(6) { assertTrue(stylingNote(grey, it), "살려" !in stylingNote(grey, it)) }
+    }
 }

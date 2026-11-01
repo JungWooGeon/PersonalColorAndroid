@@ -93,7 +93,7 @@ data class Outfit(
     val eye: NamedColor,
     val blush: NamedColor,
     val metal: String,
-    /** This month's mood color closest to the user's palette. */
+    /** One of the tone's best colors, the one nearest this month's mood palette. */
     val moodColor: NamedColor,
     /** Things to bring: 우산, 선글라스, 목도리 … */
     val extras: List<String>,
@@ -244,7 +244,7 @@ object OutfitEngine {
         val rnd = Random(date.toEpochDay() * 31 + tone.id.hashCode() + variant * 7919L)
         val feels = weather?.feelsLike?.takeIf { it.isFinite() }?.roundToInt() ?: monthlyFeels[date.monthValue - 1]
         val band = bands.first { feels >= it.min }
-        val rainy = weather != null && weather.precipProb >= 50
+        val rainy = weather?.wet == true
         val strongUv = (weather?.uv ?: 0.0) >= 6.0
         fun pick(list: List<String>) = list[rnd.nextInt(list.size)]
         fun <T> pickOf(list: List<T>) = list[rnd.nextInt(list.size)]
@@ -364,7 +364,7 @@ object OutfitEngine {
             if (strongUv) { add(if (feels >= 23) "버킷햇" else "모자"); add("선글라스") }
         }
         val tip = when {
-            rainy -> "비 소식이 있어요(강수확률 ${weather!!.precipProb}%). 우산 꼭 챙기세요."
+            rainy -> "오늘 ${if (weather!!.snowy) "눈" else "비"} 소식이 있어요. 우산 꼭 챙기세요."
             strongUv -> "자외선이 강해요. 모자나 선글라스를 챙기세요."
             weather != null && weather.max - weather.min >= 10 -> "일교차가 커요. 벗고 입기 쉬운 겉옷을 챙기세요."
             else -> "이달의 무드 컬러 '${mood.name}', 소품으로 살짝 더해 봐요."
@@ -388,17 +388,14 @@ object OutfitEngine {
         )
     }
 
-    /** Mood color nearest to any best color, pushed away from worst colors. [variant] rotates through the top 3. */
+    /**
+     * This month's mood color, always one of the tone's own best colors: the best color nearest to the month's mood
+     * palette (the palette is generic, e.g. 오트밀 in winter, so it only steers the pick). [variant] rotates through the top 3.
+     */
     internal fun closestMood(moods: List<NamedColor>, tone: Tone, variant: Int = 0): NamedColor? {
-        if (moods.isEmpty()) return null
-        val best = tone.bestColors.map { lab(it.hex) }
-        val worst = tone.worstColors.map { lab(it.hex) }
-        val ranked = moods.sortedBy { mood ->
-            val l = lab(mood.hex)
-            val toBest = best.minOfOrNull { deltaE(l, it) } ?: 0.0
-            val toWorst = worst.minOfOrNull { deltaE(l, it) } ?: Double.MAX_VALUE
-            toBest + if (toWorst < toBest) 25.0 else 0.0
-        }
+        if (moods.isEmpty() || tone.bestColors.isEmpty()) return null
+        val month = moods.map { lab(it.hex) }
+        val ranked = tone.bestColors.sortedBy { c -> lab(c.hex).let { l -> month.minOf { deltaE(l, it) } } }
         return ranked[Math.floorMod(variant, minOf(3, ranked.size))]
     }
 

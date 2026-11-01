@@ -16,6 +16,8 @@ import com.google.android.gms.tasks.Task
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -55,27 +57,34 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
         val url = "https://api.open-meteo.com/v1/forecast?latitude=${fmt(lat)}&longitude=${fmt(lon)}" +
             "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,relative_humidity_2m" +
             "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,weather_code" +
-            "&timezone=auto&forecast_days=1"
-        // Interruptible so a caller's withTimeoutOrNull doesn't wait out the socket timeouts.
-        val body = runInterruptible(Dispatchers.IO) { httpGet(url) } ?: return null
-        return parseForecast(body, placeLabel(lat, lon), now)
+            "&hourly=precipitation_probability&timezone=auto&forecast_days=1"
+        // Geocode alongside the forecast so the two waits don't add up.
+        return coroutineScope {
+            val place = async { placeLabel(lat, lon) }
+            // Interruptible so a caller's withTimeoutOrNull doesn't wait out the socket timeouts.
+            val body = runInterruptible(Dispatchers.IO) { httpGet(url) }
+            if (body == null) { place.cancel(); null } else parseForecast(body, place.await(), now)
+        }
     }
 
     @SuppressLint("MissingPermission") // checked in today()
     private suspend fun location(): Location? {
         val client = LocationServices.getFusedLocationProviderClient(context)
+        // A fix from the last hour is fine for weather and skips the slow GPS / network wait.
+        val last = withTimeoutOrNull(1_000) { client.lastLocation.awaitOrNull() }
+        if (last != null && System.currentTimeMillis() - last.time < 60 * 60_000L) return last
         val cts = CancellationTokenSource()
         val current = withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
             client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token).awaitOrNull()
         }
         if (current != null) return current
         cts.cancel()
-        return withTimeoutOrNull(2_000) { client.lastLocation.awaitOrNull() }
+        return last
     }
 
     private suspend fun placeLabel(lat: Double, lon: Double): String? = try {
         if (!Geocoder.isPresent()) null
-        else withTimeoutOrNull(5_000) {
+        else withTimeoutOrNull(3_000) {
             val geocoder = Geocoder(context, Locale.KOREA)
             val address: Address? = if (Build.VERSION.SDK_INT >= 33) {
                 suspendCancellableCoroutine { cont ->
@@ -94,8 +103,8 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
     private fun httpGet(url: String): String? {
         val conn = URL(url).openConnection() as HttpURLConnection
         return try {
-            conn.connectTimeout = 5_000
-            conn.readTimeout = 5_000
+            conn.connectTimeout = 4_000
+            conn.readTimeout = 4_000
             if (conn.responseCode != HttpURLConnection.HTTP_OK) null
             else conn.inputStream.bufferedReader().use { it.readText() }
         } finally { conn.disconnect() }
@@ -111,7 +120,7 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
         private const val KEY = "today"
         private const val FRESH_MS = 60 * 60_000L
         private const val STALE_MS = 6 * 60 * 60_000L
-        private const val LOCATION_TIMEOUT_MS = 8_000L
+        private const val LOCATION_TIMEOUT_MS = 5_000L
         private val json = Json { ignoreUnknownKeys = true }
 
         fun hasPermission(context: Context) =
