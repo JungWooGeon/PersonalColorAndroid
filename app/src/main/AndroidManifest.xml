@@ -60,5 +60,9 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-2864408286392678~9927232071" />
+        <!-- Hide Google's "native ad validator" overlay that test ads show in debug builds. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.NATIVE_AD_DEBUGGER_ENABLED"
+            android:value="false" />
     </application>
 </manifest>
