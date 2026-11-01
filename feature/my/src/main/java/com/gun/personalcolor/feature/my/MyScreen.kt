@@ -128,7 +128,7 @@ fun MyScreen(
                     Column(m, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (tone != null) MyToneCard(tone, { onTone(tone.id) }, onAnalyze, { saveReport(tone) }, { onWallpaper(tone.id) }, Modifier)
                         else NoToneCard(onAnalyze, onQuiz, onTones, Modifier)
-                        PremiumSection(snackbar, compactWhenOwned = true)
+                        PremiumSection(snackbar)
                     }
                 }
                 val rest: @Composable () -> Unit = {
