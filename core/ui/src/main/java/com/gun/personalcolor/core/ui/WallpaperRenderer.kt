@@ -31,6 +31,10 @@ import kotlin.random.Random
  * Text-free phone wallpapers from a tone's best colors. Soft, large forms plus a fine film grain
  * (kills gradient banding). The top ~25% stays calm for the clock; nothing busy sits on the dock area.
  */
+/** Day-of-year pick from [colors]; a neutral grey when there are none. Top level so JVM tests don't load the renderer. */
+internal fun todayOf(colors: List<NamedColor>, date: LocalDate): NamedColor =
+    colors.getOrNull(date.dayOfYear % colors.size.coerceAtLeast(1)) ?: NamedColor("그레이", "#9E9E9E")
+
 object WallpaperRenderer {
     /** Live-motion tempo: 1 = the original slow drift. The live wallpaper must read as moving within a second or two. */
     private const val MOTION_SPEED = 3.5f
@@ -43,13 +47,13 @@ object WallpaperRenderer {
     }
 
     /** Same rule as the home screen and the widget. */
-    fun todayColor(tone: Tone, date: LocalDate = LocalDate.now()): NamedColor =
-        tone.bestColors[date.dayOfYear % tone.bestColors.size]
+    fun todayColor(tone: Tone, date: LocalDate = LocalDate.now()): NamedColor = todayOf(tone.bestColors, date)
 
     /** Composition is seeded by [date], so every day gets a slightly different take on the same style. */
     fun render(tone: Tone, style: Style, width: Int, height: Int, dark: Boolean = false, date: LocalDate = LocalDate.now()): Bitmap {
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        draw(Canvas(bmp), tone, style, width, height, dark, date)
+        val w = width.coerceAtLeast(1); val h = height.coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        draw(Canvas(bmp), tone, style, w, h, dark, date)
         return bmp
     }
 
