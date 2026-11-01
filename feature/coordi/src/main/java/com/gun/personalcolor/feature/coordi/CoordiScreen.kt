@@ -3,18 +3,17 @@ package com.gun.personalcolor.feature.coordi
 import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.designsystem.TintyEmptyState
 import com.gun.personalcolor.core.designsystem.TintyLoading
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.ui.tintyColors
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import android.Manifest
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.Dp
-import com.gun.personalcolor.core.ui.ClothingIllustration
-import com.gun.personalcolor.core.ui.hexColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -95,9 +94,7 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.IconTile
 import com.gun.personalcolor.core.designsystem.PcTonalButton
-import com.gun.personalcolor.core.ui.softBrush
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.outlined.Diamond
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
@@ -206,7 +203,7 @@ private fun Content(
         when {
             outfit == null || tone == null -> LoadingCard()
             !unlocked -> LockedCard(onUnlock)
-            else -> OutfitCard(outfit, tone) { onTone(tone.id) }
+            else -> OutfitCard(outfit, tone, { onTone(tone.id) }, onNext)
         }
     }
     val details: @Composable ColumnScope.() -> Unit = {
@@ -214,7 +211,6 @@ private fun Content(
             MakeupCard(outfit)
             PointCard(outfit)
             TipCard(outfit.tip)
-            PcButton("다른 코디 보기", onNext, Modifier.fillMaxWidth(), icon = Icons.Outlined.Refresh)
             PcOutlinedButton("내 옷장", onCloset, Modifier.fillMaxWidth(), icon = Icons.Outlined.Checkroom)
         }
         var catalog by rememberSaveable { mutableStateOf(false) }
@@ -340,102 +336,101 @@ private fun LocationCard(onResult: () -> Unit) {
 
 // --- Outfit ---
 
+/** Lookbook card: the flat-lay on top, then the headline, 틴티's styling note, a color legend and the actions. */
 @Composable
-private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit) {
-    SectionCard(null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Eyebrow("오늘의 코디", Modifier.weight(1f))
-            TextButton(onTone) { Text(tone.nameKo, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        }
-        Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        OutfitBoard(outfit.slots, tone.softBrush())
-        if (outfit.extras.isNotEmpty()) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("챙길 것", style = Muted, maxLines = 1)
-                outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
-            }
-        }
-    }
-}
-
-/**
- * Flat-lay board: the first garment big on the left with shoes and the point item small under it, the rest on the right.
- * Closet pieces show the user's cut-out photo (or the illustration in the item's color) with a "내 옷" tag.
- */
-@Composable
-private fun OutfitBoard(slots: List<OutfitSlot>, background: Brush) {
-    val smalls = slots.filter { it.label == "신발" || it.label == "포인트" }
-    val clothes = slots - smalls.toSet()
-    val first = clothes.firstOrNull() ?: return
-    val rest = clothes.drop(1)
-    // Tone pastel wash so the garments sit on "my" colors.
-    Box(Modifier.clip(MaterialTheme.shapes.large).background(background)) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
-            val col = (maxWidth - 16.dp) / 2
-            val big = (col * 0.86f).coerceAtMost(200.dp)
-            val mid = (if (rest.size >= 2) col * 0.72f else col * 0.86f).coerceAtMost(180.dp)
-            val small = (col * 0.46f).coerceAtMost(104.dp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    BoardPiece(first, big)
-                    if (rest.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { smalls.forEach { BoardPiece(it, small) } }
-                }
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    rest.forEach { BoardPiece(it, mid) }
-                    if (rest.isEmpty()) smalls.forEach { BoardPiece(it, (col * 0.6f).coerceAtMost(130.dp)) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BoardPiece(slot: OutfitSlot, size: Dp) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-            val photo = rememberClosetPhoto(slot.imageFile.takeIf { slot.fromCloset })
-            when {
-                photo.loading -> Unit
-                photo.bitmap != null -> Image(photo.bitmap, slot.color.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                slot.kind != null -> ClothingIllustration(slot.kind, hexColor(slot.color.hex), Modifier.fillMaxSize())
-                else -> Swatch(slot.color.hex, Modifier.fillMaxSize(0.62f), CircleShape)
-            }
-            if (slot.fromCloset) {
-                Tag("내 옷", Modifier.align(Alignment.TopStart), color = MaterialTheme.colorScheme.primaryContainer)
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(slot.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        Text(
-            if (slot.fromCloset) slot.color.name else slot.item,
-            style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = size + 24.dp),
-        )
-    }
-}
-
-private class ClosetPhoto(val loading: Boolean, val bitmap: ImageBitmap?)
-
-/** Decodes a closet cut-out small, off the main thread. Null file → not loading, no bitmap. */
-@Composable
-private fun rememberClosetPhoto(file: String?): ClosetPhoto {
+private fun OutfitCard(outfit: Outfit, tone: Tone, onTone: () -> Unit, onNext: () -> Unit) {
+    val tinty = remember(tone) { tone.tintyColors }
     val context = LocalContext.current
-    val state by produceState(ClosetPhoto(file != null, null), file) {
-        if (file == null) return@produceState
-        val bmp = withContext(Dispatchers.IO) {
-            runCatching {
-                val f = File(context.filesDir, "closet/$file")
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(f.path, bounds)
-                var sample = 1
-                while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 480) sample *= 2
-                BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
-            }.getOrNull()
+    val scope = rememberCoroutineScope()
+    val dark = PcTheme.colors.isDark
+    val surface = MaterialTheme.colorScheme.surfaceContainer
+    PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
+        Column {
+            LookBoard(outfit.slots, tinty)
+            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Eyebrow(remember { todayLabel() })
+                        Spacer(Modifier.height(2.dp))
+                        Text(outfit.headline, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    Tag(tone.nameKo, Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onTone), color = MaterialTheme.colorScheme.primaryContainer)
+                }
+                StylistNote(stylingNote(outfit.slots, outfit.headline.hashCode()), tinty)
+                Legend(outfit.slots)
+                if (outfit.extras.isNotEmpty()) {
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("챙길 것", style = Muted, maxLines = 1)
+                        outfit.extras.forEach { Tag(it, color = MaterialTheme.colorScheme.primaryContainer) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PcTonalButton("다른 코디 보기", onNext, Modifier.weight(1f), icon = Icons.Outlined.Refresh)
+                    FilledTonalIconButton(
+                        onClick = {
+                            scope.launch {
+                                val bmp = withContext(Dispatchers.IO) {
+                                    val photos = outfit.slots.associateWith { s -> s.imageFile?.takeIf { s.fromCloset }?.let { loadLookPhoto(context, it) } }
+                                    runCatching {
+                                        renderLookShare(outfit.slots, photos, lookPalette(tinty, dark, surface), "TODAY'S LOOK  ·  ${java.time.LocalDate.now().let { "${it.monthValue}월 ${it.dayOfMonth}일" }}",
+                                            outfit.headline, "나의 컬러는?")
+                                    }.getOrNull()
+                                } ?: return@launch
+                                runCatching { shareLook(context, bmp) }
+                            }
+                        },
+                        modifier = Modifier.size(52.dp),
+                    ) { Icon(Icons.Outlined.Share, "코디 이미지 공유") }
+                }
+            }
         }
-        value = ClosetPhoto(false, bmp)
     }
-    return state
+}
+
+private fun todayLabel(): String = java.time.LocalDate.now().let { "${it.monthValue}월 ${it.dayOfMonth}일 코디" }
+
+/** 틴티 as the stylist: a small 틴티 and a speech bubble with one line about the look. */
+@Composable
+private fun StylistNote(note: String, tinty: TintyColors) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Tinty(Modifier.size(52.dp), tinty, TintyExpression.Happy, animated = false)
+        Spacer(Modifier.width(6.dp))
+        Surface(shape = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Text(note, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/** What's in the picture: role, color swatch and name per piece. */
+@Composable
+private fun Legend(slots: List<OutfitSlot>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        slots.forEach { slot ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Swatch(slot.color.hex, Modifier.size(18.dp), CircleShape)
+                Spacer(Modifier.width(12.dp))
+                Text(slot.label, Modifier.width(48.dp), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Text(if (slot.fromCloset) slot.color.name else slot.item, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (slot.fromCloset) Tag("내 옷", color = MaterialTheme.colorScheme.primaryContainer)
+            }
+        }
+    }
+}
+
+private fun shareLook(context: android.content.Context, bitmap: android.graphics.Bitmap) {
+    val file = File(context.cacheDir, "today_look.png")
+    file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "image/png"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(send, "오늘의 코디 공유"))
 }
 
 @Composable
