@@ -34,6 +34,7 @@ internal fun shareImage(context: Context, bitmap: Bitmap, name: String, text: St
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "image/png"
         putExtra(Intent.EXTRA_STREAM, uri)
+        clipData = android.content.ClipData.newRawUri(name, uri) // lets the chooser show the preview
         if (text != null) putExtra(Intent.EXTRA_TEXT, text)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
