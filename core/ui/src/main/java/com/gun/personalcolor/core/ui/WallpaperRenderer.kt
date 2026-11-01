@@ -26,6 +26,9 @@ import kotlin.random.Random
  * (kills gradient banding). The top ~25% stays calm for the clock; nothing busy sits on the dock area.
  */
 object WallpaperRenderer {
+    /** Live-motion tempo: 1 = original very slow drift; ~2.5 makes the movement clearly visible but still calm. */
+    private const val MOTION_SPEED = 2.5f
+
     /** [supportsDark]: has a dark variant worth offering. [animated]: has a moving version for the live wallpaper. */
     enum class Style(val supportsDark: Boolean, val animated: Boolean = false) {
         AURORA(true, true), GLOW(true, true), WAVE(true, true), PALETTE(false), MINIMAL(false), BOKEH(true, true)
@@ -89,7 +92,7 @@ object WallpaperRenderer {
         fun f(min: Float, max: Float) = min + rnd.nextFloat() * (max - min)
 
         /** Slow swing, 0 at t = 0 (so the still frame is unchanged), roughly -1..1 over [period] seconds. */
-        fun wob(period: Float, phase: Float) = sin(2 * PI.toFloat() * t / period + phase) - sin(phase)
+        fun wob(period: Float, phase: Float) = sin(2 * PI.toFloat() * t * MOTION_SPEED / period + phase) - sin(phase)
 
         /** The parallax-shifted layer. */
         inline fun moving(block: () -> Unit) {
@@ -129,9 +132,9 @@ object WallpaperRenderer {
             // Companions first, today's color on top and biggest.
             moving {
                 listOf(others[0], main, others[1], others[2], main).forEachIndexed { i, col ->
-                    val x = w * (if (i % 2 == 0) f(-.15f, .35f) else f(.65f, 1.15f)) + w * .09f * wob(17f + i * 5, i * 2.4f)
-                    val y = h * (.32f + i * .16f + f(-.05f, .05f)) + h * .04f * wob(23f + i * 4, i * 1.3f + 1f)
-                    val r = w * (if (col == main) f(.95f, 1.2f) else f(.7f, .95f)) * (1 + .05f * wob(11f + i * 3, i * .7f))
+                    val x = w * (if (i % 2 == 0) f(-.15f, .35f) else f(.65f, 1.15f)) + w * .16f * wob(17f + i * 5, i * 2.4f)
+                    val y = h * (.32f + i * .16f + f(-.05f, .05f)) + h * .08f * wob(23f + i * 4, i * 1.3f + 1f)
+                    val r = w * (if (col == main) f(.95f, 1.2f) else f(.7f, .95f)) * (1 + .09f * wob(11f + i * 3, i * .7f))
                     blob(x, y, r, if (dark) shade(col, -.15f) else shade(col, .12f), if (dark) .8f else .9f)
                 }
             }
@@ -144,9 +147,9 @@ object WallpaperRenderer {
             val cy = h * f(.54f, .62f)
             val breathe = wob(8f, 0f) // one slow breath every 8 s
             moving {
-                blob(cx + w * f(-.3f, .3f) + w * .1f * wob(19f, 0f), cy + h * f(.1f, .18f) + h * .025f * wob(13f, 2f), w * .8f, others[0], .4f)
-                blob(cx, cy, w * f(1f, 1.2f) * (1 + .06f * breathe), main)
-                blob(cx, cy, w * .35f * (1 + .1f * breathe), shade(main, if (dark) .25f else .4f), .5f + .1f * breathe) // soft hot core
+                blob(cx + w * f(-.3f, .3f) + w * .18f * wob(19f, 0f), cy + h * f(.1f, .18f) + h * .05f * wob(13f, 2f), w * .8f, others[0], .4f)
+                blob(cx, cy, w * f(1f, 1.2f) * (1 + .12f * breathe), main)
+                blob(cx, cy, w * .35f * (1 + .2f * breathe), shade(main, if (dark) .25f else .4f), .5f + .1f * breathe) // soft hot core
             }
             vignette(if (dark) .55f else .14f)
         }
@@ -162,8 +165,8 @@ object WallpaperRenderer {
                 val amp = h * f(.018f, .04f)
                 val len = w * f(.9f, 1.7f)
                 // Drifts sideways, alternating direction per layer; front layers a bit faster.
-                val ph = f(0f, 2 * PI.toFloat()) + t * 2 * PI.toFloat() / (22f - i * 2.5f) * (if (i % 2 == 0) 1 else -1)
-                val bob = base + h * .006f * wob(9f + i * 2, i * 1.9f)
+                val ph = f(0f, 2 * PI.toFloat()) + t * MOTION_SPEED * 2 * PI.toFloat() / (22f - i * 2.5f) * (if (i % 2 == 0) 1 else -1)
+                val bob = base + h * .014f * wob(9f + i * 2, i * 1.9f)
                 val (x0, x1, bottom) = Triple(-w * .1f, w * 1.1f, h * 1.1f) // overscan for parallax
                 val path = Path().apply {
                     moveTo(x0, bottom)
@@ -202,8 +205,8 @@ object WallpaperRenderer {
         fun bokeh() {
             fill(vertical(0f, h, if (dark) shade(main, -.9f) else shade(main, .8f), if (dark) shade(main, -.78f) else shade(main, .56f)))
             moving {
-                blob(w * f(0f, 1f) + w * .08f * wob(29f, 0f), h * f(.5f, .8f), w, main, .5f)
-                blob(w * f(0f, 1f) + w * .08f * wob(23f, 2f), h * f(.6f, .9f), w * .8f, others[0], .35f)
+                blob(w * f(0f, 1f) + w * .14f * wob(29f, 0f), h * f(.5f, .8f), w, main, .5f)
+                blob(w * f(0f, 1f) + w * .14f * wob(23f, 2f), h * f(.6f, .9f), w * .8f, others[0], .35f)
                 if (dark) p.xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
                 // Big, faint circles first (far), small crisp ones last (near). Kept out of the clock area.
                 // Each floats on its own slow loop; near ones travel further.
@@ -211,8 +214,8 @@ object WallpaperRenderer {
                     val near = .6f + i / 25f
                     val col = if (rnd.nextFloat() < .5f) main else others[rnd.nextInt(3)]
                     val color = if (dark) col else shade(col, .1f)
-                    val x = w * f(-.05f, 1.05f) + w * .03f * near * wob(13f + i % 7 * 2, i * 1.1f)
-                    val y = h * (.3f + .55f * (rnd.nextFloat() + rnd.nextFloat()) / 2) + h * .025f * near * wob(17f + i % 5 * 3, i * .9f)
+                    val x = w * f(-.05f, 1.05f) + w * .06f * near * wob(13f + i % 7 * 2, i * 1.1f)
+                    val y = h * (.3f + .55f * (rnd.nextFloat() + rnd.nextFloat()) / 2) + h * .05f * near * wob(17f + i % 5 * 3, i * .9f)
                     val a = f(.25f, .55f) * (1 + .2f * wob(7f + i % 4 * 2, i * 2f))
                     p.shader = RadialGradient(x, y, r, intArrayOf(withAlpha(color, a * .8f), withAlpha(color, a), withAlpha(color, 0f)),
                         floatArrayOf(0f, f(.55f, .85f), 1f), Shader.TileMode.CLAMP)
