@@ -36,6 +36,7 @@ internal fun FacePhoto.point(i: Int, r: Rect) = landmarks[i].let { Offset(r.left
  * shadow under the chin, a top-to-bottom light falloff and a few gentle folds so it reads as cloth, not flat paint.
  */
 internal fun DrawScope.drawCape(photo: FacePhoto, r: Rect, color: Color, toCanvas: Boolean = false) {
+    if (photo.landmarks.size <= 152 || r.isEmpty) return
     val xs = photo.landmarks.map { r.left + it.x * r.width }
     val ys = photo.landmarks.map { r.top + it.y * r.height }
     val faceW = xs.max() - xs.min()
@@ -120,8 +121,11 @@ internal fun DrapedPhoto(
  * Returns the full image's rect in canvas space so landmark mapping keeps working.
  */
 internal fun DrawScope.drawFaceFilled(image: ImageBitmap, photo: FacePhoto, fixedFrame: Boolean = false): Rect {
+    if (photo.landmarks.isEmpty()) return Rect.Zero
     val xs = photo.landmarks.map { it.x * image.width }; val ys = photo.landmarks.map { it.y * image.height }
     val faceW = xs.max() - xs.min(); val faceH = ys.max() - ys.min()
+    // Zero-size canvas (mid-layout) or a degenerate face box would make the scale NaN/∞ and roundToInt() throw.
+    if (size.width <= 0f || size.height <= 0f || faceW <= 0f || faceH <= 0f) return Rect.Zero
     // Wanted view: whole head with a little room above, shoulders below. Then grow it to the canvas aspect
     // and keep it inside the photo, so the card is always fully covered by the photo (no empty bands).
     val aspect = size.width / size.height

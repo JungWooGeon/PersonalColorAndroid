@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.io.IOException
+import android.util.Log
 
 data class TonesUiState(
     val tones: List<Tone> = emptyList(),
@@ -28,8 +30,13 @@ class TonesViewModel @Inject constructor(
         .map { TonesUiState(content.tones, it.myToneId, it.favoriteToneIds) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TonesUiState(content.tones))
 
-    fun toggleFavorite(id: String) { viewModelScope.launch { prefs.toggleFavorite(id) } }
-    fun setMyTone(id: String) { viewModelScope.launch { prefs.setMyTone(id) } }
+    fun toggleFavorite(id: String) = write { prefs.toggleFavorite(id) }
+    fun setMyTone(id: String) = write { prefs.setMyTone(id) }
+
+    /** DataStore writes throw IOException on disk errors; drop the tap instead of crashing. */
+    private fun write(block: suspend () -> Unit) {
+        viewModelScope.launch { try { block() } catch (e: IOException) { Log.w("Tones", "write failed", e) } }
+    }
 }
 
 /** Same value/clarity, other temperature — the tone people most often confuse with this one. */

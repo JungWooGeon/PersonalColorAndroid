@@ -131,8 +131,11 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
     TrackScreen("drape")
     val d by vm.diagnosis.collectAsStateWithLifecycle()
     val cutout by vm.cutout.collectAsStateWithLifecycle()
-    val photo = d?.photo ?: run { LaunchedEffect(Unit) { onBack() }; return }
-    val top = vm.content.tone(d!!.top.toneId)
+    val diagnosis = d
+    // No diagnosis photo (process death) or a tone id missing from content → leave instead of crashing.
+    val photo = diagnosis?.photo
+    val top = diagnosis?.let { vm.content.toneOrNull(it.top.toneId) }
+    if (photo == null || top == null) { LaunchedEffect(Unit) { onBack() }; return }
     val others = remember(top) { vm.content.tones.filter { it.id != top.id } }
     val lipGroups = remember(top) {
         listOf("내 톤 추천" to top.makeup.lipColors, "WORST 립" to top.worstColors.take(4)) + others.map { it.nameKo to it.makeup.lipColors }
@@ -140,20 +143,20 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
 
     var lip by rememberSaveable { mutableStateOf(false) }
     var original by rememberSaveable { mutableStateOf(false) }
-    var best by remember(top) { mutableStateOf(top.bestColors.first()) }
+    var best by remember(top) { mutableStateOf(top.bestColors.firstOrNull()) }
     var compare by rememberSaveable { mutableIntStateOf(-1) } // -1 = my WORST, else index into [others]
-    var right by remember(top) { mutableStateOf(top.worstColors.first()) }
+    var right by remember(top) { mutableStateOf(top.worstColors.firstOrNull()) }
     var lipGroup by rememberSaveable { mutableIntStateOf(0) }
     var lipColor by remember(top) { mutableStateOf(top.makeup.lipColors.firstOrNull()) }
     var intensity by rememberSaveable { mutableFloatStateOf(0.65f) }
     var glossy by rememberSaveable { mutableStateOf(false) }
     // Lipstick is rendered into the photo's own pixels off the main thread; the last patch stays up while the next renders.
     val makeup by produceState<LipMakeup?>(null, photo, lip) {
-        if (lip) value = withContext(Dispatchers.Default) { LipMakeup.of(photo) }
+        if (lip) value = withContext(Dispatchers.Default) { runCatching { LipMakeup.of(photo) }.getOrNull() }
     }
     val lipPatch by produceState<LipPatch?>(null, makeup, lipColor, intensity, glossy) {
         val m = makeup ?: return@produceState
-        value = lipColor?.let { c -> withContext(Dispatchers.Default) { m.render(c.hex, intensity, glossy) } }
+        value = lipColor?.let { c -> withContext(Dispatchers.Default) { runCatching { m.render(c.hex, intensity, glossy) }.getOrNull() } }
     }
     val gate = rememberRewardGate()
     val analytics = LocalAnalytics.current
@@ -226,7 +229,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                 ColorRow(rightLabel, rightColors, right, { right = it }) {
                     CompareMenu(top, others, compare) { i ->
                         compare = i
-                        right = (others.getOrNull(i)?.bestColors ?: top.worstColors).first()
+                        right = (others.getOrNull(i)?.bestColors ?: top.worstColors).firstOrNull()
                     }
                 }
             }
@@ -244,7 +247,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                             label = { Text(lipGroups[i].first, maxLines = 1) })
                     }
                 }
-                DotRow(lipGroups[lipGroup].second, lipColor) { c ->
+                DotRow(lipGroups.getOrNull(lipGroup)?.second.orEmpty(), lipColor) { c ->
                     lipColor = c
                     analytics?.log("lip_tryon", "color" to c.name)
                 }

@@ -66,6 +66,7 @@ internal class LipMakeup private constructor(
         /** null when the mouth is too small or not found. Call off the main thread. */
         fun of(photo: FacePhoto): LipMakeup? {
             val bmp = photo.bitmap
+            if (photo.landmarks.size <= LIP_OUTER.max()) return null // not a full face mesh
             fun p(i: Int) = photo.landmarks[i].let { PointF(it.x * bmp.width, it.y * bmp.height) }
             val outer = LIP_OUTER.map(::p); val inner = LIP_INNER.map(::p)
             val c1 = p(61); val c2 = p(291)

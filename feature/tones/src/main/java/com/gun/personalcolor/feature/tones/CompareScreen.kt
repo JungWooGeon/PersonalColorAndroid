@@ -177,7 +177,9 @@ internal fun sharedColors(a: List<NamedColor>, b: List<NamedColor>): List<NamedC
     a.filter { ca -> b.any { cb -> rgbDistance(ca.hex, cb.hex) < 40.0 } }
 
 private fun rgbDistance(h1: String, h2: String): Double {
-    val x = h1.removePrefix("#").toLong(16); val y = h2.removePrefix("#").toLong(16)
+    // Bad hex in content → treat as "not shared" rather than crash.
+    val x = h1.removePrefix("#").toLongOrNull(16) ?: return Double.MAX_VALUE
+    val y = h2.removePrefix("#").toLongOrNull(16) ?: return Double.MAX_VALUE
     fun ch(v: Long, shift: Int) = ((v shr shift) and 0xFF).toDouble()
     val dr = ch(x, 16) - ch(y, 16); val dg = ch(x, 8) - ch(y, 8); val db = ch(x, 0) - ch(y, 0)
     return sqrt(dr * dr + dg * dg + db * db)

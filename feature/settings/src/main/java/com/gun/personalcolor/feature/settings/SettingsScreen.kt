@@ -111,6 +111,8 @@ import com.gun.personalcolor.core.ui.SEASON_KO
 import com.gun.personalcolor.core.ui.ToneAvatar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.io.IOException
+import android.util.Log
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -150,22 +152,29 @@ internal class SettingsViewModel @Inject constructor(
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
-    fun setTheme(mode: ThemeMode) = viewModelScope.launch { prefs.setThemeMode(mode) }
-    fun setMyTone(id: String?) = viewModelScope.launch { prefs.setMyTone(id) }
-    fun setSaveHistory(on: Boolean) = viewModelScope.launch { prefs.setSaveHistory(on) }
-    fun setShowPhotoGuide(on: Boolean) = viewModelScope.launch { prefs.setShowPhotoGuide(on) }
+    fun setTheme(mode: ThemeMode) = write { prefs.setThemeMode(mode) }
+    fun setMyTone(id: String?) = write { prefs.setMyTone(id) }
+    fun setSaveHistory(on: Boolean) = write { prefs.setSaveHistory(on) }
+    fun setShowPhotoGuide(on: Boolean) = write { prefs.setShowPhotoGuide(on) }
     // The app shell reschedules the daily work whenever these preferences change (feature:coordi DailyNotificationSync).
-    fun setDailyNotification(on: Boolean, hour: Int, minute: Int) = viewModelScope.launch { prefs.setDailyNotification(on, hour, minute) }
+    fun setDailyNotification(on: Boolean, hour: Int, minute: Int) = write { prefs.setDailyNotification(on, hour, minute) }
 
-    fun clearHistory() = viewModelScope.launch {
-        history.clear()
-        _messages.send("진단 기록을 모두 삭제했어요")
-    }
+    fun clearHistory() = write("진단 기록을 모두 삭제했어요") { history.clear() }
 
-    fun resetAll() = viewModelScope.launch {
+    fun resetAll() = write("모든 데이터를 초기화했어요") {
         prefs.reset()
         history.clear()
-        _messages.send("모든 데이터를 초기화했어요")
+    }
+
+    /** DataStore writes throw IOException on disk errors; show a message instead of crashing. */
+    private fun write(done: String? = null, block: suspend () -> Unit) = viewModelScope.launch {
+        try {
+            block()
+            done?.let { _messages.send(it) }
+        } catch (e: IOException) {
+            Log.w("Settings", "write failed", e)
+            _messages.send("저장하지 못했어요. 잠시 후 다시 시도해 주세요")
+        }
     }
 }
 
@@ -547,7 +556,7 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
             icon = Icons.Outlined.Schedule, onClick = { timeDialog = true })
     }
     if (timeDialog) {
-        val picker = rememberTimePickerState(state.notificationHour, state.notificationMinute, is24Hour = false)
+        val picker = rememberTimePickerState(state.notificationHour.coerceIn(0, 23), state.notificationMinute.coerceIn(0, 59), is24Hour = false)
         val tall = LocalConfiguration.current.screenHeightDp >= 600
         AlertDialog(
             onDismissRequest = { timeDialog = false },
@@ -568,7 +577,7 @@ private fun NotificationGroup(state: SettingsState, snackbar: SnackbarHostState,
     }
 }
 
-private fun timeLabel(hour: Int, minute: Int) =
+internal fun timeLabel(hour: Int, minute: Int) =
     "${if (hour < 12) "오전" else "오후"} ${(hour + 11) % 12 + 1}:${minute.toString().padStart(2, '0')}"
 
 @Preview
