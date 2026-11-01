@@ -153,6 +153,7 @@ fun DropGlyph(color: Color, modifier: Modifier = Modifier, brush: Brush? = null,
 fun DrawScope.drawDropGlyph(color: Color, brush: Brush? = null, strokePx: Float? = null, eyes: Boolean = false) {
     val b = DROP_BOUNDS
     val s = min((size.width - (strokePx ?: 0f)) / b.width, (size.height - (strokePx ?: 0f)) / b.height)
+    if (s <= 0f) return // too small to draw (a 0-size or stroke-wider-than-box glyph would mirror or divide by zero)
     translate(size.width / 2f - b.center.x * s, size.height / 2f - b.center.y * s) {
         scale(s, s, pivot = Offset.Zero) {
             val style = if (strokePx != null) Stroke(strokePx / s, join = StrokeJoin.Round) else androidx.compose.ui.graphics.drawscope.Fill
@@ -203,8 +204,8 @@ class TintyPainter(colors: TintyColors, private val expression: TintyExpression 
 
 /** [drawTintyOn] into a new transparent bitmap. */
 fun tintyBitmap(sizePx: Int, colors: TintyColors = TintyColors.Brand, expression: TintyExpression = TintyExpression.Default): android.graphics.Bitmap =
-    android.graphics.Bitmap.createBitmap(sizePx, sizePx, android.graphics.Bitmap.Config.ARGB_8888).also {
-        drawTintyOn(android.graphics.Canvas(it), 0f, 0f, sizePx.toFloat(), colors, expression)
+    android.graphics.Bitmap.createBitmap(sizePx.coerceAtLeast(1), sizePx.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888).also {
+        drawTintyOn(android.graphics.Canvas(it), 0f, 0f, it.width.toFloat(), colors, expression)
     }
 
 // ---------------------------------------------------------------------------------------------------------------------
