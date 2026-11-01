@@ -221,17 +221,21 @@ object SceneBed {
         mask?.let { c.drawBitmap(it, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }); it.recycle() }
 
         // Text, in base px through the same matrix.
-        c.save(); c.concat(m)
-        if (cropped) c.translate(region.left, region.top)
         val text = (if (cropped) miniL?.optJSONObject("text") else L?.optJSONObject("text"))
-        var pillAt: RectF? = null
-        if (!mini) text?.optJSONObject("line")?.let { t -> pillAt = drawLine(c, line, t, w) }
-        text?.optJSONObject("caption")?.let { t -> drawCaption(c, caption, t, w) }
-        pill?.let { label ->
-            val ink = colorOf(text?.optJSONObject("line")?.opt("color") ?: text?.optJSONObject("caption")?.opt("color"), w, Color.rgb(0x4A, 0x3A, 0x2E))
-            drawPill(c, label, pillAt, if (cropped) RectF(0f, 0f, region.width(), region.height()) else region, if (mini) 30f else 38f, ink, w == "night")
+        val ink = colorOf(text?.optJSONObject("line")?.opt("color") ?: text?.optJSONObject("caption")?.opt("color"), w, Color.rgb(0x4A, 0x3A, 0x2E))
+        val drawText = { tc: Canvas ->
+            tc.save(); tc.concat(m)
+            if (cropped) tc.translate(region.left, region.top)
+            var pillAt: RectF? = null
+            if (!mini) text?.optJSONObject("line")?.let { t -> pillAt = drawLine(tc, line, t, w) }
+            text?.optJSONObject("caption")?.let { t -> drawCaption(tc, caption, t, w) }
+            pill?.let { label ->
+                drawPill(tc, label, pillAt, if (cropped) RectF(0f, 0f, region.width(), region.height()) else region, if (mini) 30f else 38f, ink, w == "night")
+            }
+            tc.restore()
         }
-        c.restore()
+        if (bgAlpha < 1f) glowBehind(c, wPx, hPx, ink, drawText)
+        drawText(c)
         return if (rounded) round(out, 18 * d) else out
     }
 
@@ -361,6 +365,43 @@ object SceneBed {
             style = Paint.Style.STROKE; strokeWidth = size * .06f; color = ink; alpha = 70
         })
         c.drawText(label, box.centerX(), box.centerY() - (p.ascent() + p.descent()) / 2, p)
+    }
+
+    /**
+     * See-through widgets: a soft, wide paper scrim (dark linen behind light ink) under whatever [draw] paints, so the text
+     * reads on any wallpaper. [draw] is rendered at 1/8 size; its coverage is grown (nearby words merge into one block,
+     * far ones stay apart), box-blurred, then scaled back up.
+     */
+    internal fun glowBehind(c: Canvas, wPx: Int, hPx: Int, ink: Int, draw: (Canvas) -> Unit) {
+        val sw = max(1, wPx / 8); val sh = max(1, hPx / 8); val n = sw * sh
+        val small = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)
+        draw(Canvas(small).apply { scale(sw / wPx.toFloat(), sh / hPx.toFloat()) })
+        val px = IntArray(n).also { small.getPixels(it, 0, sw, 0, 0, sw, sh) }
+        var a = FloatArray(n) { minOf(1f, (px[it] ushr 24) / 255f * 8f) }
+        a = pass(pass(a, sh, sw, 5, 1, sw, grow = true), sw, sh, 4, sw, 1, grow = true)
+        repeat(3) { a = pass(pass(a, sh, sw, 4, 1, sw), sw, sh, 4, sw, 1) }
+        val tint = (if (lum(ink) > .5f) Color.rgb(0x2B, 0x25, 0x1F) else Color.rgb(0xF6, 0xEF, 0xE4)) and 0xFFFFFF
+        for (i in 0 until n) px[i] = ((a[i] * GLOW_ALPHA * 255).toInt() shl 24) or tint
+        small.setPixels(px, 0, sw, 0, 0, sw, sh)
+        c.drawBitmap(small, null, RectF(0f, 0f, wPx.toFloat(), hPx.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
+        small.recycle()
+    }
+
+    /** Peak opacity of [glowBehind]: enough to lift the text, never a box. */
+    private const val GLOW_ALPHA = .6f
+
+    /**
+     * One pass of radius [r] (box blur, or max when [grow]) along [lines] lines of [len] cells, [step] apart, lines
+     * starting [stride] apart. Edges clamp.
+     */
+    private fun pass(src: FloatArray, lines: Int, len: Int, r: Int, step: Int, stride: Int, grow: Boolean = false): FloatArray {
+        val out = FloatArray(src.size)
+        for (l in 0 until lines) for (i in 0 until len) {
+            var acc = 0f
+            for (j in i - r..i + r) src[l * stride + j.coerceIn(0, len - 1) * step].let { acc = if (grow) max(acc, it) else acc + it }
+            out[l * stride + i * step] = if (grow) acc else acc / (2 * r + 1)
+        }
+        return out
     }
 
     private fun round(b: Bitmap, r: Float): Bitmap {

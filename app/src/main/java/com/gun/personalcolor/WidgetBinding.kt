@@ -1,7 +1,6 @@
 package com.gun.personalcolor
 
 import com.gun.personalcolor.core.ads.AdManager
-import com.gun.personalcolor.core.ads.Billing
 import com.gun.personalcolor.core.data.ClosetRepository
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
@@ -17,7 +16,6 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
@@ -30,17 +28,13 @@ class AppWidgetOutfitSource @Inject constructor(
     private val closet: ClosetRepository,
     private val weather: WeatherRepository,
     private val coordi: TodayCoordiProvider,
-    private val billing: Billing,
     private val ads: AdManager,
 ) : WidgetOutfitSource {
     override suspend fun today(): WidgetOutfit? {
         val p = prefs.preferences.first()
         val tone = content.toneOrNull(p.myToneId) ?: return null
-        val trialStart = p.coordiTrialStartMillis
-        val inTrial = trialStart != null &&
-            System.currentTimeMillis() - trialStart < TimeUnit.DAYS.toMillis(COORDI_TRIAL_DAYS.toLong())
-        // Not started yet = the user never opened 오늘의 코디; show it locked so the trial starts in the app.
-        val unlocked = billing.adFree.value || inTrial || ads.isUnlocked(AdManager.KEY_COORDI)
+        // AdManager.isUnlocked already covers premium (Billing.adFree) and today's reward ad.
+        val unlocked = coordiOpen(p.coordiTrialStartMillis, System.currentTimeMillis(), ads.isUnlocked(AdManager.KEY_COORDI))
         if (!unlocked) return WidgetOutfit("", null, emptyList(), locked = true)
         // Never hang the widget on the network; no weather = the outfit without it, as on failure.
         val w = withTimeoutOrNull(WEATHER_TIMEOUT_MS) { weather.today() }
@@ -53,8 +47,23 @@ class AppWidgetOutfitSource @Inject constructor(
         )
     }
 
-    private companion object { const val WEATHER_TIMEOUT_MS = 6_000L }
+    private companion object {
+        /** Under the widget's 5 s OUTFIT_TIMEOUT_MS, or slow weather would show the outfit as locked. */
+        const val WEATHER_TIMEOUT_MS = 4_000L
+    }
 }
+
+/**
+ * Same access rule as 오늘의 코디 (CoordiViewModel.trialDaysLeft + CoordiScreen): trial days left > 0, where a trial
+ * not started yet counts as day one (opening the outfit starts it), or [unlocked] (premium or today's reward ad).
+ */
+internal fun coordiOpen(trialStart: Long?, now: Long, unlocked: Boolean): Boolean {
+    // ponytail: mirrors CoordiViewModel's trialDaysLeft formula; move both to core/model once that module is free to edit.
+    val start = trialStart ?: now
+    return unlocked || COORDI_TRIAL_DAYS - (now - start) / DAY_MS > 0
+}
+
+private const val DAY_MS = 24 * 60 * 60_000L
 
 @Module
 @InstallIn(SingletonComponent::class)

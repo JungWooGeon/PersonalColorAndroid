@@ -47,6 +47,8 @@ object SceneWall {
     private var grain: Bitmap? = null
     private val hangers = HashMap<String, Bitmap>()
     private var ko: Typeface? = null
+    /** Locked 4x2: the arrival line, a size up from the outfit line. */
+    private const val LOCKED_SCALE = 1.15f
 
     fun render(
         context: Context,
@@ -146,9 +148,10 @@ object SceneWall {
         if (locked) frost(out)
 
         // 8. text
-        c.save(); c.concat(m)
-        text(ctx, c, L.getJSONObject("text"), wx, line, caption, locked)
-        c.restore()
+        val T = L.getJSONObject("text")
+        val drawText = { tc: Canvas -> tc.save(); tc.concat(m); text(ctx, tc, T, wx, line, caption, locked); tc.restore() }
+        if (bgAlpha < 1f) SceneBed.glowBehind(c, wPx, hPx, Color.parseColor(T.getJSONObject("line").getJSONObject("color").getString(wx)), drawText)
+        drawText(c)
         return out
     }
 
@@ -288,7 +291,15 @@ object SceneWall {
         val lineInk = Color.parseColor(ls.getJSONObject("color").getString(wx))
         val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply { typeface = koFace; color = lineInk; textSize = ls.getDouble("size").toFloat() }
         val maxW = lr.getInt(2).toFloat()
-        val lines = listOf(SceneBed.oneLine(line, p, maxW)) // always one line
+        // Locked: the short arrival line breaks into two larger lines instead of shrinking to fit the column.
+        val lines = if (locked && " " in line.trim()) {
+            p.textSize *= LOCKED_SCALE
+            val words = line.trim().split(" ")
+            val half = (words.size + 1) / 2
+            listOf(words.take(half).joinToString(" "), words.drop(half).joinToString(" ")).onEach { l ->
+                p.measureText(l).takeIf { it > maxW }?.let { p.textSize *= maxW / it }
+            }
+        } else listOf(SceneBed.oneLine(line, p, maxW)) // always one line
         val step = p.textSize * ls.getDouble("lineSpacing").toFloat()
         var y = lr.getInt(1) - p.fontMetrics.ascent
         for (ln in lines) { c.drawText(ln, lr.getInt(0).toFloat(), y, p); y += step }
@@ -306,7 +317,7 @@ object SceneWall {
         }
         if (locked) {
             // small quiet pill under the caption, same typography
-            val pp = Paint(p).apply { textSize = cap.getDouble("size").toFloat() * .9f }
+            val pp = Paint(p).apply { textSize = cap.getDouble("size").toFloat() * 1.15f }
             val label = "광고 보고 열기"
             val padX = pp.textSize * .9f; val hgt = pp.textSize * 2f
             val top = capTop + cp.textSize * 2.2f
