@@ -15,13 +15,13 @@ internal const val CONTACT_EMAIL = "wjddnrjs123@gmail.com"
 
 internal fun legalDocument(doc: LegalDoc) = if (doc == LegalDoc.PRIVACY) PrivacyPolicy else Terms
 
-// App version of https://personalcolorotest.netlify.app/privacy.html (website-only section left out).
+// App version of https://tintycolor.com/privacy.html (website-only section left out).
 private val PrivacyPolicy = LegalDocument(
     title = "개인정보처리방침",
     effectiveDate = "2026년 11월 1일",
-    webUrl = "https://personalcolorotest.netlify.app/privacy.html",
+    webUrl = "https://tintycolor.com/privacy.html",
     intro = "개인 개발자 정우건(이하 “운영자”)은 「개인정보 보호법」 등 관련 법령을 준수하며, 이용자의 개인정보를 최소한으로 처리합니다. " +
-        "본 방침은 “나의 컬러는? - 퍼스널컬러” 앱(v2.0 이상, 이하 “앱”)과 웹사이트(personalcolorotest.netlify.app)에 적용됩니다.",
+        "본 방침은 “나의 컬러는? - 퍼스널컬러” 앱(v2.0 이상, 이하 “앱”)과 웹사이트(tintycolor.com)에 적용됩니다.",
     sections = listOf(
         LegalDocument.Section(
             "회원가입 및 직접 수집하는 개인정보",
@@ -107,11 +107,11 @@ private val PrivacyPolicy = LegalDocument(
     ),
 )
 
-// Same text as https://personalcolorotest.netlify.app/terms.html — keep both in sync.
+// Same text as https://tintycolor.com/terms.html — keep both in sync.
 private val Terms = LegalDocument(
     title = "이용약관",
     effectiveDate = "2026년 11월 1일",
-    webUrl = "https://personalcolorotest.netlify.app/terms.html",
+    webUrl = "https://tintycolor.com/terms.html",
     intro = "본 약관은 개인 개발자 정우건(이하 “운영자”)이 제공하는 “나의 컬러는? - 퍼스널컬러” 앱 및 관련 서비스의 이용 조건을 정합니다.",
     sections = listOf(
         LegalDocument.Section(
@@ -121,7 +121,7 @@ private val Terms = LegalDocument(
         LegalDocument.Section(
             "정의",
             bullets = listOf(
-                "“서비스”란 운영자가 제공하는 “나의 컬러는? - 퍼스널컬러” Android 앱(이하 “앱”) 및 웹사이트(personalcolorotest.netlify.app)를 통해 제공되는 모든 기능을 말합니다.",
+                "“서비스”란 운영자가 제공하는 “나의 컬러는? - 퍼스널컬러” Android 앱(이하 “앱”) 및 웹사이트(tintycolor.com)를 통해 제공되는 모든 기능을 말합니다.",
                 "“이용자”란 본 약관에 따라 서비스를 이용하는 모든 사람을 말합니다. 서비스는 회원가입 없이 이용할 수 있습니다.",
                 "“진단 결과”란 서비스가 사진 분석 또는 문항 응답을 바탕으로 제시하는 퍼스널컬러 톤과 관련 정보를 말합니다.",
             ),

@@ -36,12 +36,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="${kakaoScheme}" android:host="kakaolink" />
             </intent-filter>
-            <!-- App Links: https://personalcolorotest.netlify.app/r/<toneId> (verified by /.well-known/assetlinks.json) -->
+            <!-- App Links: https://tintycolor.com/r/<toneId> (+ the old netlify address for links shared earlier) (verified by /.well-known/assetlinks.json) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
+                <data android:host="tintycolor.com" />
+                <data android:host="www.tintycolor.com" />
                 <data android:host="personalcolorotest.netlify.app" />
                 <data android:pathPrefix="/r/" />
             </intent-filter>

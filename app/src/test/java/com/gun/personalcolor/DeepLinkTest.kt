@@ -11,7 +11,7 @@ class DeepLinkTest {
         openExtra: String? = null, scheme: String? = null, host: String? = null, path: String? = null, tone: String? = null,
     ) = parseDeepLink(openExtra, scheme, host, path, tone) { it in tones }
 
-    private fun web(path: String) = parse(scheme = "https", host = "personalcolorotest.netlify.app", path = path)
+    private fun web(path: String) = parse(scheme = "https", host = "tintycolor.com", path = path)
     private fun kakao(host: String = "kakaolink", tone: String?) = parse(scheme = "kakao123abc", host = host, tone = tone)
 
     @Test fun coordiExtraWinsOverData() =
@@ -25,6 +25,7 @@ class DeepLinkTest {
         assertEquals(DeepLink.ToneLink("spring_light"), web("/r/spring_light"))
         assertEquals(DeepLink.ToneLink("spring_light"), web("/r/spring_light/"))
         assertEquals(DeepLink.ToneLink("winter_deep"), parse(scheme = "http", host = "personalcolorotest.netlify.app", path = "/r/winter_deep"))
+        assertEquals(DeepLink.ToneLink("winter_deep"), parse(scheme = "https", host = "www.tintycolor.com", path = "/r/winter_deep"))
     }
 
     @Test fun webLinkInvalid() {

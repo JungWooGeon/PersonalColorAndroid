@@ -17,11 +17,12 @@ internal fun parseDeepLink(
     if (openExtra == "coordi") return DeepLink.Coordi
     if (scheme == null) return null
     val id = when (scheme) {
-        "https", "http" -> if (host != SITE_HOST) null else path.orEmpty().split('/').filter { it.isNotEmpty() }.takeIf { it.size >= 2 && it[0] == "r" }?.get(1)
+        "https", "http" -> if (host !in SITE_HOSTS) null else path.orEmpty().split('/').filter { it.isNotEmpty() }.takeIf { it.size >= 2 && it[0] == "r" }?.get(1)
         else -> if (host == "kakaolink") toneParam else null
     }
     return id?.takeIf(isValidTone)?.let { DeepLink.ToneLink(it) }
 }
 
 
-internal const val SITE_HOST = "personalcolorotest.netlify.app"
+/** Our site; the old Netlify address still appears in links shared before the move to tintycolor.com. */
+internal val SITE_HOSTS = setOf("tintycolor.com", "www.tintycolor.com", "personalcolorotest.netlify.app")

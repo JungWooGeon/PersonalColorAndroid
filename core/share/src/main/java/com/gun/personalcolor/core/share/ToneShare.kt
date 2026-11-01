@@ -16,7 +16,7 @@ import java.io.File
 
 /** KakaoTalk feed share (rich card that opens the app) with a plain Android share-sheet fallback. */
 object ToneShare {
-    const val WEB_BASE = "https://personalcolorotest.netlify.app"
+    const val WEB_BASE = "https://tintycolor.com"
 
     private var kakaoReady = false
 
