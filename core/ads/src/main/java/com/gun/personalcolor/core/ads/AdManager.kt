@@ -132,7 +132,7 @@ class AdManager @Inject constructor(val billing: Billing) {
      */
     fun showRewarded(activity: Activity?, key: String, unlockMs: Long, onUnlocked: () -> Unit) {
         val ad = rewarded
-        if (activity == null || ad == null || isUnlocked(key)) return onUnlocked()
+        if (activity == null || activity.isStale() || ad == null || isUnlocked(key)) return onUnlocked()
         rewarded = null
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
@@ -152,7 +152,7 @@ class AdManager @Inject constructor(val billing: Billing) {
      * [FULLSCREEN_GAP_MS], then runs [next]. [next] always runs — immediately if no ad shows.
      */
     fun onResult(activity: Activity?, next: () -> Unit) {
-        if (activity == null || adFree) return next()
+        if (activity == null || activity.isStale() || adFree) return next()
         val ad = interstitial
         val due = pacing.interstitialDue()
         if (ad == null || !due) {
@@ -189,6 +189,9 @@ class AdManager @Inject constructor(val billing: Billing) {
         }
     }
 }
+
+/** Finishing/destroyed activity: showing a full-screen ad on it can crash, so callers skip the ad. */
+private fun Activity.isStale() = isFinishing || isDestroyed
 
 /** Provided by MainActivity. Null in previews (no ads). */
 val LocalAdManager = staticCompositionLocalOf<AdManager?> { null }
