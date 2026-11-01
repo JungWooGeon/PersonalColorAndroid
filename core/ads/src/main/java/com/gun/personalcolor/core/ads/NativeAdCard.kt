@@ -87,15 +87,15 @@ private fun buildCard(ctx: Context, c: CardColors): NativeAdView {
     val view = NativeAdView(ctx)
     val root = LinearLayout(ctx).apply {
         orientation = LinearLayout.VERTICAL
-        background = rounded(c.bg, 20, c.border, ctx)
-        setPadding(ctx.dp(16), ctx.dp(14), ctx.dp(16), ctx.dp(16))
+        background = rounded(c.bg, 24, c.border, ctx) // r-lg, same as content cards
+        setPadding(ctx.dp(18), ctx.dp(16), ctx.dp(18), ctx.dp(18))
     }
     val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-    val icon = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ctx.dp(40), ctx.dp(40)).apply { marginEnd = ctx.dp(12) } }
+    val icon = ImageView(ctx).apply { clipToOutline = true; background = rounded(Color.Transparent, 12, null, ctx); layoutParams = LinearLayout.LayoutParams(ctx.dp(40), ctx.dp(40)).apply { marginEnd = ctx.dp(12) } }
     val titles = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f) }
     val badge = TextView(ctx).apply {
         text = "광고"; setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f); setTextColor(c.onBadge.toArgb())
-        background = rounded(c.badge, 6, null, ctx); setPadding(ctx.dp(6), ctx.dp(1), ctx.dp(6), ctx.dp(1))
+        background = rounded(c.badge, 99, null, ctx); setPadding(ctx.dp(8), ctx.dp(1), ctx.dp(8), ctx.dp(1))
         layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { bottomMargin = ctx.dp(2) }
     }
     val headline = TextView(ctx).apply {
@@ -115,8 +115,8 @@ private fun buildCard(ctx: Context, c: CardColors): NativeAdView {
     }
     val cta = Button(ctx).apply {
         isAllCaps = false; setTextColor(c.onCta.toArgb()); setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-        background = rounded(c.cta, 12, null, ctx); stateListAnimator = null
-        layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, ctx.dp(44)).apply { topMargin = ctx.dp(12) }
+        setTypeface(typeface, Typeface.BOLD); background = rounded(c.cta, 16, null, ctx); stateListAnimator = null
+        layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, ctx.dp(48)).apply { topMargin = ctx.dp(12) }
     }
     root.addView(header); root.addView(body); root.addView(media); root.addView(cta)
     view.addView(root)

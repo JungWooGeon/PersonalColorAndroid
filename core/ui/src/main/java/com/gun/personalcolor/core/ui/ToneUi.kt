@@ -69,7 +69,7 @@ val Tone.temperatureKo get() = if (isWarm) "웜톤" else "쿨톤"
 /** Round gradient avatar of a tone's best colors. */
 @Composable
 fun ToneAvatar(tone: Tone, size: Dp = 44.dp, modifier: Modifier = Modifier) =
-    Box(modifier.size(size).clip(CircleShape).background(tone.gradient))
+    Box(modifier.size(size).clip(CircleShape).background(remember(tone) { tone.tintyColors.let { Brush.linearGradient(listOf(it.bodyTop, it.bodyBottom)) } }))
 
 /**
  * Labelled swatches that fill the available width: as many columns as fit (min [minCell]), at least [minColumns].
@@ -131,7 +131,7 @@ fun Swatch(hex: String, modifier: Modifier = Modifier, shape: androidx.compose.u
 fun ColorDots(colors: List<NamedColor>, size: Dp = 16.dp) {
     Row(horizontalArrangement = Arrangement.spacedBy((-4).dp)) {
         colors.forEach {
-            Box(Modifier.size(size).clip(CircleShape).background(hexColor(it.hex)).border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape))
+            Swatch(it.hex, Modifier.size(size).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape).padding(1.5.dp), CircleShape)
         }
     }
 }

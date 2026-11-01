@@ -1,6 +1,12 @@
 package com.gun.personalcolor.core.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Checkroom
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.gun.personalcolor.core.model.Article
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -12,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.SectionCard
+import com.gun.personalcolor.core.designsystem.Verdict
+import com.gun.personalcolor.core.designsystem.VerdictBadge
 import com.gun.personalcolor.core.designsystem.isExpandedWindow
 import com.gun.personalcolor.core.model.Tone
 
@@ -20,8 +28,8 @@ import com.gun.personalcolor.core.model.Tone
 fun ToneDetails(tone: Tone, modifier: Modifier = Modifier) {
     val cards: List<@Composable () -> Unit> = listOf(
         { SectionCard("특징") { tone.characteristics.lines().filter { it.isNotBlank() }.forEach { Bullet(it.trim()) } } },
-        { SectionCard("BEST 컬러") { SwatchGrid(tone.bestColors) } },
-        { SectionCard("WORST 컬러") { SwatchGrid(tone.worstColors); Text(tone.avoidTip, style = Muted) } },
+        { SectionCard("어울리는 컬러", action = { VerdictBadge(Verdict.BEST) }) { SwatchGrid(tone.bestColors) } },
+        { SectionCard("피하면 좋은 컬러", action = { VerdictBadge(Verdict.WORST) }) { SwatchGrid(tone.worstColors); Text(tone.avoidTip, style = Muted) } },
         {
             SectionCard("메이크업") {
                 Text(tone.makeup.base, style = MaterialTheme.typography.bodyMedium)
@@ -52,10 +60,17 @@ fun ToneDetails(tone: Tone, modifier: Modifier = Modifier) {
 
 @Composable
 fun Bullet(text: String) = Row {
-    Text("•", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 8.dp))
+    Text("•", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
     Text(text, style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
 private fun Sub(text: String) = Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
     modifier = Modifier.padding(top = 6.dp))
+
+/** Line icon per guide category (no emoji in UI). */
+val Article.icon: ImageVector get() = when (category) {
+    "진단 팁" -> Icons.Outlined.CameraAlt
+    "스타일링" -> Icons.Outlined.Checkroom
+    else -> Icons.Outlined.AutoStories
+}

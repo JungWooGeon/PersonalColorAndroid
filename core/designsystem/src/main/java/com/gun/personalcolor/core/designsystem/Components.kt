@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -67,7 +68,6 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-import kotlin.math.max
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Depth (BRAND_SYSTEM §4): low violet-tinted shadows in light, a hairline instead of a shadow in dark.
@@ -96,11 +96,22 @@ fun elevationBorder(level: Int = 1): BorderStroke? = when {
 /** Primary-button gloss: one highlight layer at the top. */
 private val Gloss = Brush.verticalGradient(0f to Color.White.copy(alpha = 0.18f), 0.55f to Color.White.copy(alpha = 0f))
 
-/** Soft brand blobs behind a section (peach + lavender), like the website's `.aurora`. */
+/**
+ * Soft brand blobs behind a section (lavender top-right, peach bottom-left), like the website's `.aurora`.
+ * Each blob is an ellipse that fades out before the bounds, so it also works on unclipped boxes.
+ */
 fun Modifier.aurora(colors: PcColors): Modifier = drawBehind {
-    val r = max(size.width, size.height)
-    drawRect(Brush.radialGradient(listOf(colors.auroraLavender, Color.Transparent), Offset(size.width * 0.8f, size.height * 0.25f), r * 0.55f))
-    drawRect(Brush.radialGradient(listOf(colors.auroraPeach, Color.Transparent), Offset(size.width * 0.2f, size.height * 0.7f), r * 0.55f))
+    blob(colors.auroraLavender, 0.64f, 0.40f)
+    blob(colors.auroraPeach, 0.36f, 0.62f)
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.blob(color: Color, fx: Float, fy: Float) {
+    val c = Offset(size.width * fx, size.height * fy)
+    val rx = minOf(c.x, size.width - c.x); val ry = minOf(c.y, size.height - c.y)
+    if (rx <= 0f || ry <= 0f) return
+    scale(rx / ry, 1f, pivot = c) {
+        drawCircle(Brush.radialGradient(0f to color, 1f to color.copy(alpha = 0f), center = c, radius = ry), ry, c)
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
