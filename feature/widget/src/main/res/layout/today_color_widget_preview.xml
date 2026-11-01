@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Widget-picker preview (API 31+): a render of the 4x2 widget. -->
-<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:contentDescription="@string/widget_today_color_description"
-    android:scaleType="fitCenter"
-    android:src="@drawable/widget_preview" />

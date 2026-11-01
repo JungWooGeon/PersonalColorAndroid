@@ -52,7 +52,7 @@ class OutfitEngineTest {
         assertTrue(OutfitEngine.build(tone, weather(30.0), date, moods).slots.none { it.label == "아우터" })
         val cold = OutfitEngine.build(tone, weather(2.0), date, moods)
         assertTrue(cold.slots.first { it.label == "아우터" }.kind in setOf("long_padding", "coat", "padding", "mustang", "duffle"))
-        assertTrue("머플러" in cold.extras)
+        assertTrue(cold.slots.any { it.label == "소품" && it.kind in setOf("muffler", "beanie") })
         assertTrue(OutfitEngine.build(tone, weather(14.0), date, moods).layerLine.contains("자켓·트렌치"))
     }
 
@@ -119,14 +119,14 @@ class OutfitEngineTest {
         for (feels in -5..32 step 3) for (rain in listOf(0, 80)) for (v in 0..12) {
             val outfit = OutfitEngine.build(tone, weather(feels.toDouble(), rain), date, moods, variant = v)
             outfit.slots.forEach { assertTrue(it.item, it.kind in CLOTHING_KINDS) }
-            assertTrue(outfit.slots.any { it.label == "신발" })
+            assertTrue(outfit.slots.any { it.label == "신발" } && outfit.slots.any { it.label == "가방" })
             assertTrue("headline skips shoes", outfit.slots.first { it.label == "신발" }.item !in outfit.headline)
         }
     }
 
     @Test fun rainyDayShoes() {
         val kinds = (0..30).map { OutfitEngine.build(tone, weather(15.0, rain = 70), date, moods, variant = it).slots.first { s -> s.label == "신발" }.kind }.toSet()
-        assertTrue(kinds.toString(), "rain_boots" in kinds && kinds.all { it in setOf("rain_boots", "loafers", "ankle_boots") })
+        assertTrue(kinds.toString(), "rain_boots" in kinds && kinds.all { it in setOf("rain_boots", "loafers") })
     }
 
     @Test fun closetShoesFillShoeSlot() {
@@ -134,7 +134,7 @@ class OutfitEngineTest {
         val closet = listOf(ClosetItem(1, "#5A3A2A", "브라운 로퍼", "액세서리", "autumn_true", Verdict.GOOD, 90, kind = "loafers"))
         val outfit = OutfitEngine.build(tone, weather(14.0), date, moods, closet)
         assertEquals("내 옷장의 '브라운 로퍼'", outfit.slots.first { it.label == "신발" }.item)
-        assertTrue(outfit.slots.first { it.label == "포인트" }.fromCloset.not())
+        assertTrue(outfit.slots.first { it.label == "가방" }.fromCloset.not())
     }
 
     @Test fun closetSlotCarriesKindAndPhoto() {
@@ -151,7 +151,7 @@ class OutfitEngineTest {
             listOf(emptyList(), closet).forEach { items ->
                 val o = OutfitEngine.build(tone, weather(feels, rain), date.plusDays(v.toLong()), moods, items, v)
                 o.slots.forEach { assertTrue("${it.item} has no art", it.kind != null && it.kind in CLOTHING_KINDS) }
-                if (rain > 0) assertNotEquals(o.slots.first { it.label == "신발" }.color, o.slots.first { it.label == "포인트" }.color)
+                if (rain > 0) assertNotEquals(o.slots.first { it.label == "신발" }.color, o.slots.first { it.label == "소품" }.color)
             }
         }
     }
@@ -165,7 +165,7 @@ class OutfitEngineTest {
             .map { json.decodeFromJsonElement(Tone.serializer(), it) }
     }
 
-    private val ORDER = listOf("아우터", "상의", "하의", "원피스", "신발", "포인트")
+    private val ORDER = listOf("아우터", "상의", "하의", "원피스", "신발", "가방", "소품")
     private val OFF_TARGET = setOf("polo", "jogger", "windbreaker", "running", "hoodie", "fleece", "zipup", "cargo", "backpack", "hat")
 
     @Test fun stylingRulesHoldForEveryToneAndWeather() {
@@ -180,34 +180,43 @@ class OutfitEngineTest {
                 assertTrue("≤2 accent colors: $desc", accents.size <= 2)
                 assertTrue("≤1 loud color: $desc", accents.count { OutfitEngine.lab(it).chroma > 45 } <= 1)
                 val shoes = o.slots.single { it.label == "신발" }
-                val point = o.slots.single { it.label == "포인트" }
+                val point = o.slots.single { it.label == "가방" }
+                val acc = o.slots.singleOrNull { it.label == "소품" }
+                val big = o.slots.filter { it.label in setOf("아우터", "상의", "하의", "원피스") }
                 val accentPieces = o.slots.filter { it.color.hex !in neutral }
-                if (shoes.color.hex !in neutral || (point.kind in BAG_KINDS && point.color.hex !in neutral))
+                if (shoes.color.hex !in neutral || point.color.hex !in neutral || (acc != null && acc.color.hex !in neutral))
                     assertTrue("shoes/bag colored only as the single accent: $desc", accentPieces.map { it.color.hex }.toSet().size == 1 &&
                         accentPieces.none { it.label in setOf("아우터", "상의", "하의", "원피스") })
                 assertTrue("shoes are neutral: $desc", shoes.color.hex in neutral)
                 o.slots.forEach { s ->
                     assertTrue("known kind: $desc", s.kind in CLOTHING_KINDS)
-                    if (s.label != "포인트" || s.kind != "umbrella") assertTrue("off-target default ${s.kind}: $desc",
+                    assertTrue("off-target default ${s.kind}: $desc",
                         s.kind !in OFF_TARGET || (s.kind == "windbreaker" && rain > 0) || (s.kind == "running" && feels in 17..22))
                     seen += s.kind!!
                 }
                 val idx = o.slots.map { ORDER.indexOf(it.label) }
                 assertEquals("wearing order: $desc", idx.sorted(), idx)
                 assertTrue("no -1: $desc", -1 !in idx)
-                assertTrue("bag or umbrella: $desc", point.kind in BAG_KINDS || (rain > 0 && point.kind == "umbrella"))
+                assertTrue("always a bag: $desc", point.kind in BAG_KINDS)
+                assertTrue("never all dark: $desc", big.any { OutfitEngine.lab(it.color.hex).l >= 50 } ||
+                    o.slots.single { it.label == "상의" || it.label == "원피스" }.color.hex !in neutral)
+                o.slots.firstOrNull { it.label == "아우터" }?.let { assertNotEquals("no pure white coat: $desc", "#FFFFFF", it.color.hex.uppercase()) }
                 if (rain > 0) {
-                    assertTrue("rainy shoes: $desc", shoes.kind in setOf("rain_boots", "loafers", "ankle_boots"))
+                    assertEquals("umbrella: $desc", "umbrella", acc?.kind)
+                    assertTrue("rainy shoes: $desc", shoes.kind == "rain_boots" || (shoes.kind == "loafers" && shoes.item.startsWith("블랙")))
                     assertTrue("no colored boots: $desc", shoes.color.hex in neutral)
-                    assertNotEquals("umbrella ≠ shoes: $desc", shoes.color.hex, point.color.hex)
-                }
+                    assertTrue("umbrella black/ivory or the accent: $desc", acc!!.color.hex !in neutral ||
+                        acc.color.name in setOf("블랙", "아이보리", "화이트"))
+                    assertNotEquals("umbrella ≠ shoes: $desc", shoes.color.hex, acc.color.hex)
+                } else if (feels < 9) assertTrue("muffler or beanie when cold: $desc", acc?.kind in setOf("muffler", "beanie"))
+                else assertEquals("no 소품: $desc", null, acc)
                 assertTrue("headline: $desc", o.headline.isNotBlank() && o.headline.count { it == '+' } <= 1 && shoes.item !in o.headline)
                 if (feels < 12) o.slots.firstOrNull { it.label == "하의" && it.kind in setOf("mini_skirt", "pleats", "long_skirt") }
                     ?.let { assertTrue("skirt in the cold wants boots: $desc", shoes.kind in setOf("long_boots", "ankle_boots", "winter_boots", "rain_boots", "loafers")) }
             }
         }
         // Variety: the target's staples all show up somewhere.
-        listOf("coat", "short_coat", "duffle", "trench", "tweed", "blazer", "cardigan", "blouse", "crop_tee", "slip_dress",
+        listOf("muffler", "beanie", "coat", "short_coat", "duffle", "trench", "tweed", "blazer", "cardigan", "blouse", "crop_tee", "slip_dress",
             "denim_skirt", "long_skirt", "long_boots", "mary_jane", "loafers", "sandals", "flats", "shoulder_bag", "umbrella")
             .forEach { assertTrue("never picked: $it", it in seen) }
     }

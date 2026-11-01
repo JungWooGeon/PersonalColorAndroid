@@ -110,23 +110,27 @@ object OutfitEngine {
     /*
      * Styling rules (target: women in their late teens to mid-20s, Korea). OutfitEngineTest sweeps every tone × weather × variant.
      * 1. Color: a neutral base that suits the tone (warm: ivory/beige/camel/brown, cool: black/white/grey/navy, denim for both)
-     *    plus ONE accent from the tone palette, on one piece: the top (usually), a soft outer or dress, the bag or the umbrella.
-     *    Big pieces only take the softer half of the accents. Shoes are always neutral; the bag is neutral unless it is the accent.
+     *    plus ONE accent from the tone palette, on one piece: the top (usually), a soft outer or dress, the bag, the muffler /
+     *    beanie or the umbrella. Big pieces only take the softer half of the accents. Shoes are always neutral; the bag is
+     *    neutral unless it is the accent. Never all dark: a big piece is light (L* ≥ 50) unless the accent is on the top.
+     *    Coats are never pure white (ivory instead).
      * 2. Items: what the target actually wears per temperature band. No polo / jogger / windbreaker defaults.
      *    Skirts and dresses get their own shoes (long or ankle boots in the cold, loafers / mary janes / flats when mild).
-     * 3. Rain: neutral rain boots (darkest or lightest leather neutral), loafers or ankle boots; the umbrella is a neutral or
-     *    the accent, never the shoe color. "방수" only on the windbreaker.
-     * 4. Slots come in wearing order: 아우터 → 상의 → 하의 (or 원피스) → 신발 → 포인트 (bag, or the umbrella on rainy days).
-     *    LookBoard has one spot per label, so there is exactly one 포인트; muffler, beanie and bucket hat go to [Outfit.extras].
+     * 3. Rain: black or ivory rain boots, or black loafers; the umbrella is black / ivory or the accent, never the shoe color.
+     *    "방수" only on the windbreaker.
+     * 4. Slots come in wearing order: 아우터 → 상의 → 하의 (or 원피스) → 신발 → 가방 → 소품 (umbrella on rainy days, else a
+     *    muffler or beanie when it's cold). LookBoard has one spot per label.
      */
     internal class Neutrals(val base: List<NamedColor>, val leather: List<NamedColor>, val denim: List<NamedColor>) {
         /** Rain boots: black or the lightest leather neutral (ivory / white), never a palette color. */
-        val rainBoots get() = listOf(BLACK, leather.maxBy { lab(it.hex).l })
-        val all get() = base + leather + denim + BLACK
+        val rainBoots get() = listOf(BLACK, light)
+        val light get() = leather.maxBy { lab(it.hex).l }
+        val all get() = base + leather + denim + BLACK + COAT_IVORY
     }
 
     private fun nc(name: String, hex: String) = NamedColor(name, hex)
     private val BLACK = nc("블랙", "#1E1E20")
+    private val COAT_IVORY = nc("아이보리", "#F2EEE5")
     private val lightDenim = nc("연청", "#A7BCD6")
     private val midDenim = nc("중청", "#6F88AB")
     private val darkDenim = nc("진청", "#3C5276")
@@ -254,12 +258,17 @@ object OutfitEngine {
         val bottomKind = if (dressKind == null) pick(band.bottom) else null
         val skirtLike = dressKind != null || bottomKind in SKIRTS
         val shoeKind = when {
-            rainy && feels >= 20 -> pick(listOf("rain_boots", "loafers"))
-            rainy -> pick(listOf("rain_boots", "ankle_boots", "loafers"))
+            rainy -> pick(listOf("rain_boots", "rain_boots", "loafers"))
             skirtLike -> pick(band.skirtShoes)
             else -> pick(band.shoes)
         }
-        val pointKind = if (rainy) "umbrella" else pick(band.bags)
+        val bagKind = pick(band.bags)
+        val accKind = when {
+            rainy -> "umbrella"
+            feels < 3 -> pick(listOf("muffler", "beanie"))
+            feels < 9 -> if (rnd.nextInt(4) == 0) "beanie" else "muffler"
+            else -> null
+        }
 
         // Colors: one accent, everything else neutral.
         val neutrals = neutralsOf(tone)
@@ -271,21 +280,40 @@ object OutfitEngine {
         val r = rnd.nextInt(6)
         val accentOn = when {
             r == 0 && outerKind != null && soft -> "아우터"
-            r == 1 -> "포인트"
-            mainLabel == "원피스" && !soft -> "포인트"
+            r == 1 -> "가방"
+            r == 2 && accKind != null -> "소품"
+            mainLabel == "원피스" && !soft -> "가방"
             else -> mainLabel
         }
         val used = mutableListOf<NamedColor>()
-        fun neutralFor(kind: String): NamedColor {
-            val from = if (kind in DENIM) neutrals.denim + neutrals.base.filter { lab(it.hex).l > 90 || lab(it.hex).l < 25 } else neutrals.base
+        fun neutralFor(label: String, kind: String): NamedColor {
+            var from = if (kind in DENIM) neutrals.denim + neutrals.base.filter { lab(it.hex).l > 90 || lab(it.hex).l < 25 } else neutrals.base
+            if (label == "아우터") from = from.map { if (lab(it.hex).l > 96) COAT_IVORY else it }
             return pickOf(from.filter { it !in used }.ifEmpty { from }).also { used += it }
         }
-        fun colorFor(label: String, kind: String) = if (label == accentOn) accent else neutralFor(kind)
-        val shoeColor = pickOf(if (shoeKind == "rain_boots") neutrals.rainBoots else neutrals.leather)
-        val pointColor = when {
-            accentOn == "포인트" -> accent
-            rainy -> pickOf((neutrals.base + BLACK).filter { it.name != shoeColor.name })
+        val big = linkedMapOf<String, NamedColor>()
+        if (outerKind != null) big["아우터"] = if (accentOn == "아우터") accent else neutralFor("아우터", outerKind)
+        if (dressKind != null) big["원피스"] = if (accentOn == "원피스") accent else neutralFor("원피스", dressKind)
+        if (topKind != null) big["상의"] = if (accentOn == "상의") accent else neutralFor("상의", topKind)
+        if (bottomKind != null) big["하의"] = if (accentOn == "하의") accent else neutralFor("하의", bottomKind)
+        // Never all dark: lighten the first neutral inner piece (top, bottom, dress, then outer).
+        val darkLabel = listOf("상의", "하의", "원피스", "아우터").firstOrNull { it in big && it != accentOn }
+        if (accentOn != mainLabel && darkLabel != null && big.values.none { lab(it.hex).l >= 50 }) {
+            val label = darkLabel
+            val kind = mapOf("상의" to topKind, "하의" to bottomKind, "원피스" to dressKind, "아우터" to outerKind).getValue(label)!!
+            val light = (if (kind in DENIM) neutrals.denim + neutrals.base else neutrals.base).maxBy { lab(it.hex).l }
+            big[label] = if (label == "아우터" && lab(light.hex).l > 96) COAT_IVORY else light
+        }
+        val shoeColor = when {
+            shoeKind == "rain_boots" -> pickOf(neutrals.rainBoots)
+            rainy -> BLACK
             else -> pickOf(neutrals.leather)
+        }
+        val bagColor = if (accentOn == "가방") accent else pickOf(neutrals.leather)
+        val accColor = when {
+            accentOn == "소품" -> accent
+            accKind == "umbrella" -> if (shoeColor == BLACK) neutrals.light else BLACK
+            else -> pickOf(neutrals.base.filter { it !in big.values }.ifEmpty { neutrals.base })
         }
         val mood = closestMood(moods, tone, variant) ?: accent
 
@@ -309,23 +337,22 @@ object OutfitEngine {
                 kind = item.kind ?: kindOf(item.name, label), imageFile = item.imageFile)
         }
 
-        // Wearing order: outer → top → bottom (or dress) → shoes → bag / umbrella.
+        // Wearing order: outer → top → bottom (or dress) → shoes → bag → umbrella / muffler / beanie.
         val slots = buildList {
-            if (outerKind != null) add(slot("아우터", "아우터", colorFor("아우터", outerKind), outerKind))
-            if (dressKind != null) add(slot("원피스", "원피스", colorFor("원피스", dressKind), dressKind))
-            if (topKind != null) add(slot("상의", "상의", colorFor("상의", topKind), topKind))
-            if (bottomKind != null) add(slot("하의", "하의", colorFor("하의", bottomKind), bottomKind))
+            if (outerKind != null) add(slot("아우터", "아우터", big.getValue("아우터"), outerKind))
+            if (dressKind != null) add(slot("원피스", "원피스", big.getValue("원피스"), dressKind))
+            if (topKind != null) add(slot("상의", "상의", big.getValue("상의"), topKind))
+            if (bottomKind != null) add(slot("하의", "하의", big.getValue("하의"), bottomKind))
             add(slot("신발", "신발", shoeColor, shoeKind))
-            if (rainy) add(OutfitSlot("포인트", pointColor, "${pointColor.name} 우산", kind = pointKind))
-            else add(slot("포인트", "가방", pointColor, pointKind))
+            add(slot("가방", "가방", bagColor, bagKind))
+            if (accKind != null) add(OutfitSlot("소품", accColor, "${accColor.name} ${CLOTHING_KINDS.getValue(accKind).first}", kind = accKind))
         }
 
         val closetLip = mine.filter { it.category == "립·메이크업" }.let { if (it.isEmpty()) null else it[rnd.nextInt(it.size)] }
         val m = tone.makeup
         val extras = buildList {
             if (rainy) add("우산")
-            if (feels < 9) add("머플러")
-            if (feels < 3) add("비니")
+            if (feels < 9 && accKind != "muffler") add("머플러")
             if (strongUv) { add(if (feels >= 23) "버킷햇" else "모자"); add("선글라스") }
         }
         val tip = when {

@@ -74,47 +74,44 @@ internal data class Placement(val slot: OutfitSlot, val cx: Float, val cy: Float
 
 private class Spot(val cx: Float, val cy: Float, val size: Float, val rotation: Float, val z: Int)
 
-private val BIG_POINTS = setOf("bag", "shoulder_bag", "crossbody", "backpack", "muffler", "scarf")
-
 /**
- * Flat-lay composition like a lookbook: outer over the top, the bottom below, shoes at the foot, the point item tucked in.
+ * Flat-lay composition like a lookbook: outer over the top, the bottom below, shoes at the foot, the bag and the small
+ * accessory (umbrella / muffler / beanie, label 소품) tucked into the free corners.
  * [bounds] = where the art sits inside its box (0..1); pieces are nudged so that part stays on the board.
+ * Labels: 아우터 · 상의 · 하의 · 원피스 · 신발 · 가방 (older "포인트") · 소품.
  */
 internal fun lookLayout(slots: List<OutfitSlot>, bounds: (OutfitSlot) -> Rect = { Rect(0.1f, 0.1f, 0.9f, 0.9f) }): List<Placement> {
     val labels = slots.map { it.label }.toSet()
     val outer = "아우터" in labels
-    val umbrella = slots.any { it.label == "포인트" && it.kind == "umbrella" }
+    val dress = "원피스" in labels
+    val umbrella = slots.any { it.kind == "umbrella" }
     val spots: Map<String, Spot> = when {
-        "원피스" in labels && outer -> mapOf(
-            "아우터" to Spot(.32f, .37f, .66f, -5f, 3), "원피스" to Spot(.67f, .50f, .76f, 3f, 2),
-            "신발" to Spot(.26f, .90f, .40f, -6f, 4), "포인트" to Spot(.86f, .92f, .28f, 8f, 5),
+        dress && outer -> mapOf(
+            "아우터" to Spot(.31f, .36f, .62f, -5f, 3), "원피스" to Spot(.69f, .50f, .70f, 3f, 2),
+            "신발" to Spot(.27f, .91f, .36f, -6f, 4), "가방" to Spot(.84f, .93f, .28f, 8f, 5),
+            "소품" to if (umbrella) Spot(.20f, .70f, .40f, -28f, 1) else Spot(.17f, .70f, .27f, -10f, 5),
         )
-        "원피스" in labels -> mapOf(
-            "원피스" to Spot(.40f, .52f, .86f, -3f, 2), "신발" to Spot(.76f, .90f, .42f, -6f, 4), "포인트" to Spot(.80f, .22f, .30f, 8f, 5),
-        )
-        // Rainy: the bottom steps left and the open umbrella lies in the clear space beside it, under the clothes.
-        outer && umbrella && "원피스" !in labels -> mapOf(
-            "아우터" to Spot(.32f, .37f, .68f, -4f, 3), "상의" to Spot(.70f, .28f, .54f, 5f, 2), "하의" to Spot(.60f, .71f, .62f, -2f, 1),
-            "신발" to Spot(.27f, .90f, .40f, -5f, 4), "포인트" to Spot(.83f, .66f, .38f, 22f, 0),
+        dress -> mapOf(
+            "원피스" to Spot(.40f, .50f, .82f, -3f, 2), "신발" to Spot(.76f, .91f, .40f, -6f, 4), "가방" to Spot(.80f, .21f, .30f, 8f, 5),
+            "소품" to Spot(.84f, .58f, .44f, 24f, 0),
         )
         outer -> mapOf(
-            "아우터" to Spot(.32f, .37f, .68f, -4f, 3), "상의" to Spot(.70f, .28f, .54f, 5f, 2), "하의" to Spot(.67f, .71f, .62f, -2f, 1),
-            "신발" to Spot(.27f, .90f, .40f, -5f, 4), "포인트" to Spot(.89f, .91f, .26f, 10f, 5),
+            "아우터" to Spot(.30f, .35f, .62f, -4f, 3), "상의" to Spot(.71f, .25f, .50f, 5f, 2),
+            "하의" to Spot(if (umbrella) .62f else .68f, .70f, .58f, -2f, 1),
+            "신발" to Spot(.26f, .91f, .36f, -5f, 4), "가방" to Spot(.86f, .93f, .26f, 8f, 5),
+            "소품" to if (umbrella) Spot(.86f, .62f, .40f, 22f, 0) else Spot(.16f, .70f, .27f, -10f, 5),
         )
         else -> mapOf(
-            "상의" to Spot(.36f, .30f, .62f, -4f, 2), "하의" to Spot(.66f, .67f, .64f, 3f, 1),
-            "신발" to Spot(.27f, .90f, .42f, -5f, 4), "포인트" to Spot(.81f, .19f, .30f, 8f, 5),
+            "상의" to Spot(.37f, .30f, .60f, -4f, 2), "하의" to Spot(.67f, .67f, .62f, 3f, 1),
+            "신발" to Spot(.26f, .91f, .40f, -5f, 4), "가방" to Spot(.82f, .20f, .30f, 8f, 5),
+            "소품" to Spot(.17f, .64f, .40f, -30f, 0),
         )
     }
     val margin = 0.03f
     return slots.map { slot ->
-        val spot = spots[slot.label] ?: Spot(.5f, .5f, .4f, 0f, 0)
-        var size = spot.size
-        var rotation = spot.rotation
-        if (slot.label == "포인트") when (slot.kind) {
-            "umbrella" -> if (!outer || "원피스" in labels) { size *= 1.45f; rotation -= 40f }
-            in BIG_POINTS -> size *= 1.25f
-        }
+        val spot = spots[if (slot.label == "포인트") "가방" else slot.label] ?: Spot(.5f, .5f, .4f, 0f, 0)
+        val size = spot.size
+        val rotation = spot.rotation
         // Keep the drawn part (not the empty box) inside the board.
         val b = bounds(slot)
         val left = spot.cx - size / 2
@@ -133,18 +130,16 @@ internal fun stylingNote(slots: List<OutfitSlot>, seed: Int): String {
     val main = slots.firstOrNull { it.label == "상의" || it.label == "원피스" }
     val base = slots.firstOrNull { it.label == "하의" } ?: slots.firstOrNull { it.label == "아우터" }
     val outer = slots.firstOrNull { it.label == "아우터" }
-    val point = slots.firstOrNull { it.label == "포인트" }
-    val shoes = slots.firstOrNull { it.label == "신발" }
-    val lines = if (point?.kind == "umbrella") buildList {
-        val c = point.color.name
-        add("비 오는 날엔 $c 우산 하나로 기분까지 환하게!")
-        if (shoes?.color?.name == c) add("레인부츠와 우산을 $c${josa(c, "으로", "로")} 맞춰 비 오는 날도 산뜻하게")
+    val acc = slots.firstOrNull { it.label == "소품" }
+    val point = acc?.takeIf { it.kind != "umbrella" } ?: slots.firstOrNull { it.label == "가방" || it.label == "포인트" }
+    val lines = if (acc?.kind == "umbrella") buildList {
+        add("비 오는 날엔 ${acc.color.name} 우산 하나로 깔끔하게")
         if (main != null) add("흐린 날일수록 ${main.color.name}${josa(main.color.name, "이", "가")} 얼굴을 살려 줘요")
     } else buildList {
         if (main != null) add("${main.color.name}${josa(main.color.name, "이", "가")} 얼굴 가까이에서 혈색을 살려 줘요")
-        if (base != null && point != null) add("${base.color.name}${josa(base.color.name, "으로", "로")} 차분하게 받치고 ${name(point)}${josa(name(point), "으로", "로")} 포인트를 줬어요")
+        if (base != null && point != null) add("${base.color.name}${josa(base.color.name, "으로", "로")} 차분하게 받치고 ${name(point)}${josa(name(point), "으로", "로")} 마무리했어요")
         if (outer != null && main != null && outer.color.name != main.color.name) add("겉은 ${outer.color.name}, 안은 ${main.color.name}. 톤을 맞춰 단정하게 입어요")
-        if (point != null) add("${name(point)} 하나면 심심하지 않아요")
+        if (acc != null) add("${name(acc)} 하나면 따뜻하고 귀여워요")
     }
     return lines.ifEmpty { listOf("오늘 컬러로 가볍게 맞춰 봤어요") }[Math.floorMod(seed, lines.size.coerceAtLeast(1))]
 }

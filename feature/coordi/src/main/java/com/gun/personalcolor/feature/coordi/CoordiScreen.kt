@@ -547,7 +547,7 @@ private val previewOutfit = Outfit(
         OutfitSlot("아우터", NamedColor("카멜", "#C19A6B"), "카멜 트렌치코트", kind = "trench"),
         OutfitSlot("상의", NamedColor("웜 아이보리", "#F3E9D2"), "내 옷장의 '아이보리 니트'", fromCloset = true, kind = "knit"),
         OutfitSlot("하의", NamedColor("초콜릿 브라운", "#5A3A2A"), "초콜릿 브라운 슬랙스", kind = "pants"),
-        OutfitSlot("포인트", NamedColor("머스터드", "#D2A23A"), "머스터드 스카프", kind = "scarf"),
+        OutfitSlot("가방", NamedColor("머스터드", "#D2A23A"), "머스터드 숄더백", kind = "shoulder_bag"),
     ),
     lip = NamedColor("브릭", "#A0453A"), lipFromCloset = false,
     eye = NamedColor("브론즈", "#8C6239"), blush = NamedColor("테라코타", "#C0674A"),

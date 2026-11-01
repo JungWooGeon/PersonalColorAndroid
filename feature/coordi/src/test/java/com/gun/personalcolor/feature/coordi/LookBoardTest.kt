@@ -10,12 +10,16 @@ class LookBoardTest {
     private fun slot(label: String, kind: String?) = OutfitSlot(label, NamedColor("카멜", "#C19A6B"), "카멜 $label", kind = kind)
 
     private val combos = listOf(
-        listOf(slot("아우터", "trench"), slot("상의", "knit"), slot("하의", "slacks"), slot("신발", "loafers"), slot("포인트", "scarf")),
-        listOf(slot("상의", "tee"), slot("하의", "wide"), slot("신발", "shoes"), slot("포인트", "bag")),
-        listOf(slot("원피스", "dress"), slot("신발", "sandals"), slot("포인트", "earrings")),
-        listOf(slot("아우터", "coat"), slot("원피스", "knit_dress"), slot("신발", "long_boots"), slot("포인트", "umbrella")),
-        listOf(slot("아우터", "windbreaker"), slot("상의", "longtee"), slot("하의", "jeans"), slot("신발", "rain_boots"), slot("포인트", "umbrella")),
+        listOf(slot("아우터", "trench"), slot("상의", "knit"), slot("하의", "slacks"), slot("신발", "loafers"), slot("가방", "shoulder_bag")),
+        listOf(slot("상의", "tee"), slot("하의", "wide"), slot("신발", "shoes"), slot("가방", "bag")),
+        listOf(slot("원피스", "dress"), slot("신발", "sandals"), slot("가방", "mini_bag")),
+        listOf(slot("아우터", "coat"), slot("원피스", "knit_dress"), slot("신발", "long_boots"), slot("가방", "hobo"), slot("소품", "umbrella")),
+        listOf(slot("아우터", "windbreaker"), slot("상의", "longtee"), slot("하의", "jeans"), slot("신발", "rain_boots"), slot("가방", "bag"), slot("소품", "umbrella")),
         listOf(slot("상의", "tee"), slot("하의", "pants"), slot("신발", "shoes"), slot("포인트", null)),
+        listOf(slot("아우터", "coat"), slot("상의", "knit"), slot("하의", "long_skirt"), slot("신발", "long_boots"), slot("가방", "shoulder_bag"), slot("소품", "muffler")),
+        listOf(slot("아우터", "short_coat"), slot("원피스", "knit_dress"), slot("신발", "ankle_boots"), slot("가방", "bag"), slot("소품", "beanie")),
+        listOf(slot("상의", "blouse"), slot("하의", "jeans"), slot("신발", "rain_boots"), slot("가방", "crossbody"), slot("소품", "umbrella")),
+        listOf(slot("원피스", "dress"), slot("신발", "loafers"), slot("가방", "mini_bag"), slot("소품", "umbrella")),
     )
 
     @Test fun everyComboKeepsTheDrawnPartOnTheBoard() {
@@ -54,7 +58,7 @@ class LookBoardTest {
     }
 
     @Test fun stylingNoteNamesTheUmbrellaOnRainyDays() {
-        assertTrue(stylingNote(combos[4], 3).contains("우산"))
+        assertTrue((0..3).any { stylingNote(combos[4], it).contains("우산") })
         combos.forEach { slots -> repeat(5) { assertTrue(stylingNote(slots, it).isNotBlank()) } }
     }
 }
