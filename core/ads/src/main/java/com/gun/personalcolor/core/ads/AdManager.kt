@@ -2,6 +2,8 @@ package com.gun.personalcolor.core.ads
 
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -85,7 +87,8 @@ class AdManager @Inject constructor(val billing: Billing) {
         val app = activity.applicationContext
         thread {
             MobileAds.initialize(app) {
-                activity.runOnUiThread {
+                // Main-looper handler, not the activity: the callback may outlive the first activity.
+                Handler(Looper.getMainLooper()).post {
                     ready = true
                     loadInterstitial(app)
                     loadRewarded(app)

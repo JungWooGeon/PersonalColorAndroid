@@ -14,7 +14,9 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Task
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,7 +43,7 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
         val now = System.currentTimeMillis()
         val cached = readCache()
         if (cached != null && now - cached.fetchedAtMillis in 0 until FRESH_MS) return@withContext cached
-        val fresh = try { fetch(now) } catch (e: Exception) { Log.w(TAG, "fetch failed", e); null }
+        val fresh = try { fetch(now) } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w(TAG, "fetch failed", e); null }
         fresh?.also { writeCache(it) } ?: cached?.takeIf { now - it.fetchedAtMillis in 0 until STALE_MS }
     }
 
@@ -54,7 +56,8 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
             "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,relative_humidity_2m" +
             "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,weather_code" +
             "&timezone=auto&forecast_days=1"
-        val body = httpGet(url) ?: return null
+        // Interruptible so a caller's withTimeoutOrNull doesn't wait out the socket timeouts.
+        val body = runInterruptible(Dispatchers.IO) { httpGet(url) } ?: return null
         return parseForecast(body, placeLabel(lat, lon), now)
     }
 
@@ -91,8 +94,8 @@ class WeatherRepository @Inject constructor(@ApplicationContext private val cont
     private fun httpGet(url: String): String? {
         val conn = URL(url).openConnection() as HttpURLConnection
         return try {
-            conn.connectTimeout = 8_000
-            conn.readTimeout = 8_000
+            conn.connectTimeout = 5_000
+            conn.readTimeout = 5_000
             if (conn.responseCode != HttpURLConnection.HTTP_OK) null
             else conn.inputStream.bufferedReader().use { it.readText() }
         } finally { conn.disconnect() }
