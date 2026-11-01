@@ -6,22 +6,17 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.ui.graphics.toArgb
-import androidx.core.content.res.ResourcesCompat
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.data.UserPreferencesRepository
-import com.gun.personalcolor.core.designsystem.TintyColors
-import com.gun.personalcolor.core.designsystem.tintyBitmap
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.hexColor
-import com.gun.personalcolor.core.ui.tintyColors
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.hilt.EntryPoint
@@ -37,10 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.util.IdentityHashMap
 import java.util.Optional
-import com.gun.personalcolor.core.designsystem.R as DsR
 
 /** Today's outfit for the widgets. The app binds a [WidgetOutfitSource]. */
 data class WidgetOutfit(
@@ -89,7 +81,7 @@ object TodayColorWidgets {
 }
 
 /** One provider per picker size (One UI lists each with its own preview); all of them resize freely. */
-abstract class LookWidgetProvider internal constructor(internal val defaultSize: WidgetArt.Size) : AppWidgetProvider() {
+abstract class LookWidgetProvider internal constructor(internal val defaultSize: WidgetSize) : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = async { LookWidgets.update(context, ids) }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) =
@@ -102,21 +94,36 @@ abstract class LookWidgetProvider internal constructor(internal val defaultSize:
 }
 
 /** 4x2 (kept under its old name so widgets already on home screens carry over). */
-class TodayColorWidgetReceiver : LookWidgetProvider(WidgetArt.Size.Wide)
-class TodayLookSquareReceiver : LookWidgetProvider(WidgetArt.Size.Square)
-class TodayLookMiniReceiver : LookWidgetProvider(WidgetArt.Size.Mini)
+class TodayColorWidgetReceiver : LookWidgetProvider(WidgetSize.Wide)
+class TodayLookSquareReceiver : LookWidgetProvider(WidgetSize.Square)
+class TodayLookMiniReceiver : LookWidgetProvider(WidgetSize.Mini)
 
 private const val TAG = "LookWidget"
 
-/** Fallback rest slots if the still swap never arrives: the same Bitmap object each time (~45 s at 90 ms). */
-private const val REST = 500
-/** ViewFlipper interval in res/layout/widget_look.xml. */
-private const val FRAME_MS = 90L
+internal enum class WidgetSize { Mini, Square, Wide }
+
+/** What a widget shows. [pieces] null = no outfit; [pill] is the quiet call to action (locked, no tone). */
+internal class WidgetLook(
+    val pieces: List<Pair<String, Int>>?,
+    val weather: String,
+    val line: String,
+    val caption: String,
+    val miniCaption: String,
+    val locked: Boolean,
+    val pill: String? = null,
+)
+
+/** Light phases cross-fade in this order (one breath = 0→1→2→1→0), twice, then the still swaps in. */
+private val PHASES = intArrayOf(0, 1, 2, 1, 0, 1, 2, 1, 0)
+/** ViewFlipper flipInterval in res/layout/widget_look.xml (the fades in res/anim are 1.6 s). */
+private const val FLIP_MS = 2400L
 
 internal object LookWidgets {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
     private val providers = listOf(TodayColorWidgetReceiver::class.java, TodayLookSquareReceiver::class.java, TodayLookMiniReceiver::class.java)
+    /** Bumped per update, so a late still swap never overwrites a newer update. */
+    @Volatile private var generation = 0
 
     suspend fun updateAll(context: Context) {
         val m = AppWidgetManager.getInstance(context)
@@ -127,42 +134,44 @@ internal object LookWidgets {
         if (ids.isEmpty()) return@withLock
         val m = AppWidgetManager.getInstance(context)
         val data = load(context)
+        val gen = ++generation
         val stills = ArrayList<Pair<Int, RemoteViews>>()
-        var landingMs = 0L
         for (id in ids) {
             val info = m.getAppWidgetInfo(id) ?: continue
             val default = when (info.provider.className) {
-                TodayLookMiniReceiver::class.java.name -> WidgetArt.Size.Mini
-                TodayLookSquareReceiver::class.java.name -> WidgetArt.Size.Square
-                else -> WidgetArt.Size.Wide
+                TodayLookMiniReceiver::class.java.name -> WidgetSize.Mini
+                TodayLookSquareReceiver::class.java.name -> WidgetSize.Square
+                else -> WidgetSize.Wide
             }
             val o = m.getAppWidgetOptions(id)
             // Portrait size: min width × max height (what One UI reports for the home grid).
             var wDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
             var hDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
             if (wDp <= 0 || hDp <= 0) when (default) {
-                WidgetArt.Size.Mini -> { wDp = 80; hDp = 116 }
-                WidgetArt.Size.Square -> { wDp = 170; hDp = 240 }
-                WidgetArt.Size.Wide -> { wDp = 350; hDp = 240 }
+                WidgetSize.Mini -> { wDp = 80; hDp = 116 }
+                WidgetSize.Square -> { wDp = 169; hDp = 242 }
+                WidgetSize.Wide -> { wDp = 348; hDp = 242 }
             }
-            val (views, still, frames) = build(context, data, wDp, hDp)
+            val (views, still) = build(context, data, wDp, hDp)
             runCatching { m.updateAppWidget(id, views) }.onFailure { Log.e(TAG, "updateAppWidget $id", it) }
-            if (still != null) { stills += id to still; landingMs = maxOf(landingMs, frames * FRAME_MS) }
+            stills += id to still
         }
-        // Once the pieces have landed, swap in a still collage so the launcher stops flipping (no idle redraws).
-        if (stills.isNotEmpty()) {
-            delay(landingMs + 400)
-            for ((id, v) in stills) runCatching { m.updateAppWidget(id, v) }
+        // After the light has breathed, a still frame stops the flipper (no idle redraws). Not awaited: the
+        // broadcast finishes now; if the process dies first, the flipper simply keeps breathing.
+        scope.launch {
+            delay((PHASES.size - 1) * FLIP_MS + 800)
+            if (gen == generation) for ((id, v) in stills) runCatching { m.updateAppWidget(id, v) }
         }
     }
 
     fun sizeOf(wDp: Int, hDp: Int) = when {
-        wDp < 120 && hDp < 150 -> WidgetArt.Size.Mini
-        wDp >= 220 && wDp >= hDp * 1.3f -> WidgetArt.Size.Wide
-        else -> WidgetArt.Size.Square
+        wDp < 120 && hDp < 150 -> WidgetSize.Mini
+        wDp >= 220 && wDp >= hDp * 1.3f -> WidgetSize.Wide
+        else -> WidgetSize.Square
     }
 
-    class Data(val tone: Tone?, val outfit: WidgetOutfit?, val liveTinty: Boolean, val night: Boolean, val darkText: Boolean = false)
+    /** [night] forces the night scene (debug); otherwise the scene follows the hour. [hour] -1 = now. */
+    class Data(val tone: Tone?, val outfit: WidgetOutfit?, val liveTinty: Boolean, val night: Boolean, val darkText: Boolean = false, val hour: Int = -1)
 
     /** Debug only (WidgetSnapshotReceiver): sample looks on a real home screen. */
     @Volatile var debugOverride: Data? = null
@@ -172,8 +181,7 @@ internal object LookWidgets {
         val entry = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
         val tone = entry.content().toneOrNull(entry.preferences().preferences.first().myToneId)?.takeIf { it.bestColors.isNotEmpty() }
         val outfit = if (tone == null) null else runCatching { entry.outfitSource().orElse(null)?.today() }.getOrNull()
-        val night = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        return Data(tone, outfit, ourLiveWallpaperOn(context), night, brightWallpaper(context))
+        return Data(tone, outfit, ourLiveWallpaperOn(context), false, brightWallpaper(context))
     }
 
     /** The system says dark text reads better on this wallpaper (its colors hint, API 27+). */
@@ -186,28 +194,80 @@ internal object LookWidgets {
     private fun ourLiveWallpaperOn(context: Context) =
         runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.packageName == context.packageName }.getOrDefault(false)
 
-    /** What [data] looks like in the widget; [night] overrides the system (debug snapshots). */
-    fun look(context: Context, data: Data, night: Boolean = data.night): Pair<WidgetArt.Look, String> {
-        val d = context.resources.displayMetrics.density
+    enum class Sky { sunny, cloudy, rain, night }
+
+    /** "영등포구 9°C 이슬비" + hour → the scene. Night is 22–6 h whatever the weather. */
+    internal fun skyOf(weatherLine: String?, hour: Int): Sky {
+        if (hour >= 22 || hour < 6) return Sky.night
+        val c = weather(weatherLine).second.orEmpty()
+        return when {
+            listOf("비", "눈", "소나기", "진눈깨비").any { it in c } -> Sky.rain
+            listOf("흐", "구름", "안개", "황사", "박무", "연무").any { it in c } -> Sky.cloudy
+            else -> Sky.sunny
+        }
+    }
+
+    /** 으로/로: 로 after a vowel or ㄹ (와인으로, 코랄로, 피치로). */
+    internal fun ro(word: String): String {
+        val ch = word.lastOrNull() ?: return "로"
+        if (ch !in '가'..'힣') return "로"
+        val jong = (ch - '가') % 28
+        return if (jong == 0 || jong == 8) "로" else "으로"
+    }
+
+    internal fun lineOf(sky: Sky, cond: String?, temp: Int?, color: String?): String {
+        color ?: return "오늘의 룩"
+        return when {
+            sky == Sky.night -> "내일은 $color"
+            sky == Sky.rain -> "${if (cond.orEmpty().contains("눈")) "눈" else "비"} 오는 날, $color 한 방울"
+            temp != null && temp <= 5 -> "$color${ro(color)} 따뜻하게"
+            sky == Sky.cloudy -> "흐린 날엔 $color${ro(color)}"
+            else -> "햇살 아래, $color 한 조각"
+        }
+    }
+
+    /** The look's accent: its most colorful piece whose color is one of the tone's colors. */
+    private fun accentName(tone: Tone, pieces: List<Pair<String, Int>>): String? =
+        pieces.mapNotNull { (_, c) -> tone.bestColors.firstOrNull { hexColor(it.hex).toArgb() == c }?.let { it to c } }
+            .maxByOrNull { chroma(it.second) }?.takeIf { chroma(it.second) > 40 }?.first?.name
+            ?.let { NICK[it] ?: it }
+
+    /** Softer words for the line, where the tone's name reads like a paint chip. */
+    private val NICK = mapOf("피치" to "복숭아")
+
+    /** What [data] looks like in the widget, and its contentDescription. */
+    fun look(data: Data): Pair<WidgetLook, String> {
+        val now = java.time.LocalDateTime.now()
+        val hour = if (data.night) 23 else data.hour.takeIf { it >= 0 } ?: now.hour
+        val date = "${java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH).format(now)}"
         val tone = data.tone
-        val mark = if (data.liveTinty) null else tintyBitmap((15 * d).toInt(), tone?.tintyColors ?: TintyColors.Brand)
-        val today = LocalDate.now().let { "${it.monthValue}/${it.dayOfMonth}" }
         val outfit = data.outfit
         if (tone == null) {
-            return WidgetArt.Look(null, WidgetArt.Title("내 컬러부터", null, "찾아볼까요?", 0, sub = "탭해서 진단해요"), today, today, mark, night,
-                lockLabel = "진단하러 가기", darkText = data.darkText) to "나의 컬러는? 탭해서 퍼스널 컬러를 진단해요"
+            val sky = skyOf(null, hour)
+            return WidgetLook(null, sky.name, "내 컬러부터 찾아볼까요?", "$date · find your color", "my color",
+                locked = false, pill = "진단하러 가기") to "나의 컬러는? 탭해서 퍼스널 컬러를 진단해요"
         }
         if (outfit == null || outfit.locked) {
-            return WidgetArt.Look(null, WidgetArt.Title("오늘의 룩 도착!", null, "", 0, sub = "탭하면 오늘 코디가 열려요"), today, "오늘의 룩", mark, night,
-                lockLabel = if (outfit == null) "열어보기" else "광고 보고 열기", darkText = data.darkText) to "오늘의 코디가 도착했어요. 탭해서 열어보세요"
+            // Never the real outfit here: the scene shows generic pieces under a veil.
+            val sky = skyOf(null, hour)
+            return WidgetLook(null, sky.name, "오늘의 룩이 도착했어요", "$date · today's look", "today's look", locked = true,
+                pill = if (outfit == null) "열어보기" else "광고 보고 열기") to "오늘의 코디가 도착했어요. 탭해서 열어보세요"
         }
-        val (temp, cond) = weather(outfit.weatherLine)
-        val pill = listOfNotNull(today, listOfNotNull(temp, cond).joinToString(" ").ifEmpty { null }).joinToString(" · ")
-        val short = listOfNotNull(temp, cond).joinToString(" ").ifEmpty { today }
+        val (tempS, cond) = weather(outfit.weatherLine)
+        val temp = tempS?.removeSuffix("°")?.toIntOrNull()
+        val sky = skyOf(outfit.weatherLine, hour)
         val pieces = outfit.pieces.mapNotNull { (k, hex) -> runCatching { k to android.graphics.Color.parseColor(hex) }.getOrNull() }
-        val title = thumbTitle(temp, cond, tone, pieces) ?: titleOf(outfit.headline, tone, pieces)
+        val line = lineOf(sky, cond, temp, accentName(tone, pieces))
+        val word = when (sky) {
+            Sky.night -> "for tomorrow"
+            Sky.rain -> if (cond.orEmpty().contains("눈")) "snowy day look" else "rainy day look"
+            Sky.cloudy -> "cloudy day look"
+            Sky.sunny -> "sunny day look"
+        }
+        val caption = listOfNotNull(date, tempS, word).joinToString(" · ")
+        val mini = listOfNotNull(tempS, when (sky) { Sky.sunny -> "sun"; Sky.cloudy -> "cloudy"; Sky.rain -> if (cond.orEmpty().contains("눈")) "snow" else "rain"; Sky.night -> "night" }).joinToString(" · ")
         val names = outfit.pieces.joinToString(", ") { CLOTHING_KINDS[it.first]?.first ?: it.first }
-        return WidgetArt.Look(pieces, title, pill, short, mark, night, darkText = data.darkText) to "오늘의 코디: ${outfit.headline}. $names"
+        return WidgetLook(pieces, sky.name, line, caption, mini, locked = false) to "오늘의 코디: $line. ${outfit.headline}. $names"
     }
 
     /** "망원동 9°C 이슬비" → ("9°", "이슬비"). */
@@ -217,90 +277,50 @@ internal object LookWidgets {
         return "${m.groupValues[1]}°" to m.groupValues[2].trim().ifBlank { null }
     }
 
-    /**
-     * Lookbook-thumbnail title from the weather and the look's point color: "비 오는 날 [와인] 포인트 룩".
-     * The point color is the most colorful piece whose color is one of the tone's colors; null when there is none.
-     */
-    internal fun thumbTitle(temp: String?, cond: String?, tone: Tone, pieces: List<Pair<String, Int>>): WidgetArt.Title? {
-        val point = pieces.mapNotNull { (_, c) -> tone.bestColors.firstOrNull { hexColor(it.hex).toArgb() == c }?.let { it to c } }
-            .maxByOrNull { chroma(it.second) }?.takeIf { chroma(it.second) > 40 } ?: return null
-        val t = temp?.removeSuffix("°")?.toIntOrNull()
-        val c = cond.orEmpty()
-        val day = when {
-            "눈" in c -> "눈 오는 날"
-            "비" in c || "소나기" in c -> "비 오는 날"
-            t != null && t <= 4 -> "추운 날"
-            t != null && t <= 12 -> "쌀쌀한 날"
-            t != null && t <= 20 -> "선선한 날"
-            t != null && t >= 27 -> "더운 날"
-            else -> "오늘은"
-        }
-        return WidgetArt.Title(day, point.first.name, "포인트 룩", point.second)
-    }
-
-    /**
-     * Splits the headline around the point color's name, which goes on the marker: "비 오는 날 [와인] 포인트 룩".
-     * The point color is the tone color named in the headline; without one, the title is just wrapped.
-     */
-    internal fun titleOf(headline: String, tone: Tone, pieces: List<Pair<String, Int>>): WidgetArt.Title {
-        val h = headline.trim()
-        val named = tone.bestColors.flatMap { c -> listOf(c.name, c.name.substringAfterLast(' ')).distinct().map { it to c.hex } }
-            .filter { it.first.length >= 2 && it.first in h }.maxByOrNull { it.first.length }
-        if (named != null) {
-            val (key, hex) = named
-            val i = h.indexOf(key)
-            return WidgetArt.Title(h.substring(0, i).trim(), key, h.substring(i + key.length).trim(), hexColor(hex).toArgb())
-        }
-        // No color word: two even lines, the most colorful piece as the (unused) accent.
-        val words = h.split(' ').filter { it.isNotBlank() }
-        val cut = (1..words.size).minByOrNull { k -> kotlin.math.abs(words.take(k).joinToString(" ").length - h.length / 2) } ?: 0
-        val accent = pieces.maxByOrNull { chroma(it.second) }?.second ?: 0
-        return WidgetArt.Title(words.take(cut).joinToString(" "), null, words.drop(cut).joinToString(" "), accent)
-    }
-
     private fun chroma(c: Int): Int {
         val r = android.graphics.Color.red(c); val g = android.graphics.Color.green(c); val b = android.graphics.Color.blue(c)
         return maxOf(r, g, b) - minOf(r, g, b)
     }
 
-    fun render(context: Context, data: Data, wDp: Int, hDp: Int, night: Boolean = data.night): Pair<WidgetArt.Art, String> {
+    /** The widget at [wDp]×[hDp] for light [phase]. */
+    fun render(context: Context, look: WidgetLook, wDp: Int, hDp: Int, phase: Int): Bitmap {
         val d = context.resources.displayMetrics.density
-        if (!fontReady) {
-            WidgetArt.font = ResourcesCompat.getFont(context, DsR.font.pretendard) ?: android.graphics.Typeface.DEFAULT_BOLD
-            fontReady = true
+        val w = (wDp * d).toInt(); val h = (hDp * d).toInt()
+        return when (val size = sizeOf(wDp, hDp)) {
+            WidgetSize.Wide -> SceneWall.render(context, if (look.locked) emptyList() else look.pieces.orEmpty(),
+                look.weather, look.line, look.caption, w, h, phase, look.locked)
+            else -> {
+                val mini = size == WidgetSize.Mini
+                SceneBed.render(context, if (look.locked) emptyList() else look.pieces.orEmpty(), look.weather, look.line,
+                    if (mini) look.miniCaption else look.caption, w, h, phase, look.locked, mini, look.pill)
+            }
         }
-        val (look, description) = look(context, data, night)
-        val size = sizeOf(wDp, hDp)
-        return WidgetArt.render(look, size, (wDp * d).toInt(), (hDp * d).toInt(), d) to description
     }
 
-    @Volatile private var fontReady = false
-
-    /** (views to show now, still views to swap in after the landing or null, landing frame count). */
-    private suspend fun build(context: Context, data: Data, wDp: Int, hDp: Int): Triple<RemoteViews, RemoteViews?, Int> {
+    /** (views that breathe now, the still to swap in after). */
+    private suspend fun build(context: Context, data: Data, wDp: Int, hDp: Int): Pair<RemoteViews, RemoteViews> {
         val t0 = System.currentTimeMillis()
-        val (art, description) = withContext(Dispatchers.Default) { render(context, data, wDp, hDp) }
-        val pkg = context.packageName
-        val rv = shell(context, data, art, description, animate = art.landing.isNotEmpty())
-        val still = if (art.landing.isEmpty()) null else shell(context, data, art, description, animate = false)
-        logMemory(context, art, wDp, hDp, System.currentTimeMillis() - t0)
-        return Triple(rv, still, art.landing.size)
+        val (look, description) = look(data)
+        val frames = withContext(Dispatchers.Default) { (0..2).map { render(context, look, wDp, hDp, it) } }
+        val rv = shell(context, data, description, frames)
+        val still = shell(context, data, description, listOf(frames[0]))
+        logMemory(context, frames, wDp, hDp, System.currentTimeMillis() - t0)
+        return rv to still
     }
 
-    private fun shell(context: Context, data: Data, art: WidgetArt.Art, description: String, animate: Boolean): RemoteViews {
+    private fun shell(context: Context, data: Data, description: String, frames: List<Bitmap>): RemoteViews {
         val pkg = context.packageName
         val rv = RemoteViews(pkg, R.layout.widget_look)
-        place(rv, R.id.still, art.still)
         rv.removeAllViews(R.id.frames)
-        if (!animate) {
-            place(rv, R.id.base, art.collage)
+        if (frames.size == 1) {
+            rv.setImageViewBitmap(R.id.base, frames[0])
+            rv.setViewVisibility(R.id.base, View.VISIBLE)
             rv.setViewVisibility(R.id.frames, View.GONE)
         } else {
             rv.setViewVisibility(R.id.base, View.GONE)
             rv.setViewVisibility(R.id.frames, View.VISIBLE)
-            for (f in art.landing) rv.addView(R.id.frames, frame(pkg, f))
-            val rest = RemoteViews(pkg, R.layout.widget_rest).also { place(it, R.id.p0, art.collage) }
-            repeat(REST) { rv.addView(R.id.frames, rest) }
+            // Same Bitmap objects repeat: RemoteViews' bitmap cache sends each once.
+            for (p in PHASES) rv.addView(R.id.frames, RemoteViews(pkg, R.layout.widget_rest).apply { setImageViewBitmap(R.id.p0, frames[p]) })
         }
         val launch = context.packageManager.getLaunchIntentForPackage(pkg)
         if (launch != null) {
@@ -313,32 +333,12 @@ internal object LookWidgets {
         return rv
     }
 
-    private val PIECES = intArrayOf(R.id.p0, R.id.p1, R.id.p2, R.id.p3, R.id.p4, R.id.p5, R.id.p6)
-
-    private fun frame(pkg: String, f: WidgetArt.Frame): RemoteViews {
-        val v = RemoteViews(pkg, R.layout.widget_frame)
-        PIECES.forEachIndexed { i, id -> place(v, id, f.layers.getOrNull(i)) }
-        place(v, R.id.shine, f.shine)
-        return v
-    }
-
-    /** Matrix ImageView: the bitmap draws at its own size (half-density overlays draw 2x) at its padding offset. */
-    private fun place(rv: RemoteViews, id: Int, p: WidgetArt.Placed?) {
-        if (p == null) { rv.setViewVisibility(id, View.GONE); return }
-        rv.setViewVisibility(id, View.VISIBLE)
-        rv.setImageViewBitmap(id, p.bmp)
-        rv.setViewPadding(id, p.x, p.y, 0, 0)
-    }
-
     /** RemoteViews refuses bitmaps over ~1.5× the screen's ARGB size; log what one update holds. */
-    private fun logMemory(context: Context, art: WidgetArt.Art, wDp: Int, hDp: Int, ms: Long) {
-        val seen = IdentityHashMap<Bitmap, Unit>()
-        listOfNotNull(art.still, art.collage).forEach { seen[it.bmp] = Unit }
-        art.landing.forEach { f -> f.layers.forEach { seen[it.bmp] = Unit }; f.shine?.let { seen[it.bmp] = Unit } }
-        val bytes = seen.keys.sumOf { it.byteCount.toLong() }
+    private fun logMemory(context: Context, frames: List<Bitmap>, wDp: Int, hDp: Int, ms: Long) {
+        val bytes = frames.sumOf { it.byteCount.toLong() }
         val dm = context.resources.displayMetrics
         val limit = dm.widthPixels.toLong() * dm.heightPixels * 4 * 3 / 2
-        Log.i(TAG, "${wDp}x${hDp}dp ${sizeOf(wDp, hDp)}: ${art.landing.size} frames, ${seen.size} bitmaps, " +
+        Log.i(TAG, "${wDp}x${hDp}dp ${sizeOf(wDp, hDp)}: ${frames.size} frames ${frames[0].width}x${frames[0].height}, " +
             "${bytes / 1024} KB of ${limit / 1024} KB limit, rendered in $ms ms")
     }
 }
