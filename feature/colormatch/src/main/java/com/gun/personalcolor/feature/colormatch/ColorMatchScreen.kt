@@ -36,13 +36,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Colorize
-import androidx.compose.material.icons.rounded.HorizontalRule
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -50,11 +47,9 @@ import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -79,7 +74,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -100,9 +94,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analysis.Rgb
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
-import com.gun.personalcolor.core.designsystem.EmptyState
 import com.gun.personalcolor.core.designsystem.Muted
+import com.gun.personalcolor.core.designsystem.IconTile
 import com.gun.personalcolor.core.designsystem.PcButton
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.PcSnackbarHost
+import com.gun.personalcolor.core.designsystem.PcTonalButton
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.Verdict
+import com.gun.personalcolor.core.designsystem.VerdictBadge as DsVerdictBadge
+import com.gun.personalcolor.core.designsystem.colors
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.TintyColors
@@ -131,7 +132,6 @@ import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Checkroom
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.rememberCoroutineScope
@@ -228,7 +228,7 @@ fun ColorMatchScreen(
             else -> Checker(pad, tone, state, onCamera, onAlbum, onManual, onBackToPhoto, onPick, onPickEnd, onHsv, openSheet, onTone) { saveSheet = true }
         }
     }
-    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+    PcSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
     }
 
     val v = state.verdict
@@ -280,27 +280,27 @@ private fun Intro(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ReferenceToneChip(tone, onToneChip)
-            Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+            PcCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
                         tone.bestColors.take(5).forEach {
-                            Swatch(it.hex, Modifier.size(40.dp).border(3.dp, MaterialTheme.colorScheme.surfaceContainer, CircleShape), CircleShape)
+                            Swatch(it.hex, Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape).padding(3.dp), CircleShape)
                         }
                     }
-                    Text("이 색, 나한테 어울릴까?", style = MaterialTheme.typography.headlineSmall)
-                    Text("${tone.nameKo}에 어울리는지 바로 알려줘요.", style = Muted)
-                    Step(Icons.Rounded.PhotoCamera, "옷이나 립스틱 찍기")
-                    Step(Icons.Rounded.TouchApp, "확인할 곳 누르기")
-                    Step(Icons.Rounded.Verified, "어울림 결과 확인")
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("이 색, 나한테 어울릴까?", style = MaterialTheme.typography.headlineSmall)
+                        Text("${tone.nameKo}에 어울리는지 바로 알려줘요", style = Muted)
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Step(Icons.Rounded.PhotoCamera, "옷이나 립스틱을 찍어요")
+                        Step(Icons.Rounded.TouchApp, "확인할 곳을 눌러요")
+                        Step(Icons.Rounded.Verified, "BEST인지 바로 알려줘요")
+                    }
                 }
             }
             state.error?.let { ErrorText(it) }
             if (state.photoLoading) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 54.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Text("사진 불러오는 중", style = Muted)
-                }
+                TintyLoading(Modifier.fillMaxWidth(), "사진을 불러오고 있어요", remember(tone) { tone.tintyColors }, size = 96.dp)
             } else {
                 PcButton("카메라로 찍기", onCamera, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoCamera)
                 PcOutlinedButton("앨범에서 선택", onAlbum, Modifier.fillMaxWidth(), icon = Icons.Rounded.PhotoLibrary)
@@ -317,11 +317,9 @@ private fun Intro(
 @Composable
 private fun Step(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-            Icon(icon, null, Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-        }
+        IconTile(icon, size = 36.dp)
         Spacer(Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        Text(text, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -339,7 +337,7 @@ private fun Checker(
     val result: @Composable () -> Unit = {
         val v = state.verdict
         val c = state.color
-        if (v != null && c != null) Result(c, v, state.myToneId, onTone, onSave)
+        if (v != null && c != null) Result(c, v, tone, state.myToneId, onTone, onSave)
     }
     if (isWideWindow()) {
         Row(Modifier.fillMaxSize().padding(pad).padding(horizontal = ScreenPadding), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -390,7 +388,8 @@ private fun SourceChips(state: ColorMatchUiState, onCamera: () -> Unit, onAlbum:
 private fun ReferenceToneChip(tone: Tone, onClick: () -> Unit) {
     AssistChip(
         onClick = onClick,
-        label = { Text("기준 톤: ${tone.nameKo}", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        shape = RoundedCornerShape(50),
+        label = { Text("기준 톤 · ${tone.nameKo}", maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = { ToneAvatar(tone, 18.dp) },
         trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, "기준 톤 바꾸기", Modifier.size(18.dp)) },
     )
@@ -404,7 +403,7 @@ private fun ErrorText(text: String) = Text(text, style = MaterialTheme.typograph
 @Composable
 private fun PhotoArea(state: ColorMatchUiState, onPick: (Float, Float, Boolean) -> Unit, onPickEnd: () -> Unit, modifier: Modifier) {
     val photo = state.photo
-    Box(modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHighest), Alignment.Center) {
+    Box(modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh), Alignment.Center) {
         if (photo != null) PhotoPicker(photo, state.pointX, state.pointY, state.color, onPick, onPickEnd)
         if (state.photoLoading) TintyLoading(colors = remember(state.refTone) { state.refTone?.tintyColors ?: TintyColors.Brand }, size = 112.dp)
     }
@@ -525,32 +524,25 @@ private fun GradientSlider(label: String, value: Float, range: ClosedFloatingPoi
 // ---- Result ----
 
 @Composable
-private fun Result(color: Rgb, v: ColorVerdict, myToneId: String?, onTone: (String) -> Unit, onSave: () -> Unit) {
-    val accent = levelColors(v.level).accent
+private fun Result(color: Rgb, v: ColorVerdict, tone: Tone, myToneId: String?, onTone: (String) -> Unit, onSave: () -> Unit) {
     val hex = color.toHex()
+    val (fg, _) = v.level.ds.colors()
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SectionCard(null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Swatch(hex, Modifier.size(88.dp), RoundedCornerShape(20.dp))
+                Swatch(hex, Modifier.size(88.dp), MaterialTheme.shapes.large)
                 Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     VerdictBadge(v.level)
-                    Text(hex, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    Text(v.level.label, style = MaterialTheme.typography.titleLarge, color = fg, maxLines = 2)
+                    Text(hex, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
+                // BEST only: a wink from 틴티 in the reference tone (the screen's single 틴티).
+                if (v.level == MatchLevel.GOOD) Tinty(Modifier.size(72.dp), remember(tone) { tone.tintyColors }, TintyExpression.Happy, animated = false)
             }
             Text(v.reason, style = MaterialTheme.typography.bodyLarge)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("어울림 점수", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                Text("${v.score}점", style = MaterialTheme.typography.titleSmall, color = accent)
-            }
-            LinearProgressIndicator(
-                progress = { v.score / 100f },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = accent, trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                strokeCap = StrokeCap.Round, gapSize = 0.dp, drawStopIndicator = {},
-            )
-            PcOutlinedButton("옷장에 저장", onSave, Modifier.fillMaxWidth(), icon = Icons.Rounded.BookmarkAdd)
+            PcTonalButton("옷장에 저장", onSave, Modifier.fillMaxWidth(), icon = Icons.Rounded.BookmarkAdd)
         }
 
         SectionCard("비슷한 BEST 컬러") {
@@ -586,43 +578,22 @@ private fun ToneRow(rank: Int, tone: Tone, isMine: Boolean, onClick: () -> Unit)
             ToneAvatar(tone, 36.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(tone.nameKo, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tone.nameKo, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${tone.seasonKo} · ${tone.temperatureKo}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             if (isMine) { Tag("내 톤", color = MaterialTheme.colorScheme.primaryContainer); Spacer(Modifier.width(4.dp)) }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = PcTheme.colors.ink3)
         }
     }
 }
 
-internal data class LevelColors(val container: Color, val onContainer: Color, val accent: Color)
+/** Design-system verdict for a match level: BEST / 무난 / WORST. */
+internal val MatchLevel.ds: Verdict
+    get() = when (this) { MatchLevel.GOOD -> Verdict.BEST; MatchLevel.NEUTRAL -> Verdict.OKAY; MatchLevel.AVOID -> Verdict.WORST }
 
+/** BEST / 무난 / WORST pill (color + label). */
 @Composable
-internal fun levelColors(level: MatchLevel): LevelColors {
-    val cs = MaterialTheme.colorScheme
-    return when (level) {
-        MatchLevel.GOOD -> LevelColors(cs.tertiaryContainer, cs.onTertiaryContainer, cs.tertiary)
-        MatchLevel.NEUTRAL -> LevelColors(cs.secondaryContainer, cs.onSecondaryContainer, cs.primary)
-        MatchLevel.AVOID -> LevelColors(cs.errorContainer, cs.onErrorContainer, cs.error)
-    }
-}
-
-/** Colored pill with the verdict; [small] for grid tiles. */
-@Composable
-internal fun VerdictBadge(level: MatchLevel, modifier: Modifier = Modifier, small: Boolean = false, text: String = level.label) {
-    val c = levelColors(level)
-    val icon = when (level) { MatchLevel.GOOD -> Icons.Rounded.Check; MatchLevel.NEUTRAL -> Icons.Rounded.HorizontalRule; MatchLevel.AVOID -> Icons.Rounded.Close }
-    Surface(modifier, shape = RoundedCornerShape(50), color = c.container, contentColor = c.onContainer) {
-        Row(
-            if (small) Modifier.padding(start = 6.dp, end = 8.dp, top = 3.dp, bottom = 3.dp) else Modifier.padding(start = 10.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, null, Modifier.size(if (small) 14.dp else 18.dp))
-            Spacer(Modifier.width(if (small) 4.dp else 6.dp))
-            Text(text, style = if (small) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
+internal fun VerdictBadge(level: MatchLevel, modifier: Modifier = Modifier) = DsVerdictBadge(level.ds, modifier)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -637,11 +608,11 @@ private fun SaveToClosetSheet(hex: String, v: ColorVerdict, onSave: (String, Str
         ) {
             Text("옷장에 저장", style = MaterialTheme.typography.titleLarge)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Swatch(hex, Modifier.size(56.dp), RoundedCornerShape(16.dp))
+                Swatch(hex, Modifier.size(56.dp), MaterialTheme.shapes.medium)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     VerdictBadge(v.level)
-                    Text("$hex · ${v.score}점", style = Muted, maxLines = 1)
+                    Text("${v.level.label} · $hex", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             ClosetFields(

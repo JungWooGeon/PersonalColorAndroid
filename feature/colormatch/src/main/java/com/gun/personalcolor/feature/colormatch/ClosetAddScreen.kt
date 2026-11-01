@@ -83,6 +83,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.BottomActions
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.colors
+import androidx.compose.material.icons.rounded.Checkroom
+import androidx.compose.foundation.layout.height
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
@@ -165,7 +169,7 @@ internal fun ClosetAddScreen(
         BottomActions {
             PcButton("옷장에 저장", onSave, Modifier.fillMaxWidth(), icon = Icons.Rounded.Check, enabled = state.canSave)
             if (state.color != null && state.kind == null)
-                Text("종류를 골라 주세요", style = Muted, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
+                Text("어떤 옷인지 골라 주세요", style = Muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         }
     }) { pad ->
         Column(
@@ -206,24 +210,26 @@ private fun PhotoPart(state: ClosetAddUiState, onCamera: () -> Unit, onAlbum: ()
     val photo = state.photo
     Box(
         Modifier.fillMaxWidth().aspectRatio(if (isWideWindow()) 1.6f else 1f).clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         Alignment.Center,
     ) {
         when {
             state.processing -> TintyLoading(
-                Modifier.padding(16.dp), "배경 지우는 중… 처음엔 조금 걸릴 수 있어요",
+                Modifier.padding(16.dp), "배경을 지우고 있어요\n처음엔 조금 걸릴 수 있어요",
                 remember(state.tone) { state.tone?.tintyColors ?: TintyColors.Brand }, size = 112.dp,
             )
             photo != null -> CutoutPicker(photo, state.point, state.photoColor, onPickPoint)
             else -> Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.PhotoCamera, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                IconTile(Icons.Rounded.Checkroom, size = 64.dp, drop = true)
+                Spacer(Modifier.height(4.dp))
                 Text("내 옷을 찍어 보세요", style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text("밝은 곳에서 옷 전체가 나오게 찍으면\n배경을 깔끔하게 지워 드려요", style = Muted, textAlign = TextAlign.Center)
+                Text("밝은 곳에서 옷 전체가 나오게 찍으면\n배경을 깔끔하게 지워 줘요", style = Muted, textAlign = TextAlign.Center)
             }
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        PcOutlinedButton(if (photo == null) "사진 찍기" else "다시 찍기", onCamera, Modifier.weight(1f), icon = Icons.Rounded.PhotoCamera, enabled = !state.processing)
+        if (photo == null) PcButton("사진 찍기", onCamera, Modifier.weight(1f), icon = Icons.Rounded.PhotoCamera, enabled = !state.processing)
+        else PcOutlinedButton("다시 찍기", onCamera, Modifier.weight(1f), icon = Icons.Rounded.PhotoCamera, enabled = !state.processing)
         PcOutlinedButton("앨범", onAlbum, Modifier.weight(1f), icon = Icons.Rounded.PhotoLibrary, enabled = !state.processing)
     }
     if (photo != null && !state.processing) {
@@ -295,7 +301,7 @@ private fun ManualPart(state: ClosetAddUiState, onHsv: (List<Float>) -> Unit, on
     // Placeholder art for the chosen kind + color (same slot as tiles use).
     Box(
         Modifier.fillMaxWidth().aspectRatio(if (isWideWindow()) 3f else 2f).clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         Alignment.Center,
     ) { GarmentThumb(ClosetItem(0, hex, "", "", "", com.gun.personalcolor.core.model.Verdict.OK, 0, kind = state.kind), null, Modifier.fillMaxHeight(0.7f).aspectRatio(1f)) }
     state.tone?.let { tone ->
@@ -319,23 +325,22 @@ private fun ManualPart(state: ClosetAddUiState, onHsv: (List<Float>) -> Unit, on
 private fun VerdictCard(hex: String, state: ClosetAddUiState) {
     SectionCard(null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Swatch(hex, Modifier.size(48.dp), RoundedCornerShape(14.dp))
+            Swatch(hex, Modifier.size(56.dp), MaterialTheme.shapes.medium)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 val v = state.verdict
                 if (v != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        VerdictBadge(v.level)
-                        Spacer(Modifier.width(8.dp))
-                        Text("${v.score}점", style = MaterialTheme.typography.titleMedium, color = levelColors(v.level).accent, maxLines = 1)
-                    }
-                    Text(v.reason, style = MaterialTheme.typography.bodyMedium)
-                    state.tone?.let { Text("${it.nameKo} 기준", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    VerdictBadge(v.level)
+                    Text(v.level.label, style = MaterialTheme.typography.titleMedium, color = v.level.ds.colors().first, maxLines = 1)
                 } else {
                     Text(hex, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                    Text("내 톤을 정하면 어울리는지도 알려 드려요", style = Muted)
+                    Text("내 톤을 정하면 어울리는지도 알려줘요", style = Muted)
                 }
             }
+        }
+        state.verdict?.let { v ->
+            Text(v.reason, style = MaterialTheme.typography.bodyMedium)
+            state.tone?.let { Text("${it.nameKo} 기준", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }
@@ -355,17 +360,17 @@ internal fun KindChips(selected: String?, onSelect: (String) -> Unit) {
                 val on = g == group
                 Surface(
                     onClick = { group = g }, shape = RoundedCornerShape(50),
-                    color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
-                    Text(g, Modifier.padding(horizontal = 14.dp, vertical = 7.dp), maxLines = 1,
+                    Text(g, Modifier.heightIn(min = 36.dp).padding(horizontal = 14.dp, vertical = 8.dp), maxLines = 1,
                         style = MaterialTheme.typography.labelLarge,
-                        color = if (on) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KIND_GROUPS[group].orEmpty().forEach { key ->
-                FilterChip(key == selected, { onSelect(key) }, { Text(CLOTHING_KINDS[key]!!.first, maxLines = 1) })
+                FilterChip(key == selected, { onSelect(key) }, { Text(CLOTHING_KINDS[key]!!.first, maxLines = 1) }, shape = RoundedCornerShape(50))
             }
         }
     }
@@ -382,7 +387,7 @@ internal fun GarmentThumb(item: ClosetItem, photo: File?, modifier: Modifier = M
     val bmp = photo?.let { rememberClosetImage(it, maxSide) }
     if (bmp != null) Image(bmp, item.name, modifier, contentScale = ContentScale.Fit)
     else if (item.kind != null) ClothingIllustration(item.kind!!, hexColor(item.hex), modifier)
-    else Swatch(item.hex, modifier, RoundedCornerShape(14.dp))
+    else Swatch(item.hex, modifier, MaterialTheme.shapes.small)
 }
 
 // ponytail: small in-memory cache so grid scrolling doesn't re-decode; bounded at ~32 MB.

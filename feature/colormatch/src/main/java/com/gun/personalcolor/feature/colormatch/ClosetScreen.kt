@@ -1,7 +1,6 @@
 package com.gun.personalcolor.feature.colormatch
 
 import com.gun.personalcolor.core.ads.NativeAdCard
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -70,9 +69,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analytics.TrackScreen
-import com.gun.personalcolor.core.designsystem.EmptyState
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.colors
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
 import com.gun.personalcolor.core.designsystem.PcScaffold
 import com.gun.personalcolor.core.designsystem.TintyEmptyState
@@ -130,9 +131,9 @@ fun ClosetScreen(
         when {
             state.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { TintyLoading() }
             state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
-                TintyEmptyState("옷장이 비어 있어요", "내 옷을 찍어 두면 어울리는지 한눈에 볼 수 있어요", action = {
+                TintyEmptyState("옷장이 아직 비어 있어요", "자주 입는 옷을 찍어 두면\n내 톤에 맞는지 한눈에 보여요", expression = TintyExpression.Default, action = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        PcButton("옷 추가", onAdd, icon = Icons.Rounded.Add)
+                        PcButton("첫 옷 등록하기", onAdd, icon = Icons.Rounded.Add)
                         TextButton(onColorMatch, Modifier.heightIn(min = 48.dp)) {
                             Icon(Icons.Rounded.Colorize, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("컬러 체크하기", maxLines = 1)
                         }
@@ -162,7 +163,8 @@ fun ClosetScreen(
                             ChipRow {
                                 FilterChip(levelFilter == null, { levelFilter = null }, { Text("전체", maxLines = 1) })
                                 MatchLevel.entries.forEach { l ->
-                                    FilterChip(levelFilter == l, { levelFilter = if (levelFilter == l) null else l }, { Text(l.label, maxLines = 1) })
+                                    FilterChip(levelFilter == l, { levelFilter = if (levelFilter == l) null else l }, { Text(l.ds.label, maxLines = 1) },
+                                        leadingIcon = { Box(Modifier.size(8.dp).background(l.ds.colors().first, CircleShape)) })
                                 }
                             }
                             if (categories.size > 1) ChipRow {
@@ -173,7 +175,7 @@ fun ClosetScreen(
                             }
                             val count = { l: MatchLevel -> state.entries.count { it.level == l } }
                             Text(
-                                "어울림 ${count(MatchLevel.GOOD)} · 무난 ${count(MatchLevel.NEUTRAL)} · 피함 ${count(MatchLevel.AVOID)}",
+                                "BEST ${count(MatchLevel.GOOD)} · 무난 ${count(MatchLevel.NEUTRAL)} · WORST ${count(MatchLevel.AVOID)}",
                                 style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp),
                             )
                         }
@@ -188,6 +190,9 @@ fun ClosetScreen(
                 }
                 ExtendedFloatingActionButton(
                     onClick = onAdd,
+                    shape = MaterialTheme.shapes.medium,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(Icons.Rounded.Add, null) },
                     text = { Text("옷 추가", maxLines = 1) },
                     modifier = Modifier.align(Alignment.BottomEnd)
@@ -223,32 +228,26 @@ private fun ChipRow(content: @Composable () -> Unit) {
 
 @Composable
 private fun ClosetTile(e: ClosetEntry, imageFile: (String) -> File, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    PcCard(onClick = onClick) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
-                Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 Alignment.Center,
             ) {
                 val photo = e.item.imageFile?.let(imageFile)
                 GarmentThumb(e.item, photo, if (photo != null) Modifier.fillMaxSize().padding(10.dp) else Modifier.fillMaxSize())
+                VerdictBadge(e.level, Modifier.align(Alignment.TopStart).padding(8.dp))
             }
-            Spacer(Modifier.height(2.dp))
-            Text(e.item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Swatch(e.item.hex, Modifier.size(12.dp), CircleShape)
-                Spacer(Modifier.width(6.dp))
-                Text(kindLabel(e.item), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text("${e.score}점", style = MaterialTheme.typography.labelLarge, color = levelColors(e.level).accent, maxLines = 1)
+            Column(Modifier.padding(horizontal = 4.dp).padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(e.item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Swatch(e.item.hex, Modifier.size(12.dp), CircleShape)
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (e.reEvaluated) "${kindLabel(e.item)} · 현재 톤 기준" else kindLabel(e.item), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            VerdictBadge(e.level, small = true)
-            if (e.reEvaluated) Text("현재 톤 기준", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
     }
 }
@@ -269,7 +268,7 @@ private fun ItemSheet(e: ClosetEntry, imageFile: (String) -> File, onUpdate: (Cl
         ) {
             val photo = item.imageFile?.let(imageFile)
             if (photo != null) Box(
-                Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                Modifier.fillMaxWidth().height(280.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 Alignment.Center,
             ) { GarmentThumb(item, photo, Modifier.fillMaxSize().padding(16.dp), maxSide = 1024) }
             else GarmentThumb(item, null, Modifier.fillMaxWidth().height(140.dp))
@@ -277,7 +276,6 @@ private fun ItemSheet(e: ClosetEntry, imageFile: (String) -> File, onUpdate: (Cl
                 Swatch(item.hex, Modifier.size(28.dp), CircleShape)
                 Spacer(Modifier.width(10.dp))
                 Text(item.hex, style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f))
-                Text("${e.score}점", style = MaterialTheme.typography.titleMedium, color = levelColors(e.level).accent, maxLines = 1)
             }
 
             OutlinedTextField(
@@ -294,8 +292,9 @@ private fun ItemSheet(e: ClosetEntry, imageFile: (String) -> File, onUpdate: (Cl
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     VerdictBadge(e.level)
                     Spacer(Modifier.width(8.dp))
-                    e.refTone?.let { Text("${it.nameKo} 기준", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    Text(e.level.label, style = MaterialTheme.typography.titleMedium, color = e.level.ds.colors().first, maxLines = 1)
                 }
+                e.refTone?.let { Text("${it.nameKo} 기준", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 e.verdict?.let { Text(it.reason, style = MaterialTheme.typography.bodyLarge) }
             }
 
@@ -341,7 +340,7 @@ internal fun ClosetFields(name: String, onName: (String) -> Unit, category: Stri
         )
         Text("종류", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CLOSET_CATEGORIES.forEach { c -> FilterChip(c == category, { onCategory(c) }, { Text(c, maxLines = 1) }) }
+            CLOSET_CATEGORIES.forEach { c -> FilterChip(c == category, { onCategory(c) }, { Text(c, maxLines = 1) }, shape = RoundedCornerShape(50)) }
         }
     }
 }
