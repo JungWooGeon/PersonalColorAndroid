@@ -145,31 +145,42 @@ private fun todayColor(tone: Tone): NamedColor = tone.bestColors[LocalDate.now()
 
 /**
  * Three sizes, three jobs:
- * - [Small] (2x2): today's color, nothing else. Name big, 틴티 standing in a pool of that color.
- * - [Mid] (roomier squares): the same moment plus the colors that go with it, as paint dots in the pool.
+ * - [Small] (compact 2x2): today's color, nothing else. Name big, 틴티 standing in a pool of that color.
+ * - [Mid] (2x2 on 4-column homes and bigger squares): the same moment plus the colors that go with it, as paint dots.
  * - [Wide] (4x2): today's outfit as a little lookbook card that 틴티 presents (locked: a frosted teaser).
+ * While our live wallpaper is on, 틴티 is already on the home screen, so the widget shows a drop of paint instead.
  */
 private enum class Kind { Small, Mid, Wide }
 
 private fun kindOf(size: DpSize) = when {
-    size.width >= 250.dp -> Kind.Wide
-    min(size.width.value, size.height.value) >= 170f -> Kind.Mid
+    size.width >= 250.dp && size.width >= size.height * 1.25f -> Kind.Wide
+    min(size.width.value, size.height.value) >= 160f -> Kind.Mid
     else -> Kind.Small
 }
+
+/** One 틴티 per screen: our live wallpaper already shows one. */
+private fun ourLiveWallpaperOn(context: Context) =
+    runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.packageName == context.packageName }.getOrDefault(false)
 
 /** Everything one update shows, loaded off the main thread. Garment bitmaps only exist when the outfit is unlocked. */
 private class WidgetData(
     val tone: Tone?,
     val outfit: WidgetOutfit?,
-    val pieces: List<Bitmap>,
+    /** (CLOTHING_KINDS key, art) */
+    val pieces: List<Pair<String, Bitmap>>,
     val labels: List<String>,
     /** Generic pieces in the tone's colors for the locked teaser. */
-    val teaser: List<Bitmap>,
+    val teaser: List<Pair<String, Bitmap>>,
     val mood: TintyExpression,
+    /** False while our live wallpaper shows 틴티. */
+    val character: Boolean,
 )
 
-/** [outfitOverride]: debug snapshots of the outfit states; the real widget always asks the app. */
-class TodayColorWidget internal constructor(private val outfitOverride: WidgetOutfit?) : GlanceAppWidget() {
+/** Overrides are for debug snapshots only; the real widget always asks the app and the system. */
+class TodayColorWidget internal constructor(
+    private val outfitOverride: WidgetOutfit?,
+    private val characterOverride: Boolean? = null,
+) : GlanceAppWidget() {
     constructor() : this(null)
 
     // Exact: the art is drawn for the real size (portrait and landscape), never stretched.
@@ -181,20 +192,21 @@ class TodayColorWidget internal constructor(private val outfitOverride: WidgetOu
             ?.takeIf { it.bestColors.isNotEmpty() }
         val outfit = if (tone == null) null else outfitOverride ?: runCatching { entry.outfitSource().orElse(null)?.today() }.getOrNull()
         val density = context.resources.displayMetrics.density
-        val px = (88 * density).toInt().coerceIn(160, 280)
+        val px = (120 * density).toInt().coerceIn(200, 360)
+        val character = characterOverride ?: !ourLiveWallpaperOn(context)
         val data = withContext(Dispatchers.Default) {
             // Never draw (or even hold) the outfit while it's locked.
-            val real = if (outfit == null || outfit.locked) emptyList() else outfit.pieces.take(3)
+            val real = if (outfit == null || outfit.locked) emptyList() else outfit.pieces.take(4)
             val teaser = if (tone != null && outfit?.locked == true) {
                 listOf("coat", "knit", "slacks").mapIndexed { i, kind ->
-                    renderClothingBitmap(kind, hexColor(tone.bestColors[(i * 3 + 1) % tone.bestColors.size].hex), px / 2, density)
+                    kind to renderClothingBitmap(kind, hexColor(tone.bestColors[(i * 3 + 1) % tone.bestColors.size].hex), px / 2, density)
                 }
             } else emptyList()
             WidgetData(
                 tone, outfit,
-                real.map { (kind, hex) -> renderClothingBitmap(kind, hexColor(hex), px, density) },
+                real.map { (kind, hex) -> kind to renderClothingBitmap(kind, hexColor(hex), px, density) },
                 real.map { (kind, _) -> CLOTHING_KINDS[kind]?.first ?: kind },
-                teaser, tintyMood(),
+                teaser, tintyMood(), character,
             )
         }
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -228,29 +240,37 @@ private class Geometry(val kind: Kind, val w: Float, val h: Float) {
     val textWidth: Float
     var cardLeft = 0f
 
+    /** Portrait cells (2x2 on many phones): 틴티 centered under the name instead of off to the side. */
+    val tall = h >= w * 1.25f
+
     init {
-        when (kind) {
-            Kind.Small -> {
-                tinty = min(h * .52f, w * .55f); surface = h * .74f
-                tintyX = w - 10f - tinty * .29f; textWidth = w * .64f - PAD
+        when {
+            kind != Kind.Wide && tall -> {
+                tinty = min(w * .7f, h * (if (kind == Kind.Mid) .38f else .42f))
+                surface = h - max(h * (if (kind == Kind.Mid) .3f else .26f), if (kind == Kind.Mid) 66f else 46f)
+                tintyX = w / 2; textWidth = w - 2 * PAD
             }
-            Kind.Mid -> {
-                tinty = min(h * .5f, w * .5f); surface = h * .66f
-                tintyX = w - 12f - tinty * .29f; textWidth = w * .66f - PAD
+            kind == Kind.Small -> {
+                tinty = min(h * .58f, w * .6f); surface = h * .72f
+                tintyX = w - 8f - tinty * .31f; textWidth = w * .64f - PAD
             }
-            Kind.Wide -> {
+            kind == Kind.Mid -> {
+                tinty = min(h * .56f, w * .56f); surface = h * .64f
+                tintyX = w - 10f - tinty * .31f; textWidth = w * .64f - PAD
+            }
+            else -> {
                 cardLeft = w - 12f - max(150f, w * .5f)
-                // Keep at least ~84dp for the name next to 틴티.
-                tinty = min(h * .6f, (cardLeft - 8f - PAD - 84f) / .6f).coerceAtLeast(40f)
-                surface = h * .72f
+                // Keep at least ~80dp for the name next to 틴티.
+                tinty = min(h * .66f, (cardLeft - 8f - PAD - 80f) / .6f).coerceAtLeast(40f)
+                surface = h * .7f
                 tintyX = cardLeft - 8f - tinty * .31f // hands clear of the card
                 textWidth = tintyX - tinty * .29f - PAD - 4f
             }
         }
     }
 
-    fun scene(density: Float, dots: List<Int>) = WidgetArt.Scene(
-        w * density, h * density, density, surface * density, tinty * density, tintyX * density,
+    fun scene(density: Float, dots: List<Int>, character: Boolean) = WidgetArt.Scene(
+        w * density, h * density, density, surface * density, tinty * density, tintyX * density, character,
         card = if (kind == Kind.Wide) RectF(cardLeft * density, 12 * density, (w - 12) * density, (h - 12) * density) else null,
         dots = if (kind == Kind.Mid) dots else emptyList(),
         dotY = (h - PAD - 9) * density, dotR = 9 * density, dotX = PAD * density,
@@ -266,7 +286,7 @@ private fun WidgetContent(d: WidgetData, density: Float) {
     val color = tone?.let { hexColor(todayColor(it).hex) } ?: BrandPeach
     val art = remember(size) {
         val dots = tone?.let { t -> val i = t.bestColors.indexOf(todayColor(t)); (1..3).map { hexColor(t.bestColors[(i + it * 2) % t.bestColors.size].hex).toArgb() } }
-        WidgetArt.render(g.scene(density, dots.orEmpty()), color.toArgb(), tone?.tintyColors ?: TintyColors.Brand, d.mood)
+        WidgetArt.render(g.scene(density, dots.orEmpty(), d.character), color.toArgb(), tone?.tintyColors ?: TintyColors.Brand, d.mood)
     }
     val onPool = FixedColor(contentColorOn(color).copy(alpha = .86f))
     Image(ImageProvider(art), contentDescription = null, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
@@ -283,13 +303,15 @@ private fun WidgetContent(d: WidgetData, density: Float) {
     Column(GlanceModifier.fillMaxSize().padding(start = PAD.dp, top = PAD.dp, end = PAD.dp)) {
         Label("오늘의 컬러")
         Spacer(GlanceModifier.height(2.dp))
-        Name(today.name, if (kind == Kind.Mid) 22.sp else 19.sp, g.textWidth)
+        // As big as the space allows; long names (라이트 페리윙클) step down so they still fit in two lines.
+        val big = when { kind == Kind.Mid -> 28f; kind == Kind.Small -> 24f; g.h < 140f -> 19f; else -> 23f }
+        Name(today.name, (if (today.name.length >= 6) big - 4 else big).sp, g.textWidth)
     }
     when (kind) {
         Kind.Small -> PoolLine(tone.nameKo, onPool)
         Kind.Mid -> PoolLine("같이 입으면 예뻐요", onPool, bottom = PAD + 18 + 6)
         Kind.Wide -> {
-            PoolLine(tone.nameKo, onPool)
+            if (g.h >= 140f) PoolLine(tone.nameKo, onPool) // short 4x2: the name needs that room
             Box(GlanceModifier.fillMaxSize().padding(start = g.cardLeft.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)) {
                 LookCard(d, tone, g, density)
             }
@@ -330,11 +352,12 @@ private fun LookCard(d: WidgetData, tone: Tone, g: Geometry, density: Float) {
         // Image height left after the label (and the headline when there's room).
         val twoLines = g.h >= 175f
         val imageH = g.h - 24 - 20 - 14 - (if (twoLines) 40 else if (roomy) 22 else 0)
-        val cell = (imageH * density).toInt().coerceAtLeast(24)
+        val boardW = ((g.w - 12 - g.cardLeft - 24) * density).toInt().coerceAtLeast(24)
+        val boardH = (imageH * density).toInt().coerceAtLeast(24)
         when {
             outfit == null -> Palette(tone, GlanceModifier.defaultWeight())
             outfit.locked -> {
-                val img = remember(cell) { WidgetArt.lookbook(d.teaser, cell, density, frosted = true) }
+                val img = remember(boardW, boardH) { WidgetArt.lookbook(d.teaser, boardW, boardH, density, frosted = true) }
                 Box(GlanceModifier.fillMaxWidth().defaultWeight(), contentAlignment = Alignment.Center) {
                     Image(ImageProvider(img), contentDescription = null, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.Fit)
                     Row(GlanceModifier.background(AccentFill).cornerRadius(999.dp).padding(horizontal = 12.dp, vertical = 6.dp),
@@ -347,7 +370,7 @@ private fun LookCard(d: WidgetData, tone: Tone, g: Geometry, density: Float) {
                 if (roomy) Text("오늘 입을 옷이 준비됐어요", style = TextStyle(color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
             }
             else -> {
-                val img = remember(cell) { WidgetArt.lookbook(d.pieces, cell, density, frosted = false) }
+                val img = remember(boardW, boardH) { WidgetArt.lookbook(d.pieces, boardW, boardH, density, frosted = false) }
                 Image(ImageProvider(img), contentDescription = d.labels.joinToString(", "),
                     modifier = GlanceModifier.fillMaxWidth().defaultWeight(), contentScale = ContentScale.Fit)
                 if (roomy) Text(outfit.headline, style = TextStyle(color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = if (twoLines) 2 else 1)

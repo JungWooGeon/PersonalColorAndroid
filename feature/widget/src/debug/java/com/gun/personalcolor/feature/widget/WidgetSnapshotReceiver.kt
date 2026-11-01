@@ -31,35 +31,55 @@ class WidgetSnapshotReceiver : BroadcastReceiver() {
             try {
                 val dir = File(context.getExternalFilesDir(null), "widget_snapshots").apply { deleteRecursively(); mkdirs() }
                 val sizes = mapOf(
-                    "2x2" to DpSize(160.dp, 160.dp), "mid" to DpSize(190.dp, 200.dp),
+                    "2x2" to DpSize(150.dp, 150.dp), "2x2tall" to DpSize(165.dp, 255.dp), "mid" to DpSize(190.dp, 200.dp),
                     "4x2s" to DpSize(330.dp, 110.dp), "4x2" to DpSize(370.dp, 190.dp),
                 )
+                // The app's real outfit, fetched once (calling the source again for every render raced and sometimes
+                // left a render blank; the widget itself calls it once per update).
+                val real = dagger.hilt.android.EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
+                    .outfitSource().orElse(null)?.today()
                 val outfits = mapOf(
-                    "real" to null,
+                    "real" to real,
                     "open" to WidgetOutfit("카멜 트렌치에 아이보리 니트", "맑음 18°",
                         listOf("trench" to "#C69C6D", "knit" to "#F3E9DC", "slacks" to "#8A6E5A"), locked = false),
                     "locked" to WidgetOutfit("", null, emptyList(), locked = true),
                 )
-                for ((state, outfit) in outfits) for (night in listOf(false, true)) for ((name, size) in sizes) {
+                for ((state, outfit) in outfits) for (character in listOf(true, false)) for (night in listOf(false, true)) for ((name, size) in sizes) {
                     if (state != "real" && !name.startsWith("4x2")) continue
+                    if (!character && state == "locked") continue
+                    val file = File(dir, "${state}${if (character) "" else "_drop"}_${name}_${if (night) "dark" else "light"}.png")
+                    try {
                     val cfg = Configuration(context.resources.configuration).apply {
                         uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
                             (if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
                     }
                     val ctx = context.createConfigurationContext(cfg)
-                    val views = TodayColorWidget(outfit).compose(ctx, size = size)
                     val d = ctx.resources.displayMetrics.density
                     val w = (size.width.value * d).toInt(); val h = (size.height.value * d).toInt()
-                    val bmp = withContext(Dispatchers.Main) {
-                        val v = views.apply(ctx, FrameLayout(ctx))
-                        v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
-                        v.layout(0, 0, w, h)
-                        Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { b ->
-                            Canvas(b).apply { drawColor(if (night) 0xFF000000.toInt() else 0xFFE9E4F2.toInt()); v.draw(this) }
+                    // compose() sometimes returns the first, still-empty emission (the root with no children) when
+                    // provideGlance is slow; the real widget just recomposes. Retry until the content is there.
+                    var bmp: Bitmap? = null
+                    for (attempt in 1..4) {
+                        val views = TodayColorWidget(outfit, character).compose(ctx, size = size)
+                        bmp = withContext(Dispatchers.Main) {
+                            val v = views.apply(ctx, FrameLayout(ctx))
+                            v.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                            v.layout(0, 0, w, h)
+                            val inner = (v as? android.view.ViewGroup)?.getChildAt(0) as? android.view.ViewGroup
+                            if (inner == null || inner.childCount == 0) null
+                            else Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { b ->
+                                Canvas(b).apply { drawColor(if (night) 0xFF000000.toInt() else 0xFFE9E4F2.toInt()); v.draw(this) }
+                            }
                         }
+                        if (bmp != null) break
                     }
-                    File(dir, "${state}_${name}_${if (night) "dark" else "light"}.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    if (bmp == null) { android.util.Log.e("WidgetSnapshot", "empty: ${file.name}"); continue }
+                    file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    } catch (e: Exception) {
+                        android.util.Log.e("WidgetSnapshot", "failed: ${file.name}", e)
+                    }
                 }
+                android.util.Log.i("WidgetSnapshot", "done")
             } finally {
                 pending.finish()
             }

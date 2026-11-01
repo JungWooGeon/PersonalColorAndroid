@@ -253,6 +253,7 @@ internal fun WallpaperRoute(onBack: () -> Unit, vm: WallpaperViewModel = hiltVie
         scope.launch {
             val ok = setLiveLockFrame(context, tone, choice)
             AutoWallpaperScheduler.schedule(context)
+            refreshWidgets(context)
             busy = false
             analytics?.log("live_wallpaper_set", "style" to choice.style.name.lowercase(), "lock" to ok.toString())
             snackbar.showSnackbar(if (ok) "움직이는 배경화면을 적용했어요" else "적용했어요. 잠금 화면은 바꾸지 못했어요")

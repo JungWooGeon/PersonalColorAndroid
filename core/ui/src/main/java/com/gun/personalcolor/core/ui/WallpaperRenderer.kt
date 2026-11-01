@@ -251,7 +251,7 @@ object WallpaperRenderer {
         fun wob(period: Float, phase: Float) = sin(2 * PI.toFloat() * t * MOTION_SPEED / period + phase) - sin(phase)
 
         /** Mid-tone colors for flowing hues (no near-white/black, which would look dirty in a blob). */
-        val ring = colors.filter { lum(it) in .08f..0.9f }.ifEmpty { colors }
+        val ring = colors.filter { lum(it) in .08f..0.9f && sat(it) > .3f }.ifEmpty { colors.filter { lum(it) in .08f..0.9f } }.ifEmpty { colors }
 
         /** [base] at t = 0, then flowing through the tone's colors, one step every ~9 s. */
         fun flow(base: Int, offset: Float): Int {
@@ -460,6 +460,11 @@ object WallpaperRenderer {
     private fun mix(a: Int, b: Int, t: Float): Int {
         fun ch(x: Int, y: Int) = (x + (y - x) * t).roundToInt()
         return Color.rgb(ch(Color.red(a), Color.red(b)), ch(Color.green(a), Color.green(b)), ch(Color.blue(a), Color.blue(b)))
+    }
+
+    private fun sat(c: Int): Float {
+        val mx = maxOf(Color.red(c), Color.green(c), Color.blue(c)); val mn = minOf(Color.red(c), Color.green(c), Color.blue(c))
+        return if (mx == 0) 0f else (mx - mn) / mx.toFloat()
     }
 
     private fun lum(c: Int) = (.2126f * Color.red(c) + .7152f * Color.green(c) + .0722f * Color.blue(c)) / 255f

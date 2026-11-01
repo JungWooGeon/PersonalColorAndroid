@@ -1,6 +1,9 @@
 package com.gun.personalcolor.feature.my
 
 import android.app.WallpaperManager
+import android.appwidget.AppWidgetManager
+import android.os.Handler
+import android.os.Looper
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -46,6 +49,18 @@ internal object LiveWallpaperPrefs {
 
 internal fun isLiveWallpaperActive(context: Context): Boolean =
     WallpaperManager.getInstance(context).wallpaperInfo?.component == ComponentName(context, PersonalColorLiveWallpaper::class.java)
+
+/**
+ * The home-screen widget hides its 틴티 while our live wallpaper shows one (one 틴티 per screen), so it redraws when
+ * the wallpaper comes and goes. Explicit update broadcast: feature modules don't depend on each other.
+ */
+internal fun refreshWidgets(context: Context) {
+    val receiver = ComponentName(context.packageName, "com.gun.personalcolor.feature.widget.TodayColorWidgetReceiver")
+    val ids = runCatching { AppWidgetManager.getInstance(context).getAppWidgetIds(receiver) }.getOrNull()
+    if (ids == null || ids.isEmpty()) return
+    context.sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).setComponent(receiver)
+        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))
+}
 
 /** Opens the system preview of our live wallpaper (it has the apply button). */
 internal fun liveWallpaperIntent(context: Context) = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
@@ -107,6 +122,8 @@ class PersonalColorLiveWallpaper : WallpaperService() {
             setOffsetNotificationsEnabled(true)
             setTouchEventsEnabled(true)
             load()
+            // After the switch has settled: the widget checks which wallpaper is active when it redraws.
+            if (!isPreview) Handler(Looper.getMainLooper()).postDelayed({ refreshWidgets(applicationContext) }, 2000)
         }
 
         private fun tap(x: Float, y: Float) {
@@ -160,6 +177,8 @@ class PersonalColorLiveWallpaper : WallpaperService() {
 
         override fun onDestroy() {
             stop(); scope.cancel()
+            // Replaced by another wallpaper: let the widget bring its 틴티 back once the switch has settled.
+            if (!isPreview) Handler(Looper.getMainLooper()).postDelayed({ refreshWidgets(applicationContext) }, 2000)
         }
 
         override fun onOffsetsChanged(xOffset: Float, yOffset: Float, xStep: Float, yStep: Float, xPixels: Int, yPixels: Int) {
