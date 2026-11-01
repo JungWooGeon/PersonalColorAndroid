@@ -4,7 +4,8 @@ import com.gun.personalcolor.core.designsystem.PropTile
 import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.horizontalScroll
-import com.gun.personalcolor.core.ui.ClothingIllustration
+import com.gun.personalcolor.core.ui.mood.ShadowedGarment
+import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -302,8 +303,7 @@ private fun ManualPart(state: ClosetAddUiState, onHsv: (List<Float>) -> Unit, on
     val hex = state.manualColor.toHex()
     // Placeholder art for the chosen kind + color (same slot as tiles use).
     Box(
-        Modifier.fillMaxWidth().aspectRatio(if (isWideWindow()) 3f else 2f).clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        Modifier.fillMaxWidth().aspectRatio(if (isWideWindow()) 3f else 2f).clip(MaterialTheme.shapes.large).moodBackdrop(1),
         Alignment.Center,
     ) { GarmentThumb(ClosetItem(0, hex, "", "", "", com.gun.personalcolor.core.model.Verdict.OK, 0, kind = state.kind), null, Modifier.fillMaxHeight(0.7f).aspectRatio(1f)) }
     state.tone?.let { tone ->
@@ -388,7 +388,7 @@ internal fun KindChips(selected: String?, onSelect: (String) -> Unit) {
 internal fun GarmentThumb(item: ClosetItem, photo: File?, modifier: Modifier = Modifier, maxSide: Int = 512) {
     val bmp = photo?.let { rememberClosetImage(it, maxSide) }
     if (bmp != null) Image(bmp, item.name, modifier, contentScale = ContentScale.Fit)
-    else if (item.kind != null) ClothingIllustration(item.kind!!, hexColor(item.hex), modifier)
+    else if (item.kind != null) ShadowedGarment(item.kind!!, hexColor(item.hex), modifier)
     else Swatch(item.hex, modifier, MaterialTheme.shapes.small)
 }
 

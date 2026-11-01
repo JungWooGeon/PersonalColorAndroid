@@ -1,6 +1,5 @@
 package com.gun.personalcolor.feature.coordi
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,19 +25,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.Muted
-import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.Tinty
 import com.gun.personalcolor.core.designsystem.TintyColors
 import com.gun.personalcolor.core.designsystem.TintyExpression
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.NamedColor
 import com.gun.personalcolor.core.model.Tone
+import com.gun.personalcolor.core.ui.hexColor
+import com.gun.personalcolor.core.ui.mood.Myeongjo
+import com.gun.personalcolor.core.ui.mood.ShadowedGarment
+import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import com.gun.personalcolor.core.ui.tintyColors
 
 /** Reference only: every garment kind 오늘의 코디 can pick from, laid on the same tone paper as the look, in the user's best colors. */
@@ -51,9 +52,6 @@ internal fun ClothingCatalogSheet(tone: Tone?, onDismiss: () -> Unit) {
     val groups = CLOTHING_KINDS.entries.mapIndexed { i, e -> Triple(e.key, e.value.first, colors[i % colors.size]) to e.value.second }
         .groupBy({ it.second }, { it.first })
     val tinty = remember(tone) { tone?.tintyColors ?: TintyColors.Brand }
-    val dark = PcTheme.colors.isDark
-    val surface = MaterialTheme.colorScheme.surfaceContainer
-    val palette = remember(tinty, dark, surface) { lookPalette(tinty, dark, surface) }
     ModalBottomSheet(onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyVerticalGrid(GridCells.Adaptive(100.dp), contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 32.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -76,12 +74,11 @@ internal fun ClothingCatalogSheet(tone: Tone?, onDismiss: () -> Unit) {
                 }
                 items(kinds, key = { it.first }) { (kind, label, color) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val slot = remember(kind, color) { OutfitSlot(label, color, label, kind = kind) }
-                        Canvas(Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.large)
-                            .drawBehind { drawLookBackdrop(palette) }.padding(12.dp)) { drawPiece(slot, null, palette.shadow) }
-                        Text(label, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelMedium,
+                        ShadowedGarment(kind, hexColor(color.hex), Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.large)
+                            .moodBackdrop(kind.hashCode()).padding(14.dp))
+                        Text(label, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelLarge.copy(fontFamily = Myeongjo),
                             maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-                        Text(color.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Text(color.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                     }
                 }

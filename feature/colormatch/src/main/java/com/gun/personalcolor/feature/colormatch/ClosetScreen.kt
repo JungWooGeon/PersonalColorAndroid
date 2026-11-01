@@ -72,6 +72,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.Muted
+import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcCard
 import com.gun.personalcolor.core.designsystem.TintyExpression
@@ -233,12 +234,11 @@ private fun ClosetTile(e: ClosetEntry, imageFile: (String) -> File, onClick: () 
     PcCard(onClick = onClick) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
-                Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.medium).moodBackdrop(e.item.id.hashCode()),
                 Alignment.Center,
             ) {
                 val photo = e.item.imageFile?.let(imageFile)
-                GarmentThumb(e.item, photo, if (photo != null) Modifier.fillMaxSize().padding(10.dp) else Modifier.fillMaxSize())
+                GarmentThumb(e.item, photo, Modifier.fillMaxSize().padding(if (photo != null) 10.dp else 4.dp))
                 VerdictBadge(e.level, Modifier.align(Alignment.TopStart).padding(8.dp))
             }
             Column(Modifier.padding(horizontal = 4.dp).padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -270,10 +270,10 @@ private fun ItemSheet(e: ClosetEntry, imageFile: (String) -> File, onUpdate: (Cl
         ) {
             val photo = item.imageFile?.let(imageFile)
             if (photo != null) Box(
-                Modifier.fillMaxWidth().height(280.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                Modifier.fillMaxWidth().height(280.dp).clip(MaterialTheme.shapes.large).moodBackdrop(item.id.hashCode()),
                 Alignment.Center,
             ) { GarmentThumb(item, photo, Modifier.fillMaxSize().padding(16.dp), maxSide = 1024) }
-            else GarmentThumb(item, null, Modifier.fillMaxWidth().height(140.dp))
+            else GarmentThumb(item, null, Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.large).moodBackdrop(item.id.hashCode()).padding(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Swatch(item.hex, Modifier.size(28.dp), CircleShape)
                 Spacer(Modifier.width(10.dp))
