@@ -1,4 +1,4 @@
-package com.gun.personalcolor.feature.widget
+package com.gun.personalcolor.core.ui.mood
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -34,7 +34,7 @@ import com.gun.personalcolor.core.designsystem.R as DsR
  * dark rim) -> hangers -> shade -> warm light (screen) -> grain (overlay) -> vignette -> text.
  * Everything except grain/vignette is drawn in base pixels (1520x1056) through one center-crop matrix.
  */
-internal object SceneWall {
+object SceneWall {
     private const val DIR = "mood"
 
     // Neutral stand-ins for the locked state: never the real outfit.

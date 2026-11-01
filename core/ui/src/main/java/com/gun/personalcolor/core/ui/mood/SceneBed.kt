@@ -1,4 +1,4 @@
-package com.gun.personalcolor.feature.widget
+package com.gun.personalcolor.core.ui.mood
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -34,7 +34,7 @@ import com.gun.personalcolor.core.designsystem.R as DsR
  * base → contact shadows → graded garments → shade, warm Screen light → grain → vignette → text.
  * Every asset is optional: a missing one falls back to a plain warm color, so the widget never breaks.
  */
-internal object SceneBed {
+object SceneBed {
     private const val DIR = "mood"
     private val WARM = Color.rgb(0xEF, 0xE4, 0xD3)
 
@@ -124,6 +124,7 @@ internal object SceneBed {
     fun render(
         ctx: Context, pieces: List<Pair<String, Int>>, weather: String, line: String, caption: String,
         wPx: Int, hPx: Int, phase: Int, locked: Boolean, mini: Boolean, pill: String? = if (locked) "광고 보고 열기" else null,
+        rounded: Boolean = true,
     ): Bitmap {
         val d = ctx.resources.displayMetrics.density
         if (ko == null) ko = runCatching { ResourcesCompat.getFont(ctx, DsR.font.nanum_myeongjo) }.getOrNull() ?: Typeface.SERIF
@@ -210,7 +211,7 @@ internal object SceneBed {
             drawPill(c, label, pillAt, if (mini) RectF(0f, 0f, region.width(), region.height()) else region, if (mini) 30f else 38f, ink, w == "night")
         }
         c.restore()
-        return round(out, 18 * d)
+        return if (rounded) round(out, 18 * d) else out
     }
 
     private fun garment(kind: String, color: Int): Bitmap? {

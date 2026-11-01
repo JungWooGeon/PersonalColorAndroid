@@ -17,6 +17,8 @@ import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.model.CLOTHING_KINDS
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.hexColor
+import com.gun.personalcolor.core.ui.mood.SceneBed
+import com.gun.personalcolor.core.ui.mood.SceneWall
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.hilt.EntryPoint
