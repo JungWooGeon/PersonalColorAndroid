@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.geometry.CornerRadius
@@ -207,7 +208,11 @@ fun IconTile(
 
 /** A 틴티 prop on a soft tile: the feature "icon" of this app (instead of a Material symbol). */
 @Composable
-fun PropTile(prop: TintyProp, colors: TintyColors = TintyColors.Brand, modifier: Modifier = Modifier, size: Dp = 48.dp, propColor: Color = colors.scarf[0]) {
+fun PropTile(
+    prop: TintyProp, colors: TintyColors = TintyColors.Brand, modifier: Modifier = Modifier, size: Dp = 48.dp,
+    // Small art needs contrast with the tile: the deepest scarf color in light mode, the brightest in dark.
+    propColor: Color = if (PcTheme.colors.isDark) colors.scarf.maxBy { it.luminance() } else colors.scarf.minBy { it.luminance() },
+) {
     Box(modifier.size(size).background(MaterialTheme.colorScheme.surfaceContainerHigh, if (size >= 56.dp) DropShape else DropShapeSmall), contentAlignment = Alignment.Center) {
         TintyPropArt(prop, Modifier.size(size * 0.78f), colors, propColor)
     }

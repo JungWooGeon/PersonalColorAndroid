@@ -224,6 +224,7 @@ private fun Hero(tone: Tone, d: Diagnosis, r: Reveal) {
     val aurora = PcTheme.colors
     val paint = remember(r) { TintyPaint(TintyColors.Clear, drop = { r.drop }, flood = { r.flood }, chips = { r.chips }) }
     val confetti = remember(tone) { confettiOf(tone) }
+    val landed by remember(r) { derivedStateOf { r.t >= LAND } }
     val expression by remember(r) {
         derivedStateOf { when { r.t < LAND -> TintyExpression.Default; r.t < CHEER -> TintyExpression.Surprised; else -> TintyExpression.Cheer } }
     }
@@ -244,6 +245,13 @@ private fun Hero(tone: Tone, d: Diagnosis, r: Reveal) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Tinty(Modifier.size(188.dp), toneColors, expression, paint = paint)
+            Box(contentAlignment = Alignment.TopCenter) {
+            // While it's being painted: one quiet line where the name will appear.
+            Text(
+                if (!landed) "어떤 색이 나올까요?" else "내 색으로 물드는 중", style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 18.dp).graphicsLayer { alpha = 1f - r.text },
+            )
             Column(
                 Modifier.graphicsLayer {
                     alpha = r.text; val s = 0.94f + 0.06f * r.text; scaleX = s; scaleY = s; translationY = (1f - r.text) * 12.dp.toPx()
@@ -264,6 +272,7 @@ private fun Hero(tone: Tone, d: Diagnosis, r: Reveal) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     tone.keywords.forEach { Tag("#$it", color = MaterialTheme.colorScheme.surfaceContainer) }
                 }
+            }
             }
             Spacer(Modifier.height(16.dp))
             PcCard(Modifier.fillMaxWidth().graphicsLayer { alpha = r.card }, elevation = 0) {
