@@ -98,6 +98,29 @@ fun TintyLoading(
     }
 }
 
+/**
+ * Still 틴티 drawn into [canvas] (an android.graphics.Canvas) at [left],[top] in a [sizePx] square:
+ * for bitmaps (widget, wallpapers, share/report images) where Compose isn't running.
+ */
+fun drawTintyOn(
+    canvas: android.graphics.Canvas, left: Float, top: Float, sizePx: Float,
+    colors: TintyColors = TintyColors.Brand, expression: TintyExpression = TintyExpression.Default,
+) {
+    val scope = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
+    canvas.save(); canvas.translate(left, top)
+    scope.draw(androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr,
+        androidx.compose.ui.graphics.Canvas(canvas), Size(sizePx, sizePx)) {
+        drawTinty(TintyPalette(colors, expression == TintyExpression.Sleep), BlurPaints(), expression, -1f, working = false)
+    }
+    canvas.restore()
+}
+
+/** [drawTintyOn] into a new transparent bitmap. */
+fun tintyBitmap(sizePx: Int, colors: TintyColors = TintyColors.Brand, expression: TintyExpression = TintyExpression.Default): android.graphics.Bitmap =
+    android.graphics.Bitmap.createBitmap(sizePx, sizePx, android.graphics.Bitmap.Config.ARGB_8888).also {
+        drawTintyOn(android.graphics.Canvas(it), 0f, 0f, sizePx.toFloat(), colors, expression)
+    }
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Implementation. Geometry is a straight port of the character spec (_source/tinty.py), all in a 512×512 box.
 // Paths/brushes are built once; a frame only changes transforms and a few floats (no per-frame allocation).

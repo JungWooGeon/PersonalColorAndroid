@@ -1,10 +1,13 @@
 package com.gun.personalcolor.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Colorize
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.rounded.Colorize
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Palette
@@ -34,10 +37,10 @@ import com.gun.personalcolor.feature.tones.TonesRoute
 import kotlin.reflect.KClass
 
 enum class TopLevel(val route: Any, val routeClass: KClass<*>, val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
-    HOME(HomeRoute, HomeRoute::class, "홈", Icons.Outlined.Home, Icons.Filled.Home),
-    TONES(TonesRoute, TonesRoute::class, "컬러 도감", Icons.Outlined.Palette, Icons.Filled.Palette),
-    COLOR_MATCH(ColorMatchRoute, ColorMatchRoute::class, "컬러 체크", Icons.Outlined.Colorize, Icons.Filled.Colorize),
-    MY(MyRoute, MyRoute::class, "마이", Icons.Outlined.Person, Icons.Filled.Person),
+    HOME(HomeRoute, HomeRoute::class, "홈", Icons.Outlined.Home, Icons.Rounded.Home),
+    TONES(TonesRoute, TonesRoute::class, "컬러 도감", Icons.Outlined.Palette, Icons.Rounded.Palette),
+    COLOR_MATCH(ColorMatchRoute, ColorMatchRoute::class, "컬러 체크", Icons.Outlined.Colorize, Icons.Rounded.Colorize),
+    MY(MyRoute, MyRoute::class, "마이", Icons.Outlined.Person, Icons.Rounded.Person),
 }
 
 /** App shell: bottom bar on phones, navigation rail on tablets/landscape; hidden on pushed screens. */
@@ -51,16 +54,32 @@ fun PcApp(showOnboarding: Boolean, pendingRoute: Any? = null, onRouteHandled: ()
     val layout = if (current == null) NavigationSuiteType.None
     else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfoV2())
 
+    val cs = MaterialTheme.colorScheme
+    val itemColors = NavigationSuiteDefaults.itemColors(
+        navigationBarItemColors = NavigationBarItemDefaults.colors(
+            selectedIconColor = cs.primary, selectedTextColor = cs.primary, indicatorColor = cs.primaryContainer,
+            unselectedIconColor = cs.onSurfaceVariant, unselectedTextColor = cs.onSurfaceVariant,
+        ),
+        navigationRailItemColors = NavigationRailItemDefaults.colors(
+            selectedIconColor = cs.primary, selectedTextColor = cs.primary, indicatorColor = cs.primaryContainer,
+            unselectedIconColor = cs.onSurfaceVariant, unselectedTextColor = cs.onSurfaceVariant,
+        ),
+    )
     NavigationSuiteScaffold(
         layoutType = layout,
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = cs.background,
+        navigationSuiteColors = NavigationSuiteDefaults.colors(
+            navigationBarContainerColor = cs.surfaceContainer,
+            navigationRailContainerColor = cs.background,
+        ),
         navigationSuiteItems = {
             TopLevel.entries.forEach { t ->
                 item(
                     selected = t == current,
                     onClick = { nav.navigateToTopLevel(t) },
                     icon = { Icon(if (t == current) t.selectedIcon else t.icon, null) },
-                    label = { Text(t.label, maxLines = 1) },
+                    label = { Text(t.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                    colors = itemColors,
                 )
             }
         },

@@ -36,7 +36,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gun.personalcolor.core.designsystem.Eyebrow
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.PcTheme
+import com.gun.personalcolor.core.designsystem.Tinty
 import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import androidx.compose.runtime.remember
 import com.gun.personalcolor.core.model.NamedColor
 import com.gun.personalcolor.core.model.Tone
 import kotlin.math.floor
@@ -116,7 +122,7 @@ private fun splitAtMiddleSpace(name: String): String {
 
 /** Rounded color square with a hairline border (so whites show on white). */
 @Composable
-fun Swatch(hex: String, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(14.dp)) {
+fun Swatch(hex: String, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp)) {
     Box(modifier.clip(shape).background(hexColor(hex)).border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape))
 }
 
@@ -138,26 +144,52 @@ fun GradientStrip(tone: Tone, modifier: Modifier = Modifier, height: Dp = 10.dp)
     }
 }
 
-/** Small rounded label, e.g. "#화사한". */
+/** Small pill label, e.g. "#화사한". Text color follows [color] (primaryContainer → onPrimaryContainer). */
 @Composable
-fun Tag(text: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surfaceVariant) {
+fun Tag(text: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surfaceContainerHigh) {
     Surface(modifier, shape = RoundedCornerShape(50), color = color) {
         Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
     }
 }
 
-/** Banner + season line + name + keyword tags + summary. */
+/**
+ * Pastel wash of a tone (≥70% lifted toward white) for hero cards that carry 틴티 (BRAND_SYSTEM §6-4).
+ * Dark mode keeps the same hue as a low-alpha tint over the card surface.
+ */
+@Composable
+fun Tone.softBrush(): Brush {
+    val dark = PcTheme.colors.isDark
+    return remember(this, dark) {
+        val c = tintyColors
+        if (dark) Brush.linearGradient(listOf(c.bodyTop.copy(alpha = 0.20f), c.bodyBottom.copy(alpha = 0.14f)))
+        else Brush.linearGradient(listOf(c.bodyTop.lift(0.72f), c.bodyBottom.lift(0.74f)))
+    }
+}
+
+private fun Color.lift(t: Float) = Color(red + (1 - red) * t, green + (1 - green) * t, blue + (1 - blue) * t)
+
+/**
+ * Tone hero: pastel card with the tone's 틴티, season line, name and color strip; keyword tags and summary below.
+ * [expression] null hides 틴티 (when another 틴티 is already on screen).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ToneHeader(tone: Tone, modifier: Modifier = Modifier) {
+fun ToneHeader(tone: Tone, modifier: Modifier = Modifier, expression: TintyExpression? = TintyExpression.Default, animated: Boolean = true) {
     Column(modifier) {
-        Box(Modifier.fillMaxWidth().height(120.dp).clip(MaterialTheme.shapes.extraLarge).background(tone.gradient))
-        Spacer(Modifier.height(16.dp))
-        Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(tone.nameKo, style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(10.dp))
+        Box(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraLarge).background(tone.softBrush())) {
+            Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 8.dp, top = 20.dp, bottom = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Eyebrow("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}")
+                    Spacer(Modifier.height(4.dp))
+                    Text(tone.nameKo, style = MaterialTheme.typography.headlineLarge)
+                    Spacer(Modifier.height(12.dp))
+                    GradientStrip(tone, Modifier.padding(end = 8.dp), height = 8.dp)
+                }
+                if (expression != null) Tinty(Modifier.size(112.dp), remember(tone) { tone.tintyColors }, expression, animated)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             tone.keywords.forEach { Tag("#$it") }
         }
@@ -166,25 +198,24 @@ fun ToneHeader(tone: Tone, modifier: Modifier = Modifier) {
     }
 }
 
-/** Compact list card for a tone: avatar, names, summary, color strip. */
+/** Compact list card for a tone: its 틴티, names, summary, color strip. */
 @Composable
 fun ToneCard(tone: Tone, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable (() -> Unit)? = null) {
-    Surface(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.padding(16.dp)) {
+    PcCard(modifier, onClick = onClick) {
+        Column(Modifier.padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ToneAvatar(tone)
-                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Tinty(Modifier.size(64.dp), remember(tone) { tone.tintyColors }, animated = false)
+                Column(Modifier.weight(1f).padding(start = 8.dp)) {
                     Text(tone.nameKo, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 trailing?.invoke()
             }
-            Spacer(Modifier.height(10.dp))
-            Text(tone.summary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(tone.summary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
             Spacer(Modifier.height(12.dp))
-            GradientStrip(tone)
+            GradientStrip(tone, Modifier.padding(start = 4.dp), height = 8.dp)
         }
     }
 }
