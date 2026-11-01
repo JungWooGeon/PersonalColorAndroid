@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -28,12 +29,16 @@ internal val PROP_HAND: Map<TintyProp, FloatArray> = mapOf(
     TintyProp.ColorCard to floatArrayOf(404f, 358f, -28f),
     TintyProp.Palette to floatArrayOf(414f, 340f, -24f),
     TintyProp.Magnifier to floatArrayOf(398f, 352f, -30f),
-    TintyProp.Eyedropper to floatArrayOf(446f, 252f, 32f),
+    TintyProp.Eyedropper to floatArrayOf(460f, 252f, 30f),
     TintyProp.Hanger to floatArrayOf(440f, 218f, 8f),
     TintyProp.Book to floatArrayOf(414f, 350f, -20f),
     TintyProp.Fabric to floatArrayOf(414f, 232f, 18f),
     TintyProp.Cards to floatArrayOf(408f, 352f, -24f),
     TintyProp.Lock to floatArrayOf(410f, 352f, -20f),
+    TintyProp.Paper to floatArrayOf(408f, 354f, -20f),
+    TintyProp.Camera to floatArrayOf(400f, 352f, -24f),
+    TintyProp.Mirror to floatArrayOf(400f, 350f, -26f),
+    TintyProp.Photos to floatArrayOf(404f, 352f, -24f),
 )
 
 /** Bounds of each prop alone (for [TintyPropArt]), a little padded. */
@@ -41,13 +46,18 @@ internal val PROP_BOX: Map<TintyProp, Rect> = mapOf(
     TintyProp.ColorCard to Rect(368f, 196f, 522f, 378f),
     TintyProp.Palette to Rect(374f, 236f, 514f, 364f),
     TintyProp.Magnifier to Rect(372f, 192f, 512f, 372f),
-    TintyProp.Eyedropper to Rect(384f, 186f, 512f, 346f),
+    TintyProp.Eyedropper to Rect(362f, 180f, 522f, 372f),
     TintyProp.Hanger to Rect(372f, 176f, 508f, 348f),
     TintyProp.Book to Rect(386f, 226f, 506f, 374f),
     TintyProp.Fabric to Rect(388f, 200f, 508f, 368f),
-    TintyProp.Cards to Rect(384f, 218f, 512f, 364f),
+    TintyProp.Cards to Rect(382f, 220f, 524f, 364f),
     TintyProp.Crown to Rect(180f, 60f, 296f, 156f),
     TintyProp.Lock to Rect(392f, 240f, 500f, 360f),
+    TintyProp.Sun to Rect(380f, 92f, 512f, 228f),
+    TintyProp.Paper to Rect(386f, 228f, 506f, 372f),
+    TintyProp.Camera to Rect(378f, 244f, 514f, 356f),
+    TintyProp.Mirror to Rect(380f, 188f, 512f, 366f),
+    TintyProp.Photos to Rect(382f, 222f, 524f, 360f),
 )
 
 internal fun DrawScope.drawProp(prop: TintyProp, p: TintyPalette, bp: BlurPaints, color: Color) {
@@ -72,15 +82,15 @@ internal fun DrawScope.drawProp(prop: TintyProp, p: TintyPalette, bp: BlurPaints
             drawCircle(p.deep, 46f, Offset(452f, 250f), style = Stroke(12f))
             drawCircle(Color.White.copy(alpha = 0.3f), 46f, Offset(452f, 250f), style = Stroke(3f))
         }
-        TintyProp.Eyedropper -> rotate(34f, Offset(450f, 262f)) {
-            // Glass tube with paint inside, collar, rubber bulb; a drop forming at the tip.
-            val tube = rr(440f, 254f, 20f, 70f, 9f)
-            shadowed(tube, bp, Color.White.copy(alpha = 0.9f))
-            drawRoundRect(color, Offset(443f, 288f), Size(14f, 34f), CornerRadius(7f))
-            drawRoundRect(p.deep, Offset(434f, 246f), Size(32f, 14f), CornerRadius(6f))
-            shadowed(rr(436f, 196f, 28f, 54f, 14f), bp, p.scarf[3])
-            drawRoundRect(gloss(196f, 54f), Offset(436f, 196f), Size(28f, 54f), CornerRadius(14f))
-            translate(450f, 346f) { drawPath(Geo.drop, color, alpha = 1f); }
+        TintyProp.Eyedropper -> rotate(38f, Offset(446f, 270f)) {
+            // Bold shapes so it still reads at 40dp: big bulb, collar, outlined glass tube with paint, a hanging drop.
+            shadowed(rr(424f, 180f, 44f, 64f, 22f), bp, p.scarf[3])
+            drawRoundRect(gloss(180f, 64f), Offset(424f, 180f), Size(44f, 64f), CornerRadius(22f))
+            shadowed(rr(432f, 252f, 28f, 80f, 13f), bp, Color.White)
+            drawRoundRect(CHIP_LINE, Offset(432f, 252f), Size(28f, 80f), CornerRadius(13f), style = Stroke(4f))
+            drawRoundRect(color, Offset(437f, 290f), Size(18f, 38f), CornerRadius(9f))
+            drawRoundRect(p.deep, Offset(418f, 238f), Size(56f, 20f), CornerRadius(9f))
+            translate(446f, 366f) { scale(0.62f, 0.62f, pivot = Offset.Zero) { drawPath(Geo.drop, color) } }
         }
         TintyProp.Hanger -> {
             val tee = parse("M394 254 L420 246 Q440 262 460 246 L486 254 L502 284 L484 292 L480 344 L400 344 L396 292 L378 284 Z")
@@ -106,18 +116,65 @@ internal fun DrawScope.drawProp(prop: TintyProp, p: TintyPalette, bp: BlurPaints
             drawPath(parse("M470 230 Q478 290 474 344"), Color.White.copy(alpha = 0.3f), style = Stroke(7f, cap = StrokeCap.Round))
         }
         TintyProp.Cards -> {
-            rotate(16f, Offset(464f, 286f)) {
-                shadowed(rr(424f, 232f, 80f, 108f, 12f), bp, Color.White)
-                drawCircle(p.scarf[1], 16f, Offset(464f, 276f))
-                drawRoundRect(CHIP_LINE, Offset(444f, 308f), Size(40f, 6f), CornerRadius(3f))
+            // A solid card behind, a white "?" card in front: two clear silhouettes, a thick mark.
+            rotate(14f, Offset(470f, 284f)) {
+                shadowed(rr(432f, 232f, 76f, 104f, 12f), bp, p.scarf[1])
+                drawRoundRect(gloss(232f, 104f), Offset(432f, 232f), Size(76f, 104f), CornerRadius(12f))
             }
-            rotate(-6f, Offset(436f, 300f)) {
-                shadowed(rr(396f, 246f, 80f, 108f, 12f), bp, Color.White)
-                drawRoundRect(color.copy(alpha = 0.22f), Offset(404f, 254f), Size(64f, 92f), CornerRadius(8f))
-                translate(436f, 296f) {
-                    drawPath(Question, p.deep, style = Stroke(9f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                    drawCircle(p.deep, 6f, Offset(0f, 24f))
+            rotate(-8f, Offset(434f, 300f)) {
+                shadowed(rr(394f, 246f, 80f, 108f, 12f), bp, Color.White)
+                drawRoundRect(CHIP_LINE, Offset(394f, 246f), Size(80f, 108f), CornerRadius(12f), style = Stroke(4f))
+                translate(434f, 294f) {
+                    scale(1.15f, 1.15f, pivot = Offset.Zero) { drawPath(Question, p.deep, style = Stroke(13f, cap = StrokeCap.Round, join = StrokeJoin.Round)) }
+                    drawCircle(p.deep, 8.5f, Offset(0f, 31f))
                 }
+            }
+        }
+        TintyProp.Sun -> {
+            // Daylight: a warm sun floating up beside 틴티.
+            for (i in 0 until 8) rotate(i * 45f, Offset(446f, 160f)) {
+                drawLine(GOLD, Offset(446f, 108f), Offset(446f, 96f), 11f, StrokeCap.Round)
+            }
+            shadowCircle(bp, Offset(446f, 160f), 38f)
+            drawCircle(GOLD, 38f, Offset(446f, 160f))
+            drawCircle(Color.White.copy(alpha = 0.4f), 12f, Offset(432f, 146f))
+        }
+        TintyProp.Paper -> rotate(-8f, Offset(446f, 300f)) {
+            // A sheet of white paper (the white reference), corner folded.
+            val sheet = parse("M400 240 L470 240 L492 262 L492 360 L400 360 Z")
+            shadowed(sheet, bp, Color.White)
+            drawPath(sheet, CHIP_LINE, style = Stroke(4f, join = StrokeJoin.Round))
+            drawPath(parse("M470 240 L470 262 L492 262 Z"), CHIP_LINE)
+            drawRoundRect(CHIP_LINE.copy(alpha = 0.7f), Offset(414f, 284f), Size(56f, 7f), CornerRadius(3.5f))
+            drawRoundRect(CHIP_LINE.copy(alpha = 0.7f), Offset(414f, 304f), Size(44f, 7f), CornerRadius(3.5f))
+        }
+        TintyProp.Camera -> {
+            drawRoundRect(p.deep, Offset(398f, 252f), Size(30f, 16f), CornerRadius(6f))
+            shadowed(rr(382f, 262f, 128f, 88f, 20f), bp, p.deep)
+            drawRoundRect(gloss(262f, 88f), Offset(382f, 262f), Size(128f, 88f), CornerRadius(20f))
+            drawCircle(Color.White, 32f, Offset(452f, 306f))
+            drawCircle(color, 22f, Offset(452f, 306f))
+            drawCircle(Color.White.copy(alpha = 0.7f), 7f, Offset(444f, 298f))
+            drawCircle(p.scarf[0], 7f, Offset(494f, 276f))
+        }
+        TintyProp.Mirror -> {
+            // Hand mirror: no filters, just the real face.
+            drawLine(color, Offset(420f, 290f), Offset(400f, 352f), 20f, StrokeCap.Round)
+            shadowCircle(bp, Offset(452f, 246f), 52f)
+            drawCircle(color, 52f, Offset(452f, 246f))
+            drawCircle(MIRROR, 40f, Offset(452f, 246f))
+            drawLine(Color.White, Offset(432f, 236f), Offset(450f, 218f), 7f, StrokeCap.Round)
+            drawLine(Color.White.copy(alpha = 0.7f), Offset(440f, 254f), Offset(466f, 228f), 5f, StrokeCap.Round)
+        }
+        TintyProp.Photos -> {
+            // Two prints fanned out: a few photos are better than one.
+            for ((deg, c) in listOf(12f to Offset(466f, 286f), -6f to Offset(434f, 300f))) rotate(deg, c) {
+                val l = c.x - 42f; val t = c.y - 50f
+                shadowed(rr(l, t, 84f, 100f, 8f), bp, Color.White)
+                drawRoundRect(CHIP_LINE, Offset(l, t), Size(84f, 100f), CornerRadius(8f), style = Stroke(3f))
+                drawRect(p.scarf[1], Offset(l + 8f, t + 8f), Size(68f, 66f))
+                drawPath(Path().apply { moveTo(l + 8f, t + 74f); lineTo(l + 30f, t + 46f); lineTo(l + 50f, t + 66f); lineTo(l + 60f, t + 54f); lineTo(l + 76f, t + 74f); close() }, p.scarf[2])
+                drawCircle(Color.White, 7f, Offset(l + 58f, t + 24f))
             }
         }
         TintyProp.Crown -> {
@@ -175,6 +232,7 @@ private val DABS = listOf(Offset(-30f, -14f), Offset(-4f, -30f), Offset(26f, -22
 private val WOOD = Color(0xFFF7E6CC)
 private val PAGES = Color(0xFFEDE6DD)
 private val GOLD = Color(0xFFF2C14E)
+private val MIRROR = Color(0xFFDDEBF5)
 // Gradients need explicit 512-box coordinates (a brush otherwise spans the whole canvas).
 private fun gloss(top: Float, h: Float) = Brush.verticalGradient(0f to Color.White.copy(alpha = 0.35f), 0.5f to Color.White.copy(alpha = 0f), startY = top, endY = top + h)
 private fun drape(top: Float, bottom: Float) = Brush.verticalGradient(

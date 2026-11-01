@@ -1,8 +1,9 @@
 package com.gun.personalcolor.feature.learn
 
+import com.gun.personalcolor.core.designsystem.PropTile
+import com.gun.personalcolor.core.ui.prop
 import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.designsystem.TintyHeader
-import com.gun.personalcolor.core.ui.icon
 
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.horizontalScroll
@@ -118,7 +119,7 @@ fun LearnScreen(state: LearnUiState, onBack: () -> Unit, onCategory: (String?) -
 internal fun ArticleCard(article: Article, onClick: () -> Unit, modifier: Modifier = Modifier) {
     PcCard(modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            IconTile(article.icon, size = 48.dp)
+            PropTile(article.prop, size = 52.dp)
             Column(Modifier.weight(1f)) {
                 Text(
                     "${article.category} · ${article.readMinutes}분",

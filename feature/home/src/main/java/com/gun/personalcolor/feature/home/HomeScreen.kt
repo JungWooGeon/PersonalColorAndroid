@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.home
 
+import com.gun.personalcolor.core.ui.prop
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -95,7 +96,6 @@ import com.gun.personalcolor.core.model.Article
 import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.ui.Swatch
 import com.gun.personalcolor.core.ui.hexColor
-import com.gun.personalcolor.core.ui.icon
 import com.gun.personalcolor.core.ui.softBrush
 import com.gun.personalcolor.core.ui.tintyColors
 import kotlinx.coroutines.delay
@@ -339,7 +339,7 @@ private fun ToneTile(t: Tone, mine: Boolean, onClick: () -> Unit) {
 private fun ArticleRow(article: Article, modifier: Modifier, onClick: () -> Unit) {
     PcCard(modifier, onClick = onClick) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(article.icon, size = 44.dp)
+            PropTile(article.prop, size = 48.dp)
             Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(article.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${article.category} · ${article.readMinutes}분", style = MaterialTheme.typography.bodySmall,

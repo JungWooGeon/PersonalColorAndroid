@@ -237,7 +237,7 @@
   <target android:name="bob">
     <aapt:attr name="android:animation">
       <objectAnimator android:propertyName="translateY" android:valueFrom="0" android:valueTo="-3.5" android:duration="420"
-          android:startOffset="900" android:repeatCount="infinite" android:repeatMode="reverse"
+          android:startOffset="900" android:repeatCount="3" android:repeatMode="reverse"
           android:interpolator="@android:interpolator/accelerate_decelerate"/>
     </aapt:attr>
   </target>

@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.colormatch
 
+import com.gun.personalcolor.core.designsystem.PropTile
 import com.gun.personalcolor.core.designsystem.tintyEntrance
 import com.gun.personalcolor.core.designsystem.TintyProp
 import android.content.ActivityNotFoundException
@@ -299,9 +300,10 @@ private fun Intro(
                     }
                     Text("${tone.nameKo}에 어울리는지 바로 알려줘요", style = Muted)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Step(Icons.Rounded.PhotoCamera, "옷이나 립스틱을 찍어요")
-                        Step(Icons.Rounded.TouchApp, "확인할 곳을 눌러요")
-                        Step(Icons.Rounded.Verified, "BEST인지 바로 알려줘요")
+                        val tc = remember(tone) { tone.tintyColors }
+                        Step(TintyProp.Camera, tc, "옷이나 립스틱을 찍어요")
+                        Step(TintyProp.Eyedropper, tc, "확인할 곳을 눌러요")
+                        Step(TintyProp.ColorCard, tc, "BEST인지 바로 알려줘요")
                     }
                 }
             }
@@ -322,9 +324,9 @@ private fun Intro(
 }
 
 @Composable
-private fun Step(icon: ImageVector, text: String) {
+private fun Step(prop: TintyProp, colors: TintyColors, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconTile(icon, size = 36.dp)
+        PropTile(prop, colors, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge)
     }

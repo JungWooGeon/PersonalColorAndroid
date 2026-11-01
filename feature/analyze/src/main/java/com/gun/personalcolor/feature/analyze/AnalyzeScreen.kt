@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.analyze
 
+import com.gun.personalcolor.core.designsystem.PropTile
 import com.gun.personalcolor.core.designsystem.PcDialog
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -234,7 +235,7 @@ internal fun AnalyzeScreen(
     }
 }
 
-private val CAPTIONS = listOf("사진을 살펴보고 있어요", "얼굴을 찾고 있어요", "피부·눈동자·입술 색을 재고 있어요", "12톤 중에서 고르고 있어요", "찾았어요!")
+private val CAPTIONS = listOf("사진을 살펴보는 중", "얼굴을 찾는 중", "피부색을 재는 중", "어울리는 톤을 고르는 중", "찾았어요!")
 private val ORBIT = TintyColors.Brand.scarf + listOf(PcColors.Peach, PcColors.Lavender)
 
 /**
@@ -312,14 +313,14 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
         TintyHeader("사진 한 장이면 돼요", "피부·눈동자·입술·머리카락 색으로\n어울리는 톤을 찾아요", TintyProp.Magnifier, Modifier.padding(top = 4.dp))
 
         SectionCard("이렇게 찍어 주세요") {
-            Step(1, Icons.Outlined.WbSunny, "낮에 창가 자연광에서", "노란 조명은 피해 주세요")
-            Step(2, Icons.Outlined.Description, "흰 종이를 함께", "A4 용지를 턱 아래에 들면 색이 더 정확해요")
-            Step(3, Icons.Outlined.CenterFocusStrong, "정면으로 얼굴을 크게", "위치와 빛이 맞으면 자동으로 찍어요")
+            Step(1, TintyProp.Sun, "낮에 창가 자연광에서", "노란 조명은 피해 주세요")
+            Step(2, TintyProp.Paper, "흰 종이를 함께", "A4 용지를 턱 아래에 들면 색이 더 정확해요")
+            Step(3, TintyProp.Camera, "정면으로 얼굴을 크게", "위치와 빛이 맞으면 자동으로 찍어요")
             AnimatedVisibility(expanded) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Tip(Icons.Outlined.FaceRetouchingOff, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업이 좋아요")
-                    Tip(Icons.Outlined.Visibility, "눈이 잘 보이게", "앞머리·안경이 눈을 가리지 않게 해 주세요")
-                    Tip(Icons.Outlined.PhotoLibrary, "2~3장이면 더 좋아요", "여러 장을 고르면 평균으로 진단해요")
+                    Tip(TintyProp.Mirror, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업이 좋아요")
+                    Tip(TintyProp.Magnifier, "눈이 잘 보이게", "앞머리·안경이 눈을 가리지 않게 해 주세요")
+                    Tip(TintyProp.Photos, "2~3장이면 더 좋아요", "여러 장을 고르면 평균으로 진단해요")
                 }
             }
             TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -335,10 +336,10 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
 
 /** Numbered key step: icon tile with a small step number. */
 @Composable
-private fun Step(n: Int, icon: ImageVector, title: String, body: String) {
+private fun Step(n: Int, prop: TintyProp, title: String, body: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box {
-            IconTile(icon, size = 44.dp, drop = n == 1)
+            PropTile(prop, size = 48.dp)
             Box(
                 Modifier.align(Alignment.TopStart).offset((-4).dp, (-4).dp).size(18.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape),
@@ -354,11 +355,9 @@ private fun Step(n: Int, icon: ImageVector, title: String, body: String) {
 }
 
 @Composable
-private fun Tip(icon: ImageVector, title: String, body: String) {
+private fun Tip(prop: TintyProp, title: String, body: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-        }
+        PropTile(prop, size = 48.dp)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)

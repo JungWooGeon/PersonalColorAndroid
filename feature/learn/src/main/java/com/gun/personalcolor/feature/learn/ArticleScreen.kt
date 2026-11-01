@@ -1,6 +1,7 @@
 package com.gun.personalcolor.feature.learn
 
-import com.gun.personalcolor.core.ui.icon
+import com.gun.personalcolor.core.designsystem.PropTile
+import com.gun.personalcolor.core.ui.prop
 
 
 import com.gun.personalcolor.core.ads.NativeAdCard
@@ -121,7 +122,7 @@ fun ArticleScreen(state: ArticleUiState, onBack: () -> Unit, onArticle: (String)
 
 @Composable
 private fun Header(article: Article) = Column {
-    IconTile(article.icon, size = 56.dp, drop = true)
+    PropTile(article.prop, size = 64.dp)
     Spacer(Modifier.height(16.dp))
     Eyebrow("${article.category} · ${article.readMinutes}분 읽기")
     Spacer(Modifier.height(6.dp))

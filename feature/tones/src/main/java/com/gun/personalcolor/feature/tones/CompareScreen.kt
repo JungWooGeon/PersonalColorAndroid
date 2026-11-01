@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.tones
 
+import com.gun.personalcolor.core.ui.accent
+import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -84,7 +86,8 @@ fun CompareScreen(tones: List<Tone>, initialA: String, initialB: String?, onBack
                 Selector("B", b, Modifier.weight(1f)) { picking = "b" }
             }
             SideBySide(null, a, b) { t ->
-                Tinty(Modifier.size(64.dp), remember(t) { t.tintyColors }, animated = false)
+                // Each 틴티 holds up its tone's signature color.
+                Tinty(Modifier.size(88.dp), remember(t) { t.tintyColors }, animated = false, prop = TintyProp.ColorCard, propColor = remember(t) { t.accent })
                 Text(t.nameKo, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${t.seasonKo} · ${t.temperatureKo}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

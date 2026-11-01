@@ -1,5 +1,7 @@
 package com.gun.personalcolor.feature.my
 
+import com.gun.personalcolor.core.designsystem.TintyColors
+import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.material.icons.outlined.Widgets
 import com.gun.personalcolor.core.ads.NativeAdCard
 import androidx.compose.foundation.background
@@ -141,18 +143,19 @@ fun MyScreen(
                 }
                 Column {
                     SectionHeader("더 즐기기")
+                    val art = remember(state.myTone) { state.myTone?.tintyColors ?: TintyColors.Brand }
                     Card {
-                        ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷", icon = Icons.Outlined.Checkroom, onClick = onCloset)
+                        ListRow("내 옷장", subtitle = "컬러 체크로 저장한 옷", art = TintyProp.Hanger, artColors = art, onClick = onCloset)
                         RowDivider()
-                        ListRow("배경화면 만들기", subtitle = "내 톤 컬러와 틴티로 꾸며요", icon = Icons.Outlined.Wallpaper,
+                        ListRow("배경화면 만들기", subtitle = "내 톤 컬러와 틴티로 꾸며요", art = TintyProp.Photos, artColors = art,
                             onClick = { onWallpaper(state.myTone?.id) })
                         RowDivider()
                         if (onAddWidget != null) {
-                            ListRow("위젯 추가", subtitle = "홈 화면에서 오늘의 컬러 보기", icon = Icons.Outlined.Widgets, onClick = onAddWidget)
+                            ListRow("위젯 추가", subtitle = "홈 화면에서 오늘의 컬러 보기", art = TintyProp.ColorCard, artColors = art, onClick = onAddWidget)
                             RowDivider()
                         }
                         ListRow("진단 기록", subtitle = if (state.entries.isEmpty()) "아직 없어요" else "${state.entries.size}번 진단했어요",
-                            icon = Icons.Outlined.History, onClick = onHistory)
+                            art = TintyProp.Book, artColors = art, onClick = onHistory)
                         RowDivider()
                         ListRow("설정", icon = Icons.Outlined.Settings, onClick = onSettings)
                     }
@@ -185,7 +188,7 @@ private fun MyToneCard(tone: Tone, onGuide: () -> Unit, onAnalyze: () -> Unit, o
                     Text("${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Tinty(Modifier.size(104.dp), remember(tone) { tone.tintyColors }, TintyExpression.Default)
+                Tinty(Modifier.size(112.dp), remember(tone) { tone.tintyColors }, TintyExpression.Default, prop = TintyProp.Palette)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 tone.keywords.forEach { Tag("#$it", color = MaterialTheme.colorScheme.surfaceContainer) }
@@ -213,7 +216,7 @@ private fun NoToneCard(onAnalyze: () -> Unit, onQuiz: () -> Unit, onTones: () ->
                     Spacer(Modifier.height(4.dp))
                     Text("사진이나 질문으로 금방 찾아요", style = Muted)
                 }
-                Tinty(Modifier.size(96.dp))
+                Tinty(Modifier.size(104.dp), prop = TintyProp.Magnifier)
             }
             PcButton("사진으로 진단", onAnalyze, Modifier.fillMaxWidth().padding(top = 6.dp), icon = Icons.Outlined.CameraAlt)
             PcOutlinedButton("질문으로 셀프 진단", onQuiz, Modifier.fillMaxWidth(), icon = Icons.Outlined.Checklist)

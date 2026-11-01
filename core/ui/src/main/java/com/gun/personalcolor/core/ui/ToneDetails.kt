@@ -1,5 +1,6 @@
 package com.gun.personalcolor.core.ui
 
+import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
@@ -68,9 +69,10 @@ fun Bullet(text: String) = Row {
 private fun Sub(text: String) = Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
     modifier = Modifier.padding(top = 6.dp))
 
-/** Line icon per guide category (no emoji in UI). */
-val Article.icon: ImageVector get() = when (category) {
-    "진단 팁" -> Icons.Outlined.CameraAlt
-    "스타일링" -> Icons.Outlined.Checkroom
-    else -> Icons.Outlined.AutoStories
+/** 틴티 prop per guide category: the guide's "icon". */
+val Article.prop: TintyProp get() = when (category) {
+    "진단 팁" -> TintyProp.Camera
+    "스타일링" -> TintyProp.Hanger
+    else -> TintyProp.Book
 }
+

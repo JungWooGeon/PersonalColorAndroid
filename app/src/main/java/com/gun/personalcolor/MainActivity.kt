@@ -46,10 +46,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
-        // Let 틴티's drop-in (≈0.9s) land before handing over, unless the app was already warm.
+        // Hold only until the app is ready, and at most until 틴티's drop has landed (≈0.55s) on a cold start.
         val shownAt = android.os.SystemClock.uptimeMillis()
         val cold = savedInstanceState == null
-        splash.setKeepOnScreenCondition { vm.prefs.value == null || (cold && android.os.SystemClock.uptimeMillis() - shownAt < 850) }
+        splash.setKeepOnScreenCondition { vm.prefs.value == null || (cold && android.os.SystemClock.uptimeMillis() - shownAt < DROP_LANDED_MS) }
         // Hand-off: the icon lifts and fades while home's 틴티 pops in underneath.
         splash.setOnExitAnimationListener { view ->
             view.iconView.animate().translationY(-24f * resources.displayMetrics.density).scaleX(1.1f).scaleY(1.1f).alpha(0f)
@@ -93,6 +93,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        /** The splash icon's fall (460ms) plus the start of its squash; see res/drawable/splash_tinty.xml. */
+        const val DROP_LANDED_MS = 550L
     }
 
     override fun onNewIntent(intent: Intent) {

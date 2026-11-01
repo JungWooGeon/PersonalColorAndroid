@@ -1,5 +1,6 @@
 package com.gun.personalcolor.feature.tones
 
+import com.gun.personalcolor.core.designsystem.PropTile
 import com.gun.personalcolor.core.designsystem.TintyProp
 import com.gun.personalcolor.core.designsystem.TintyHeader
 import com.gun.personalcolor.core.ads.NativeAdCard
@@ -115,7 +116,7 @@ fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite:
 private fun CompareEntry(onClick: () -> Unit) {
     PcCard(onClick = onClick) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(Icons.AutoMirrored.Rounded.CompareArrows, drop = true)
+            PropTile(TintyProp.Cards, size = 48.dp)
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text("두 톤 비교하기", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("헷갈리는 톤을 나란히 놓고 봐요", style = MaterialTheme.typography.bodySmall,

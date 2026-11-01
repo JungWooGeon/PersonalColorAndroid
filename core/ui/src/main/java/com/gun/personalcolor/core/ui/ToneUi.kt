@@ -1,5 +1,6 @@
 package com.gun.personalcolor.core.ui
 
+import com.gun.personalcolor.core.designsystem.TintyProp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -175,7 +176,7 @@ private fun Color.lift(t: Float) = Color(red + (1 - red) * t, green + (1 - green
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ToneHeader(tone: Tone, modifier: Modifier = Modifier, expression: TintyExpression? = TintyExpression.Default, animated: Boolean = true) {
+fun ToneHeader(tone: Tone, modifier: Modifier = Modifier, expression: TintyExpression? = TintyExpression.Default, animated: Boolean = true, prop: TintyProp = TintyProp.Palette) {
     Column(modifier) {
         Box(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraLarge).background(tone.softBrush())) {
             Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 8.dp, top = 20.dp, bottom = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -186,7 +187,7 @@ fun ToneHeader(tone: Tone, modifier: Modifier = Modifier, expression: TintyExpre
                     Spacer(Modifier.height(12.dp))
                     GradientStrip(tone, Modifier.padding(end = 8.dp), height = 8.dp)
                 }
-                if (expression != null) Tinty(Modifier.size(112.dp), remember(tone) { tone.tintyColors }, expression, animated)
+                if (expression != null) Tinty(Modifier.size(116.dp), remember(tone) { tone.tintyColors }, expression, animated, prop = prop)
             }
         }
         Spacer(Modifier.height(14.dp))

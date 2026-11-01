@@ -79,7 +79,7 @@ enum class TintyExpression { Default, Happy, Surprised, Thinking, Cheer, Sleep }
  * What 틴티 holds (right hand) for each job: one illustration system, drawn in the character's own style and
  * colored by its palette. [ColorCard] and [Fabric] use the `propColor` passed alongside. [TintyPropArt] draws one alone.
  */
-enum class TintyProp { None, ColorCard, Palette, Magnifier, Eyedropper, Hanger, Book, Fabric, Cards, Crown, Lock }
+enum class TintyProp { None, ColorCard, Palette, Magnifier, Eyedropper, Hanger, Book, Fabric, Cards, Crown, Lock, Sun, Paper, Camera, Mirror, Photos }
 
 /**
  * 틴티 getting painted from [from] into the colors it is drawn with: a paint drop falls on its head ([drop] 0→1),
