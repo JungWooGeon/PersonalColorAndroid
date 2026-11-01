@@ -8,13 +8,13 @@
   "sunny": 0.179,
   "cloudy": 0.073,
   "rain": 0.054,
-  "night": 0.07
+  "night": 0.067
  },
  "lightMax": {
   "sunny": 0.732,
   "cloudy": 0.353,
   "rain": 0.439,
-  "night": 0.351
+  "night": 0.14
  },
  "grainAlpha": 0.1,
  "vignette": 0.22,
@@ -32,7 +32,7 @@
    "saturation": 0.88
   },
   "night": {
-   "multiply": "#7A6E66",
+   "multiply": "#B49A80",
    "saturation": 0.85
   }
  },
@@ -390,7 +390,7 @@
     "sunny": "#52362A",
     "cloudy": "#3A3532",
     "rain": "#2E2826",
-    "night": "#F3EADB"
+    "night": "#3A2618"
    }
   },
   "caption": {
@@ -405,7 +405,7 @@
     "sunny": "#7E5C44",
     "cloudy": "#574E48",
     "rain": "#584E48",
-    "night": "#E0D2BE"
+    "night": "#62452F"
    }
   }
  }
