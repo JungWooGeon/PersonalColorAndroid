@@ -58,6 +58,7 @@ import com.gun.personalcolor.core.analysis.ColorMath
 import com.gun.personalcolor.core.analysis.Rgb
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcOutlinedButton
+import com.gun.personalcolor.core.designsystem.PcTheme
 import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.vision.BitmapLoader
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +80,8 @@ internal fun WhiteRefScreen(uri: Uri, onRetake: () -> Unit, onDone: (Offset?) ->
         if (b == null || m == null) null else sampleAt(b, m)
     }
 
-    CompositionLocalProvider(LocalContentColor provides Color.White) {
+    // Photo screens are always dark (like the camera), so buttons use the dark palette on black.
+    PcTheme(darkTheme = true) { CompositionLocalProvider(LocalContentColor provides Color.White) {
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val insets = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
             val photo = @Composable { m: Modifier -> Photo(bitmap, marker, { marker = it }, m) }
@@ -96,7 +98,7 @@ internal fun WhiteRefScreen(uri: Uri, onRetake: () -> Unit, onDone: (Offset?) ->
                 }
             }
         }
-    }
+    } }
 }
 
 @Composable
@@ -124,7 +126,7 @@ private fun Panel(sample: Rgb?, onRetake: () -> Unit, onSkip: () -> Unit, onConf
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onRetake) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "다시 찍기") }
-            Text("흰 종이로 조명 보정", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("흰 종이로 조명 맞추기", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(
             "사진 속 흰 종이를 누르면 더 정확해져요",

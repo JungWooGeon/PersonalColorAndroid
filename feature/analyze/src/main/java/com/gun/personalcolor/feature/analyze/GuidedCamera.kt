@@ -93,13 +93,17 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.gun.personalcolor.core.analytics.TrackScreen
+import com.gun.personalcolor.core.designsystem.PcTheme
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.min
 
-internal val CameraGreen = Color(0xFF4ADE80)
-internal val CameraWarn = Color(0xFFFFB74D)
+// Brand "best"/"okay" colors for dark backgrounds (readable on the camera feed).
+internal val CameraGreen = Color(0xFF8FD3BC)
+internal val CameraWarn = Color(0xFFE3C77A)
+/** 틴티 ink, translucent: hint pill / chips over the feed. */
+private val CameraInk = Color(0xCC2B2236)
 private const val AUTO_CAPTURE_MS = 1200
 
 /**
@@ -202,13 +206,13 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
         AlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text("아직 조건이 맞지 않아요") },
-            text = { Text("${check.hint}\n이대로 찍으면 정확도가 떨어질 수 있어요.") },
+            text = { Text("${check.hint}\n이대로 찍으면 결과가 달라질 수 있어요.") },
             confirmButton = { TextButton(onClick = { confirm = false; shoot(auto = false) }) { Text("그래도 촬영") } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("취소") } },
         )
     }
 
-    CompositionLocalProvider(LocalContentColor provides Color.White) {
+    PcTheme(darkTheme = true) { CompositionLocalProvider(LocalContentColor provides Color.White) {
         BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val insets = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
             if (maxWidth > maxHeight) {
@@ -235,7 +239,7 @@ internal fun GuidedCamera(onClose: () -> Unit, onCaptured: (Uri, Boolean) -> Uni
                 }
             }
         }
-    }
+    } }
 }
 
 @Composable
@@ -262,11 +266,11 @@ private fun Viewfinder(surface: SurfaceRequest?, check: FrameCheck, ratio: Float
                     addRect(Rect(Offset.Zero, size))
                     addOval(oval)
                 }
-                drawPath(dim, Color.Black.copy(alpha = 0.45f))
+                drawPath(dim, Color(0xFF1B1530).copy(alpha = 0.5f))
                 drawOval(color, oval.topLeft, oval.size, style = Stroke(3.dp.toPx()))
             }
             Surface(
-                color = Color.Black.copy(alpha = 0.6f),
+                color = CameraInk,
                 contentColor = if (check.ok) CameraGreen else Color.White,
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -283,7 +287,7 @@ private fun Viewfinder(surface: SurfaceRequest?, check: FrameCheck, ratio: Float
 
 @Composable
 private fun CheckChip(check: Check, ok: Boolean) {
-    Surface(color = Color.White.copy(alpha = 0.12f), contentColor = Color.White, shape = RoundedCornerShape(50)) {
+    Surface(color = CameraInk, contentColor = Color.White, shape = RoundedCornerShape(50)) {
         Row(Modifier.padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 if (ok) Icons.Rounded.Check else Icons.Rounded.PriorityHigh, if (ok) "통과" else "확인 필요",

@@ -9,6 +9,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import com.gun.personalcolor.core.designsystem.Eyebrow
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.TintyTip
+import com.gun.personalcolor.core.designsystem.aurora
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,14 +42,12 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FaceRetouchingOff
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -156,28 +169,24 @@ internal fun AnalyzeScreen(
     onQuiz: () -> Unit,
 ) {
     PcScaffold(
-        title = "AI 퍼스널컬러 진단",
+        title = "AI 사진 진단",
         onBack = onBack,
         bottomBar = {
             if (state != AnalyzeState.Working) BottomActions {
-                PcButton("카메라로 촬영", onCamera, Modifier.fillMaxWidth(), Icons.Outlined.CameraAlt)
-                PcOutlinedButton("앨범에서 선택 (최대 3장)", onGallery, Modifier.fillMaxWidth(), Icons.Outlined.PhotoLibrary)
+                PcButton(if (state is AnalyzeState.Failed) "다시 찍기" else "카메라로 찍기", onCamera, Modifier.fillMaxWidth(), Icons.Outlined.CameraAlt)
+                PcOutlinedButton("앨범에서 고르기 (최대 3장)", onGallery, Modifier.fillMaxWidth(), Icons.Outlined.PhotoLibrary)
             }
         },
     ) { pad ->
         AnimatedContent(state, label = "analyze") { s ->
             when (s) {
-                AnalyzeState.Working -> Centered(pad) {
-                    TintyLoading(size = 160.dp)
-                    Spacer(Modifier.height(16.dp))
-                    Text("얼굴을 분석하고 있어요", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(4.dp))
-                    Text("잠시만 기다려 주세요", style = Muted, textAlign = TextAlign.Center)
-                }
+                AnalyzeState.Working -> Centered(pad) { Working() }
                 is AnalyzeState.Failed -> Centered(pad) {
-                    Tinty(Modifier.size(128.dp), expression = TintyExpression.Surprised)
-                    Spacer(Modifier.height(16.dp))
                     val (title, message) = s.failure.message()
+                    Box(Modifier.size(176.dp).aurora(PcTheme.colors), contentAlignment = Alignment.Center) {
+                        Tinty(Modifier.size(136.dp), expression = TintyExpression.Surprised)
+                    }
+                    Spacer(Modifier.height(16.dp))
                     Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(6.dp))
                     Text(message, style = Muted, textAlign = TextAlign.Center)
@@ -190,6 +199,21 @@ internal fun AnalyzeScreen(
     }
 }
 
+/** 틴티 thinking while short step lines take turns (they're cosmetic; analysis takes a second or two). */
+@Composable
+private fun Working() {
+    val steps = remember { listOf("피부 톤을 보고 있어요", "눈동자와 입술 색을 재고 있어요", "어울리는 톤을 찾고 있어요") }
+    var step by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { while (step < steps.lastIndex) { delay(1200); step++ } }
+    TintyLoading(size = 168.dp)
+    Spacer(Modifier.height(20.dp))
+    AnimatedContent(step, label = "step") { i ->
+        Text(steps[i], style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+    }
+    Spacer(Modifier.height(4.dp))
+    Text("사진은 휴대폰 안에서만 봐요", style = Muted, textAlign = TextAlign.Center)
+}
+
 @Composable
 private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(showGuide) }
@@ -198,41 +222,50 @@ private fun Guide(pad: PaddingValues, showGuide: Boolean, onQuiz: () -> Unit) {
             .readableWidth().padding(horizontal = ScreenPadding).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Spacer(Modifier.height(4.dp))
-        Text("사진 한 장으로 12톤 진단", style = MaterialTheme.typography.headlineSmall)
-        Text("피부·눈동자·입술·머리카락 색을 측정해요.", style = Muted)
+        Column(Modifier.padding(top = 4.dp)) {
+            Eyebrow("12톤 퍼스널컬러")
+            Spacer(Modifier.height(4.dp))
+            Text("사진 한 장이면 돼요", style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(6.dp))
+            Text("피부·눈동자·입술·머리카락 색으로 어울리는 톤을 찾아요.", style = Muted)
+        }
 
-        SectionCard("정확하게 찍는 법", action = {
-            TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "접기" else "펼치기") }
-        }) {
-            Tip(Icons.Outlined.WbSunny, "낮 시간 창가의 자연광", "노란 조명은 피해 주세요")
-            Tip(Icons.Outlined.Description, "흰 종이를 함께 찍기", "A4 용지를 턱 아래에 들고 찍으면 더 정확해요")
-            if (expanded) {
-                Tip(Icons.Outlined.FaceRetouchingOff, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업으로")
-                Tip(Icons.Outlined.CenterFocusStrong, "정면, 얼굴을 크게", "카메라가 위치와 조명을 확인해 자동으로 찍어요")
-                Tip(Icons.Outlined.Visibility, "눈을 또렷하게", "앞머리·안경이 눈을 가리지 않게")
-                Tip(Icons.Outlined.PhotoLibrary, "2~3장이면 더 정확해요", "여러 장을 고르면 평균으로 진단해요")
+        SectionCard("이렇게 찍어 주세요") {
+            Step(1, Icons.Outlined.WbSunny, "낮에 창가 자연광에서", "노란 조명은 피해 주세요")
+            Step(2, Icons.Outlined.Description, "흰 종이를 함께", "A4 용지를 턱 아래에 들면 색이 더 정확해요")
+            Step(3, Icons.Outlined.CenterFocusStrong, "정면으로 얼굴을 크게", "위치와 빛이 맞으면 자동으로 찍어요")
+            AnimatedVisibility(expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Tip(Icons.Outlined.FaceRetouchingOff, "필터·보정 없이", "맨얼굴이나 가벼운 메이크업이 좋아요")
+                    Tip(Icons.Outlined.Visibility, "눈이 잘 보이게", "앞머리·안경이 눈을 가리지 않게 해 주세요")
+                    Tip(Icons.Outlined.PhotoLibrary, "2~3장이면 더 좋아요", "여러 장을 고르면 평균으로 진단해요")
+                }
+            }
+            TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(if (expanded) "팁 접기" else "팁 더 보기")
+                Icon(if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, null, Modifier.padding(start = 4.dp).size(18.dp))
             }
         }
 
-        Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                Spacer(Modifier.width(12.dp))
-                Text("사진은 기기 안에서만 분석하고 저장하지 않아요", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer)
-            }
-        }
+        TintyTip("사진은 휴대폰 안에서만 봐요", Modifier.fillMaxWidth())
         TextButton(onClick = onQuiz, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("사진 없이 질문으로 진단") }
     }
 }
 
+/** Numbered key step: icon tile with a small step number. */
 @Composable
-private fun Tip(icon: ImageVector, title: String, body: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp).size(22.dp))
+private fun Step(n: Int, icon: ImageVector, title: String, body: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            IconTile(icon, size = 44.dp, drop = n == 1)
+            Box(
+                Modifier.align(Alignment.TopStart).offset((-4).dp, (-4).dp).size(18.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text("$n", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary) }
+        }
         Spacer(Modifier.width(14.dp))
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(body, style = Muted)
         }
@@ -240,12 +273,27 @@ private fun Tip(icon: ImageVector, title: String, body: String) {
 }
 
 @Composable
-private fun Centered(pad: PaddingValues, content: @Composable () -> Unit) {
+private fun Tip(icon: ImageVector, title: String, body: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(body, style = Muted)
+        }
+    }
+}
+
+@Composable
+private fun Centered(pad: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-    ) { content() }
+        content = content,
+    )
 }
 
 private fun PhotoFailure.message(): Pair<String, String> = when (this) {

@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -13,10 +14,12 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.TextUtils
+import com.gun.personalcolor.core.designsystem.TintyExpression
+import com.gun.personalcolor.core.designsystem.drawTintyOn
 import com.gun.personalcolor.core.model.NamedColor
 import com.gun.personalcolor.core.model.Tone
 
-/** A shareable 1080×1920 "나의 퍼스널컬러 리포트" image (light theme). Never contains the user's photo. */
+/** Brand images (light theme): the 1080×1920 report and the 1080×1350 share card. Never contain the user's photo. */
 object ReportRenderer {
     private const val W = 1080
     private const val H = 1920
@@ -24,10 +27,10 @@ object ReportRenderer {
     private const val CW = W - 2 * M
     private const val BG = 0xFFFAF8F6.toInt()
     private const val INK = 0xFF1D1B1A.toInt()
-    private const val MUTED = 0xFF6F6863.toInt()
+    private const val MUTED = 0xFF66605B.toInt()
     private const val FAINT = 0xFF9A918B.toInt()
     private const val ACCENT = 0xFF5B4B8A.toInt()
-    private const val ACCENT_BG = 0xFFECE8F4.toInt()
+    private const val ACCENT_BG = 0xFFEAE4F8.toInt()
     private const val LINE = 0x1F1D1B1A
 
     @Suppress("UNUSED_PARAMETER") // kept for future localized strings/resources
@@ -36,24 +39,28 @@ object ReportRenderer {
         val c = Canvas(bmp)
         c.drawColor(BG)
 
-        // Header: gradient card from the best colors with a small white pill.
-        val header = RectF(M, 56f, W - M, 296f)
-        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // Hero: pastel wash of the tone with its 틴티 on the right.
+        val tc = tone.tintyColors
+        val header = RectF(M, 56f, W - M, 424f)
+        c.drawRoundRect(header, 64f, 64f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(header.left, header.top, header.right, header.bottom,
-                tone.bestColors.take(5).map { Color.parseColor(it.hex) }.toIntArray(), null, Shader.TileMode.CLAMP)
-        }
-        c.drawRoundRect(header, 48f, 48f, fill)
-        pill(c, "PERSONAL COLOR REPORT", header.left + 36f, header.top + 36f, 24f, Color.WHITE, INK)
+                lift(tc.bodyTop, 0.72f), lift(tc.bodyBottom, 0.74f), Shader.TileMode.CLAMP)
+        })
+        val tintySize = 300f
+        drawTintyOn(c, header.right - tintySize - 12f, header.top + 40f, tintySize, tc, TintyExpression.Cheer)
+        val textW = header.width() - tintySize - 72f
+        var y = header.top + 92f
+        c.drawText("나의 퍼스널컬러 리포트", header.left + 48f, y, paint(30f, true, ACCENT))
+        y += 112f
+        val name = fit(tone.nameKo, 92f, 48f, true, textW)
+        c.drawText(name.second, header.left + 48f, y, paint(name.first, true, INK))
+        y += 62f
+        val sub = "${tone.seasonKo} · ${tone.temperatureKo}"
+        c.drawText(ellipsize(sub, paint(32f, false, MUTED), textW), header.left + 48f, y, paint(32f, false, MUTED))
+        y += 48f
+        c.drawText(ellipsize(tone.nameEn, paint(28f, false, MUTED), textW), header.left + 48f, y, paint(28f, false, MUTED))
 
-        var y = header.bottom + 70f
-        c.drawText("나의 퍼스널컬러", M, y, paint(30f, false, MUTED))
-        y += 104f
-        val name = fit(tone.nameKo, 96f, 48f, true, CW)
-        c.drawText(name.second, M, y, paint(name.first, true, INK))
-        y += 54f
-        val sub = "${tone.seasonKo} · ${tone.temperatureKo} · ${tone.nameEn}"
-        c.drawText(ellipsize(sub, paint(32f, false, MUTED), CW), M, y, paint(32f, false, MUTED))
-        y += 28f
+        y = header.bottom + 32f
         var x = M
         for (k in tone.keywords) {
             val w = pillWidth("#$k", 26f)
@@ -102,8 +109,49 @@ object ReportRenderer {
         }
 
         val footer = paint(26f, true, FAINT).apply { textAlign = Paint.Align.CENTER }
-        c.drawText("나의 컬러는? - 퍼스널컬러", W / 2f, H - 44f, footer)
+        c.drawText("나의 컬러는?", W / 2f, H - 44f, footer)
         return bmp
+    }
+
+    /** 1080×1350 share card: cream + tone aurora, cheering 틴티, tone name, 12 best colors. */
+    fun renderCard(tone: Tone): Bitmap {
+        val w = 1080; val h = 1350
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        c.drawColor(BG)
+        val tc = tone.tintyColors
+        // Aurora: two soft blobs of the tone behind 틴티.
+        fun blob(cx: Float, cy: Float, r: Float, color: Int) = c.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(cx, cy, r, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
+        })
+        blob(w * 0.72f, 360f, 520f, lift(tc.bodyBottom, 0.6f))
+        blob(w * 0.28f, 560f, 480f, lift(tc.bodyTop, 0.6f))
+
+        val center = paint(40f, true, ACCENT).apply { textAlign = Paint.Align.CENTER }
+        c.drawText("나의 퍼스널컬러는", w / 2f, 140f, center)
+        drawTintyOn(c, (w - 480f) / 2f, 170f, 480f, tc, TintyExpression.Cheer)
+        val name = fit(tone.nameKo, 112f, 56f, true, w - 2 * M)
+        c.drawText(name.second, w / 2f, 790f, paint(name.first, true, INK).apply { textAlign = Paint.Align.CENTER })
+        val sub = "${tone.nameEn} · ${tone.seasonKo} ${tone.temperatureKo}"
+        c.drawText(ellipsize(sub, paint(36f, false, MUTED), w - 2 * M), w / 2f, 852f, paint(36f, false, MUTED).apply { textAlign = Paint.Align.CENTER })
+
+        // Best colors: white card with 2 rows of 6 chips.
+        val card = RectF(M, 892f, w - M, 1242f)
+        c.drawRoundRect(card, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
+        val gap = 16f; val pad = 36f
+        val size = (card.width() - 2 * pad - gap * 5) / 6
+        tone.bestColors.take(12).forEachIndexed { i, col ->
+            val l = card.left + pad + (i % 6) * (size + gap)
+            val t = card.top + pad + (i / 6) * (size + gap)
+            swatch(c, RectF(l, t, l + size, t + size), col.hex, 24f)
+        }
+        c.drawText("나의 컬러는?", w / 2f, h - 64f, paint(30f, true, FAINT).apply { textAlign = Paint.Align.CENTER })
+        return bmp
+    }
+
+    private fun lift(color: androidx.compose.ui.graphics.Color, t: Float): Int {
+        fun ch(v: Float) = ((v + (1 - v) * t) * 255).toInt()
+        return Color.rgb(ch(color.red), ch(color.green), ch(color.blue))
     }
 
     private fun paint(size: Float, bold: Boolean, color: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
