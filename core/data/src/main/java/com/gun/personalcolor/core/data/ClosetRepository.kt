@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.gun.personalcolor.core.model.ClosetItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +30,7 @@ class ClosetRepository(private val store: DataStore<Preferences>, private val di
 
     suspend fun add(item: ClosetItem) {
         var dropped = emptyList<ClosetItem>()
-        store.edit {
+        store.editOrNull {
             val all = listOf(item) + decode(it)
             dropped = all.drop(MAX)
             it[KEY] = Json.encodeToString(all.take(MAX))
@@ -39,16 +38,17 @@ class ClosetRepository(private val store: DataStore<Preferences>, private val di
         deleteFiles(dropped)
     }
 
-    suspend fun update(item: ClosetItem) = store.edit { p -> p[KEY] = Json.encodeToString(decode(p).map { if (it.id == item.id) item else it }) }
+    suspend fun update(item: ClosetItem) = store.safeEdit { p -> p[KEY] = Json.encodeToString(decode(p).map { if (it.id == item.id) item else it }) }
 
     suspend fun delete(id: Long) {
         val gone = items.first().filter { it.id == id }
-        store.edit { p -> p[KEY] = Json.encodeToString(decode(p).filterNot { it.id == id }) }
+        // Keep the photo if the list write failed: the item is still shown.
+        store.editOrNull { p -> p[KEY] = Json.encodeToString(decode(p).filterNot { it.id == id }) } ?: return
         deleteFiles(gone)
     }
 
     suspend fun clear() {
-        store.edit { it.remove(KEY) }
+        store.editOrNull { it.remove(KEY) } ?: return
         withContext(Dispatchers.IO) { dir.listFiles()?.forEach { it.delete() } }
     }
 

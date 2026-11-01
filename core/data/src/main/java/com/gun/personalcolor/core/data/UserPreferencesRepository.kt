@@ -3,7 +3,6 @@ package com.gun.personalcolor.core.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -35,28 +34,28 @@ class UserPreferencesRepository @Inject constructor(@SettingsStore private val s
         )
     }
 
-    suspend fun setThemeMode(mode: ThemeMode) = store.edit { it[THEME] = mode.name }
-    suspend fun setOnboardingDone(done: Boolean) = store.edit { it[ONBOARDING] = done }
-    suspend fun setSaveHistory(save: Boolean) = store.edit { it[SAVE_HISTORY] = save }
-    suspend fun setShowPhotoGuide(show: Boolean) = store.edit { it[PHOTO_GUIDE] = show }
-    suspend fun setMyTone(id: String?) = store.edit { if (id == null) it.remove(MY_TONE) else it[MY_TONE] = id }
+    suspend fun setThemeMode(mode: ThemeMode) = store.safeEdit { it[THEME] = mode.name }
+    suspend fun setOnboardingDone(done: Boolean) = store.safeEdit { it[ONBOARDING] = done }
+    suspend fun setSaveHistory(save: Boolean) = store.safeEdit { it[SAVE_HISTORY] = save }
+    suspend fun setShowPhotoGuide(show: Boolean) = store.safeEdit { it[PHOTO_GUIDE] = show }
+    suspend fun setMyTone(id: String?) = store.safeEdit { if (id == null) it.remove(MY_TONE) else it[MY_TONE] = id }
 
-    suspend fun setDailyNotification(enabled: Boolean, hour: Int, minute: Int) = store.edit {
+    suspend fun setDailyNotification(enabled: Boolean, hour: Int, minute: Int) = store.safeEdit {
         it[NOTIFY] = enabled; it[NOTIFY_HOUR] = hour; it[NOTIFY_MINUTE] = minute
     }
     /** Starts the outfit trial once; later calls keep the original start. */
-    suspend fun startCoordiTrialIfNeeded(now: Long) = store.edit { if (it[TRIAL_START] == null) it[TRIAL_START] = now }
-    suspend fun setAutoWallpaper(enabled: Boolean, style: String, target: String) = store.edit {
+    suspend fun startCoordiTrialIfNeeded(now: Long) = store.safeEdit { if (it[TRIAL_START] == null) it[TRIAL_START] = now }
+    suspend fun setAutoWallpaper(enabled: Boolean, style: String, target: String) = store.safeEdit {
         it[AUTO_WALLPAPER] = enabled; it[AUTO_WALLPAPER_STYLE] = style; it[AUTO_WALLPAPER_TARGET] = target
     }
 
-    suspend fun toggleFavorite(id: String) = store.edit {
+    suspend fun toggleFavorite(id: String) = store.safeEdit {
         val now = it[FAVORITES] ?: emptySet()
         it[FAVORITES] = if (id in now) now - id else now + id
     }
 
     /** "모든 데이터 초기화": preferences back to defaults, but keep onboarding done and the trial start (no trial reset abuse). */
-    suspend fun reset() = store.edit { p ->
+    suspend fun reset() = store.safeEdit { p ->
         val trial = p[TRIAL_START]
         p.clear(); p[ONBOARDING] = true
         if (trial != null) p[TRIAL_START] = trial

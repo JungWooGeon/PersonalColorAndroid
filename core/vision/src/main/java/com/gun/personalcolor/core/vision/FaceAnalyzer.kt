@@ -71,7 +71,7 @@ class FaceAnalyzer @Inject constructor(@ApplicationContext private val context: 
 }
 
 object BitmapLoader {
-    /** Decodes at most ~[maxSide]px on the long side, upright according to EXIF. Null if unreadable. */
+    /** Decodes to at most [maxSide]px on the long side, upright according to EXIF. Null if unreadable. */
     fun load(context: Context, uri: Uri, maxSide: Int = 1280): Bitmap? = runCatching {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -85,9 +85,16 @@ object BitmapLoader {
             })
         } ?: return null
         val degrees = resolver.openInputStream(uri)?.use { ExifInterface(it).rotationDegrees } ?: 0
-        if (degrees == 0) raw
-        else Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(degrees.toFloat()) }, true)
+        // inSampleSize only halves, leaving up to 2× maxSide: scale the rest of the way and rotate in one copy.
+        val scale = fitScale(raw.width, raw.height, maxSide)
+        if (degrees == 0 && scale == 1f) raw
+        else Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply {
+            postScale(scale, scale); postRotate(degrees.toFloat())
+        }, true).also { if (it !== raw) raw.recycle() }
     }.getOrNull()
+
+    /** Scale (≤ 1) that brings the long side down to [maxSide]. */
+    internal fun fitScale(w: Int, h: Int, maxSide: Int): Float = max(w, h).let { if (it <= maxSide) 1f else maxSide.toFloat() / it }
 }
 
 /**

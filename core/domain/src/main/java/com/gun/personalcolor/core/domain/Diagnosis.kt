@@ -2,6 +2,7 @@ package com.gun.personalcolor.core.domain
 
 import com.gun.personalcolor.core.analysis.Axes
 import com.gun.personalcolor.core.analysis.Features
+import com.gun.personalcolor.core.analysis.ToneClassifier
 import com.gun.personalcolor.core.analysis.ToneScore
 import com.gun.personalcolor.core.model.ResultSource
 import com.gun.personalcolor.core.vision.FacePhoto
@@ -23,7 +24,8 @@ data class Diagnosis(
     /** 0..1 from the engine (margin + sample quality). Internal only — never shown to users. */
     val confidence: Double = 1.0,
 ) {
-    val top get() = scores.first()
+    /** Never throws: empty [scores] (shouldn't happen) fall back to the nearest prototype for [axes]. */
+    val top: ToneScore get() = scores.firstOrNull() ?: ToneClassifier.classify(axes).first()
 }
 
 /** In-memory holder for the latest diagnosis, shared by the result/drape screens. Cleared on process death. */

@@ -9,6 +9,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.gun.personalcolor.core.model.ClosetItem
+import com.gun.personalcolor.core.model.HistoryEntry
+import com.gun.personalcolor.core.model.ResultSource
+import com.gun.personalcolor.core.model.Verdict
 import java.io.IOException
 
 /** A DataStore read error must surface as defaults, not as an exception in the screen's collector. */
@@ -22,5 +26,15 @@ class SafeDataTest {
 
     @Test fun preferencesReadDefaults() = runTest {
         assertEquals(com.gun.personalcolor.core.model.UserPreferences(), UserPreferencesRepository(broken).preferences.first())
+    }
+
+    /** Writes are called from bare viewModelScope.launch in features: an I/O error must not escape. */
+    @Test fun writesDoNotThrow() = runTest {
+        HistoryRepository(broken).apply { add(HistoryEntry("spring_light", ResultSource.QUIZ, 1)); delete(1); clear() }
+        UserPreferencesRepository(broken).apply { setMyTone("spring_light"); toggleFavorite("x"); reset() }
+        val closet = ClosetRepository(broken, java.io.File("build/tmp/closet-test"))
+        closet.add(ClosetItem(1, "#FFFFFF", "n", "상의", "spring_light", Verdict.GOOD, 90))
+        closet.update(ClosetItem(1, "#FFFFFF", "n", "상의", "spring_light", Verdict.GOOD, 90))
+        closet.delete(1); closet.clear()
     }
 }

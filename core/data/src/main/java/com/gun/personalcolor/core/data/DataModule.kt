@@ -1,6 +1,9 @@
 package com.gun.personalcolor.core.data
 
 import android.content.Context
+import android.util.Log
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -42,6 +45,14 @@ object DataModule {
         corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
     ) { c.preferencesDataStoreFile(name) }
 }
+
+/** [edit] that logs and returns null on an I/O error (disk full, file locked) instead of throwing into a bare launch. */
+internal suspend fun DataStore<Preferences>.editOrNull(block: suspend (MutablePreferences) -> Unit): Preferences? =
+    try { edit(block) } catch (e: IOException) { Log.w("DataStore", "write failed", e); null }
+
+/** [editOrNull] with the same non-null return type as [edit]; a failed write returns empty preferences. */
+internal suspend fun DataStore<Preferences>.safeEdit(block: suspend (MutablePreferences) -> Unit): Preferences =
+    editOrNull(block) ?: emptyPreferences()
 
 /** [DataStore.data] that reads as empty on an I/O error instead of throwing into the collector. */
 internal val DataStore<Preferences>.safeData: Flow<Preferences>

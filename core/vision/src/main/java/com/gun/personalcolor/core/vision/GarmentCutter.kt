@@ -34,7 +34,7 @@ class GarmentCutter @Inject constructor(@ApplicationContext private val context:
         // First use: Play services downloads the segmentation model on demand. Make sure it's installed (waits up to
         // ~45 s, usually a few seconds), then segment; one retry covers a just-finished install.
         try {
-            ensureModel()
+            if (!ensureModel()) return null
             val fg = segment(bitmap) ?: run {
                 delay(1_500)
                 segment(bitmap)

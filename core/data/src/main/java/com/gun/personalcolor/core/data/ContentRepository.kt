@@ -17,10 +17,14 @@ class ContentRepository @Inject constructor(@ApplicationContext private val cont
     private val json = Json { ignoreUnknownKeys = true }
     private fun read(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
 
-    val tones: List<Tone> by lazy { json.decodeFromString<TonesFile>(read("tones.json")).tones }
-    val quiz: List<QuizQuestion> by lazy { json.decodeFromString<QuizFile>(read("quiz.json")).questions }
+    /** A broken/missing asset reads as empty (logged) instead of throwing for every caller. ContentAssetsTest guards the files. */
+    private inline fun <T> load(name: String, parse: (String) -> List<T>): List<T> =
+        runCatching { parse(read(name)) }.getOrElse { Log.e("Content", "bad asset $name", it); emptyList() }
 
-    val articles: List<Article> by lazy { json.decodeFromString<ArticlesFile>(read("articles.json")).articles }
+    val tones: List<Tone> by lazy { load("tones.json") { json.decodeFromString<TonesFile>(it).tones } }
+    val quiz: List<QuizQuestion> by lazy { load("quiz.json") { json.decodeFromString<QuizFile>(it).questions } }
+
+    val articles: List<Article> by lazy { load("articles.json") { json.decodeFromString<ArticlesFile>(it).articles } }
 
     /** Unknown ids (stale data, bad deep link) fall back to the first tone instead of crashing. */
     fun tone(id: String): Tone = toneOrNull(id) ?: tones.first().also { Log.w("Content", "unknown tone id: $id") }

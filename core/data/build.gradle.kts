@@ -3,7 +3,11 @@ plugins {
     id("pc.hilt")
     id("pc.kotlin.serialization")
 }
-android { namespace = "com.gun.personalcolor.core.data" }
+android {
+    namespace = "com.gun.personalcolor.core.data"
+    // Repositories log failed writes with android.util.Log; let JVM tests run through it.
+    testOptions { unitTests.isReturnDefaultValues = true }
+}
 dependencies {
     api(project(":core:model"))
     api(libs.androidx.datastore.preferences)
