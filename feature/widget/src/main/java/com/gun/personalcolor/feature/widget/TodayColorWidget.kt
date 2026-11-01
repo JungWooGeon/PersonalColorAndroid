@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -107,8 +108,10 @@ class TodayLookMiniReceiver : LookWidgetProvider(WidgetArt.Size.Mini)
 
 private const val TAG = "LookWidget"
 
-/** Rest slots after the landing: the same Bitmap object each time, so they cost views, not memory (~45 s at 90 ms). */
+/** Fallback rest slots if the still swap never arrives: the same Bitmap object each time (~45 s at 90 ms). */
 private const val REST = 500
+/** ViewFlipper interval in res/layout/widget_look.xml. */
+private const val FRAME_MS = 90L
 
 internal object LookWidgets {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -124,6 +127,8 @@ internal object LookWidgets {
         if (ids.isEmpty()) return@withLock
         val m = AppWidgetManager.getInstance(context)
         val data = load(context)
+        val stills = ArrayList<Pair<Int, RemoteViews>>()
+        var landingMs = 0L
         for (id in ids) {
             val info = m.getAppWidgetInfo(id) ?: continue
             val default = when (info.provider.className) {
@@ -140,8 +145,14 @@ internal object LookWidgets {
                 WidgetArt.Size.Square -> { wDp = 170; hDp = 240 }
                 WidgetArt.Size.Wide -> { wDp = 350; hDp = 240 }
             }
-            val views = build(context, data, wDp, hDp)
+            val (views, still, frames) = build(context, data, wDp, hDp)
             runCatching { m.updateAppWidget(id, views) }.onFailure { Log.e(TAG, "updateAppWidget $id", it) }
+            if (still != null) { stills += id to still; landingMs = maxOf(landingMs, frames * FRAME_MS) }
+        }
+        // Once the pieces have landed, swap in a still collage so the launcher stops flipping (no idle redraws).
+        if (stills.isNotEmpty()) {
+            delay(landingMs + 400)
+            for ((id, v) in stills) runCatching { m.updateAppWidget(id, v) }
         }
     }
 
@@ -194,7 +205,7 @@ internal object LookWidgets {
         val pill = listOfNotNull(today, listOfNotNull(temp, cond).joinToString(" ").ifEmpty { null }).joinToString(" · ")
         val short = listOfNotNull(temp, cond).joinToString(" ").ifEmpty { today }
         val pieces = outfit.pieces.mapNotNull { (k, hex) -> runCatching { k to android.graphics.Color.parseColor(hex) }.getOrNull() }
-        val title = titleOf(outfit.headline, tone, pieces)
+        val title = thumbTitle(temp, cond, tone, pieces) ?: titleOf(outfit.headline, tone, pieces)
         val names = outfit.pieces.joinToString(", ") { CLOTHING_KINDS[it.first]?.first ?: it.first }
         return WidgetArt.Look(pieces, title, pill, short, mark, night, darkText = data.darkText) to "오늘의 코디: ${outfit.headline}. $names"
     }
@@ -204,6 +215,27 @@ internal object LookWidgets {
         line ?: return null to null
         val m = Regex("(-?\\d+)°C?\\s*(.*)").find(line) ?: return null to line.substringAfterLast(' ').ifBlank { null }
         return "${m.groupValues[1]}°" to m.groupValues[2].trim().ifBlank { null }
+    }
+
+    /**
+     * Lookbook-thumbnail title from the weather and the look's point color: "비 오는 날 [와인] 포인트 룩".
+     * The point color is the most colorful piece whose color is one of the tone's colors; null when there is none.
+     */
+    internal fun thumbTitle(temp: String?, cond: String?, tone: Tone, pieces: List<Pair<String, Int>>): WidgetArt.Title? {
+        val point = pieces.mapNotNull { (_, c) -> tone.bestColors.firstOrNull { hexColor(it.hex).toArgb() == c }?.let { it to c } }
+            .maxByOrNull { chroma(it.second) }?.takeIf { chroma(it.second) > 40 } ?: return null
+        val t = temp?.removeSuffix("°")?.toIntOrNull()
+        val c = cond.orEmpty()
+        val day = when {
+            "눈" in c -> "눈 오는 날"
+            "비" in c || "소나기" in c -> "비 오는 날"
+            t != null && t <= 4 -> "추운 날"
+            t != null && t <= 12 -> "쌀쌀한 날"
+            t != null && t <= 20 -> "선선한 날"
+            t != null && t >= 27 -> "더운 날"
+            else -> "오늘은"
+        }
+        return WidgetArt.Title(day, point.first.name, "포인트 룩", point.second)
     }
 
     /**
@@ -244,14 +276,23 @@ internal object LookWidgets {
 
     @Volatile private var fontReady = false
 
-    private suspend fun build(context: Context, data: Data, wDp: Int, hDp: Int): RemoteViews {
+    /** (views to show now, still views to swap in after the landing or null, landing frame count). */
+    private suspend fun build(context: Context, data: Data, wDp: Int, hDp: Int): Triple<RemoteViews, RemoteViews?, Int> {
         val t0 = System.currentTimeMillis()
         val (art, description) = withContext(Dispatchers.Default) { render(context, data, wDp, hDp) }
+        val pkg = context.packageName
+        val rv = shell(context, data, art, description, animate = art.landing.isNotEmpty())
+        val still = if (art.landing.isEmpty()) null else shell(context, data, art, description, animate = false)
+        logMemory(context, art, wDp, hDp, System.currentTimeMillis() - t0)
+        return Triple(rv, still, art.landing.size)
+    }
+
+    private fun shell(context: Context, data: Data, art: WidgetArt.Art, description: String, animate: Boolean): RemoteViews {
         val pkg = context.packageName
         val rv = RemoteViews(pkg, R.layout.widget_look)
         place(rv, R.id.still, art.still)
         rv.removeAllViews(R.id.frames)
-        if (art.landing.isEmpty()) {
+        if (!animate) {
             place(rv, R.id.base, art.collage)
             rv.setViewVisibility(R.id.frames, View.GONE)
         } else {
@@ -269,7 +310,6 @@ internal object LookWidgets {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
         }
         rv.setContentDescription(R.id.root, description)
-        logMemory(context, art, wDp, hDp, System.currentTimeMillis() - t0)
         return rv
     }
 
