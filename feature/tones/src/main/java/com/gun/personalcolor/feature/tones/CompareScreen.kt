@@ -19,8 +19,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.remember
+import com.gun.personalcolor.core.designsystem.Eyebrow
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.Tinty
+import com.gun.personalcolor.core.designsystem.Verdict
+import com.gun.personalcolor.core.designsystem.VerdictBadge
+import com.gun.personalcolor.core.ui.tintyColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,14 +84,14 @@ fun CompareScreen(tones: List<Tone>, initialA: String, initialB: String?, onBack
                 Selector("B", b, Modifier.weight(1f)) { picking = "b" }
             }
             SideBySide(null, a, b) { t ->
-                ToneAvatar(t, size = 56.dp)
+                Tinty(Modifier.size(64.dp), remember(t) { t.tintyColors }, animated = false)
                 Text(t.nameKo, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${t.seasonKo} · ${t.temperatureKo}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             SideBySide("키워드", a, b) { t -> Keywords(t.keywords) }
-            SideBySide("BEST 컬러", a, b) { t -> Swatches(t.bestColors) }
-            SideBySide("WORST 컬러", a, b) { t -> Swatches(t.worstColors) }
+            SideBySide("어울리는 컬러", a, b, badge = Verdict.BEST) { t -> Swatches(t.bestColors) }
+            SideBySide("피하면 좋은 컬러", a, b, badge = Verdict.WORST) { t -> Swatches(t.worstColors) }
             SideBySide("립 컬러", a, b) { t -> Swatches(t.makeup.lipColors) }
             SideBySide("헤어 컬러", a, b) { t -> Swatches(t.hair.colors) }
             SideBySide("액세서리", a, b) { t -> Text(t.accessory.metal, style = MaterialTheme.typography.bodyLarge) }
@@ -102,24 +110,23 @@ fun CompareScreen(tones: List<Tone>, initialA: String, initialB: String?, onBack
 
 @Composable
 private fun Selector(label: String, tone: Tone, modifier: Modifier, onClick: () -> Unit) {
-    Surface(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.secondaryContainer) {
-        Row(Modifier.heightIn(min = 56.dp).padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    PcCard(modifier, onClick = onClick, shape = MaterialTheme.shapes.medium) {
+        Row(Modifier.heightIn(min = 60.dp).padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             ToneAvatar(tone, size = 28.dp)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text("톤 $label", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                Text("톤 $label", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                 Text(tone.nameKo, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Filled.ArrowDropDown, contentDescription = "톤 $label 바꾸기")
+            Icon(Icons.Rounded.ArrowDropDown, contentDescription = "톤 $label 바꾸기", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 /** One card with the same content for tone A (left) and B (right), always two equal columns. */
 @Composable
-private fun SideBySide(title: String?, a: Tone, b: Tone, content: @Composable ColumnScope.(Tone) -> Unit) {
-    SectionCard(title) {
+private fun SideBySide(title: String?, a: Tone, b: Tone, badge: Verdict? = null, content: @Composable ColumnScope.(Tone) -> Unit) {
+    SectionCard(title, action = badge?.let { { VerdictBadge(it) } }) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             listOf(a, b).forEach { t ->
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { content(t) }
@@ -180,12 +187,11 @@ private fun TonePicker(tones: List<Tone>, selected: String?, onDismiss: () -> Un
         LazyColumn(contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, bottom = 24.dp)) {
             tones.groupBy { it.season }.forEach { (season, group) ->
                 item(key = season) {
-                    Text(SEASON_KO[season].orEmpty(), style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    Eyebrow(SEASON_KO[season].orEmpty(), Modifier.padding(top = 12.dp, bottom = 4.dp))
                 }
                 items(group, key = { it.id }) { t ->
                     ToneRow(t, onClick = { onPick(t.id) }, trailing = {
-                        if (t.id == selected) Icon(Icons.Filled.Check, "선택됨", tint = MaterialTheme.colorScheme.primary)
+                        if (t.id == selected) Icon(Icons.Rounded.Check, "선택됨", tint = MaterialTheme.colorScheme.primary)
                     })
                 }
             }

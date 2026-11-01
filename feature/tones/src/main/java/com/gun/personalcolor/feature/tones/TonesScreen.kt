@@ -15,7 +15,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.automirrored.rounded.CompareArrows
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import com.gun.personalcolor.core.designsystem.IconTile
+import com.gun.personalcolor.core.designsystem.PcCard
+import com.gun.personalcolor.core.designsystem.SectionHeader
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,7 +54,7 @@ private const val ALL = "all"
 private const val FAVORITES = "favorites"
 
 @Composable
-fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite: (String) -> Unit) {
+fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite: (String) -> Unit, onCompare: (String) -> Unit = {}) {
     TrackScreen("tones")
     var filter by rememberSaveable { mutableStateOf(ALL) }
     PcScaffold("컬러 도감") { pad ->
@@ -61,33 +70,56 @@ fun TonesScreen(state: TonesUiState, onTone: (String) -> Unit, onToggleFavorite:
         ) {
             fullSpan("filters") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("4계절을 명도·채도로 나눈 12가지 톤이에요", style = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("4계절을 밝기와 선명도로 나눈 12가지 톤이에요", style = Muted)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val options = listOf(ALL to "전체") + SEASON_KO.toList() + (FAVORITES to "★ 즐겨찾기")
+                        val options = listOf(ALL to "전체") + SEASON_KO.toList() + (FAVORITES to "즐겨찾기")
                         options.forEach { (key, label) ->
-                            FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(label, maxLines = 1) })
+                            FilterChip(
+                                selected = filter == key, onClick = { filter = key }, label = { Text(label, maxLines = 1) },
+                                leadingIcon = if (key == FAVORITES) ({ Icon(Icons.Rounded.Star, null, Modifier.size(FilterChipDefaults.IconSize)) }) else null,
+                            )
                         }
                     }
                 }
             }
             when (filter) {
-                ALL -> state.tones.groupBy { it.season }.forEach { (season, tones) ->
-                    fullSpan("h_$season") {
-                        Text(SEASON_KO[season].orEmpty(), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+                ALL -> {
+                    if (state.tones.isNotEmpty()) fullSpan("compare") { CompareEntry { onCompare(state.myToneId ?: state.tones.first().id) } }
+                    state.tones.groupBy { it.season }.forEach { (season, tones) ->
+                        fullSpan("h_$season") {
+                            SectionHeader("${SEASON_KO[season].orEmpty()} 타입", Modifier.padding(top = 8.dp),
+                                eyebrow = if (tones.first().isWarm) "웜톤" else "쿨톤")
+                        }
+                        toneCards(tones, state, onTone, onToggleFavorite)
+                        // One in-feed ad between the summer and autumn sections.
+                        if (season == "summer") fullSpan("ad") { NativeAdCard(Modifier.padding(top = 12.dp)) }
                     }
-                    toneCards(tones, state, onTone, onToggleFavorite)
-                    // One in-feed ad between the summer and autumn sections.
-                    if (season == "summer") fullSpan("ad") { NativeAdCard(Modifier.padding(top = 12.dp)) }
                 }
                 FAVORITES -> {
                     val favs = state.tones.filter { it.id in state.favorites }
                     if (favs.isEmpty()) fullSpan("empty") {
-                        EmptyState(Icons.Outlined.StarBorder, "즐겨찾는 톤이 없어요", "카드의 ☆를 눌러 모아요")
+                        EmptyState(Icons.Rounded.StarBorder, "즐겨찾는 톤이 없어요", "카드의 별을 누르면 여기에 모여요")
                     }
                     else toneCards(favs, state, onTone, onToggleFavorite)
                 }
                 else -> toneCards(state.tones.filter { it.season == filter }, state, onTone, onToggleFavorite)
             }
+        }
+    }
+}
+
+/** "두 톤 비교하기" shortcut above the collection. */
+@Composable
+private fun CompareEntry(onClick: () -> Unit) {
+    PcCard(onClick = onClick) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconTile(Icons.AutoMirrored.Rounded.CompareArrows, drop = true)
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text("두 톤 비교하기", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("헷갈리는 톤을 나란히 놓고 봐요", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = PcTheme.colors.ink3)
         }
     }
 }

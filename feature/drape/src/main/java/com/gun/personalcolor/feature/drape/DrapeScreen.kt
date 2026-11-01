@@ -1,7 +1,6 @@
 package com.gun.personalcolor.feature.drape
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.DropdownMenu
@@ -71,6 +77,9 @@ import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.data.ContentRepository
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcScaffold
+import com.gun.personalcolor.core.designsystem.SectionCard
+import com.gun.personalcolor.core.designsystem.Verdict
+import com.gun.personalcolor.core.designsystem.VerdictBadge
 import com.gun.personalcolor.core.designsystem.TintyLoading
 import com.gun.personalcolor.core.designsystem.isWideWindow
 import com.gun.personalcolor.core.designsystem.readableWidth
@@ -192,7 +201,7 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
                                 original = original, modifier = Modifier.fillMaxSize(), extra = extra ?: {},
                             )
                         }
-                        if (badge.isNotEmpty() && !original) Badge(badge, badge == "BEST", Modifier.align(Alignment.TopStart).padding(10.dp))
+                        if (badge.isNotEmpty() && !original) Badge(badge, Modifier.align(Alignment.TopStart).padding(10.dp))
                     }
                     Text(color?.name ?: "", style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
@@ -210,11 +219,14 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
         }
         val drapeControls: @Composable () -> Unit = {
             Text("얼굴빛이 더 맑아 보이는 쪽이 잘 어울리는 색이에요", style = Muted)
-            ColorRow("BEST", top.bestColors, best, { best = it })
-            ColorRow(rightLabel, rightColors, right, { right = it }) {
-                CompareMenu(top, others, compare) { i ->
-                    compare = i
-                    right = (others.getOrNull(i)?.bestColors ?: top.worstColors).first()
+            SectionCard(null) {
+                ColorRow("BEST", top.bestColors, best, { best = it })
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                ColorRow(rightLabel, rightColors, right, { right = it }) {
+                    CompareMenu(top, others, compare) { i ->
+                        compare = i
+                        right = (others.getOrNull(i)?.bestColors ?: top.worstColors).first()
+                    }
                 }
             }
         }
@@ -224,30 +236,32 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
         }
         val lipControls: @Composable () -> Unit = {
             Text("생기 있어 보이는 색이 잘 어울려요", style = Muted)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(lipGroups.size) { i ->
-                    FilterChip(selected = lipGroup == i, onClick = { lipGroup = i; lipColor = lipGroups[i].second.firstOrNull() },
-                        label = { Text(lipGroups[i].first, maxLines = 1) })
-                }
-            }
-            DotRow(lipGroups[lipGroup].second, lipColor) { c ->
-                lipColor = c
-                analytics?.log("lip_tryon", "color" to c.name)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("질감", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                SingleChoiceSegmentedButtonRow {
-                    listOf("매트", "글로시").forEachIndexed { i, label ->
-                        SegmentedButton(selected = glossy == (i == 1), onClick = { glossy = i == 1 },
-                            shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(label, maxLines = 1) }
+            SectionCard(null) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(lipGroups.size) { i ->
+                        FilterChip(selected = lipGroup == i, onClick = { lipGroup = i; lipColor = lipGroups[i].second.firstOrNull() },
+                            label = { Text(lipGroups[i].first, maxLines = 1) })
                     }
                 }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("연하게", style = Muted, maxLines = 1)
-                Slider(intensity, { intensity = it }, Modifier.weight(1f).padding(horizontal = 12.dp), valueRange = 0.3f..1f)
-                Text("진하게", style = Muted, maxLines = 1)
+                DotRow(lipGroups[lipGroup].second, lipColor) { c ->
+                    lipColor = c
+                    analytics?.log("lip_tryon", "color" to c.name)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("질감", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    SingleChoiceSegmentedButtonRow {
+                        listOf("매트", "글로시").forEachIndexed { i, label ->
+                            SegmentedButton(selected = glossy == (i == 1), onClick = { glossy = i == 1 },
+                                shape = SegmentedButtonDefaults.itemShape(i, 2)) { Text(label, maxLines = 1) }
+                        }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("연하게", style = Muted, maxLines = 1)
+                    Slider(intensity, { intensity = it }, Modifier.weight(1f).padding(horizontal = 12.dp), valueRange = 0.3f..1f)
+                    Text("진하게", style = Muted, maxLines = 1)
+                }
             }
         }
 
@@ -285,13 +299,16 @@ internal fun DrapeRoute(onBack: () -> Unit, vm: DrapeViewModel = hiltViewModel()
     }
 }
 
+/** BEST / WORST verdict pill, or a neutral pill with another tone's name. */
 @Composable
-private fun Badge(text: String, best: Boolean, modifier: Modifier) {
-    val c = MaterialTheme.colorScheme
-    Surface(modifier, shape = CircleShape, color = if (best) c.primary else c.inverseSurface,
-        contentColor = if (best) c.onPrimary else c.inverseOnSurface) {
-        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+private fun Badge(text: String, modifier: Modifier = Modifier) {
+    when (text) {
+        "BEST" -> VerdictBadge(Verdict.BEST, modifier)
+        "WORST" -> VerdictBadge(Verdict.WORST, modifier)
+        else -> Surface(modifier, shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainer) {
+            Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
+        }
     }
 }
 
@@ -299,9 +316,8 @@ private fun Badge(text: String, best: Boolean, modifier: Modifier) {
 @Composable
 private fun ColorRow(label: String, colors: List<NamedColor>, selected: NamedColor?, onSelect: (NamedColor) -> Unit, trailing: @Composable () -> Unit = {}) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { Badge(label) }
             trailing()
         }
         DotRow(colors, selected, onSelect)
@@ -310,7 +326,7 @@ private fun ColorRow(label: String, colors: List<NamedColor>, selected: NamedCol
 
 @Composable
 private fun DotRow(colors: List<NamedColor>, selected: NamedColor?, onSelect: (NamedColor) -> Unit) {
-    LazyRow(contentPadding = PaddingValues(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyRow(contentPadding = PaddingValues(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         items(colors) { c -> Dot(c, c == selected) { onSelect(c) } }
     }
 }
@@ -326,22 +342,23 @@ private fun CompareMenu(top: Tone, others: List<Tone>, compare: Int, onPick: (In
         }
         DropdownMenu(open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text("${top.nameKo} WORST", maxLines = 1) }, onClick = { open = false; onPick(-1) },
-                trailingIcon = if (compare == -1) ({ Text("✓") }) else null)
+                trailingIcon = if (compare == -1) ({ Icon(Icons.Rounded.Check, "선택됨") }) else null)
             others.forEachIndexed { i, t ->
                 DropdownMenuItem(text = { Text("${t.nameKo} BEST", maxLines = 1) }, onClick = { open = false; onPick(i) },
-                    trailingIcon = if (compare == i) ({ Text("✓") }) else null)
+                    trailingIcon = if (compare == i) ({ Icon(Icons.Rounded.Check, "선택됨") }) else null)
             }
         }
     }
 }
 
+/** Color chip; the selected one gets an accent ring with a small gap. */
 @Composable
 private fun Dot(c: NamedColor, selected: Boolean, onClick: () -> Unit) {
-    Swatch(
-        c.hex,
+    Box(
         Modifier.size(48.dp).clip(CircleShape)
-            .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
-            .clickable(onClickLabel = c.name, onClick = onClick),
-        CircleShape,
-    )
+            .then(if (selected) Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier)
+            .clickable(onClickLabel = c.name, role = Role.RadioButton, onClick = onClick)
+            .semantics { this.selected = selected }
+            .padding(5.dp),
+    ) { Swatch(c.hex, Modifier.fillMaxSize(), CircleShape) }
 }

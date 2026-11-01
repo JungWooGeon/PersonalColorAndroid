@@ -18,7 +18,7 @@ fun NavGraphBuilder.tonesScreens(onBack: () -> Unit, onTone: (String) -> Unit, o
     composable<TonesRoute> {
         val vm: TonesViewModel = hiltViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
-        TonesScreen(state, onTone, vm::toggleFavorite)
+        TonesScreen(state, onTone, vm::toggleFavorite) { onCompare(it, null) }
     }
     composable<ToneRoute> { entry ->
         val id = entry.toRoute<ToneRoute>().id
