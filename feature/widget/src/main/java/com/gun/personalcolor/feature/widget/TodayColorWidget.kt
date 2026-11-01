@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Optional
 
 /** Today's outfit for the widgets. The app binds a [WidgetOutfitSource]. */
@@ -90,7 +91,11 @@ abstract class LookWidgetProvider internal constructor(internal val defaultSize:
 
     private fun async(block: suspend () -> Unit) {
         val pending = goAsync()
-        LookWidgets.scope.launch { try { block() } catch (e: Exception) { Log.e(TAG, "update failed", e) } finally { pending.finish() } }
+        LookWidgets.scope.launch {
+            // goAsync allows ~10 s before an ANR: give up in time and keep what the widget shows.
+            try { withTimeoutOrNull(UPDATE_TIMEOUT_MS) { block() } ?: Log.w(TAG, "update timed out") }
+            catch (e: Exception) { Log.e(TAG, "update failed", e) } finally { pending.finish() }
+        }
     }
 }
 
@@ -103,6 +108,25 @@ class TodayLookMiniReceiver : LookWidgetProvider(WidgetSize.Mini)
 private const val SCENE_ALPHA = 0.35f
 
 private const val TAG = "LookWidget"
+private const val UPDATE_TIMEOUT_MS = 8_500L
+/** The outfit needs location + weather; on a cold start that may be slow, so the widget doesn't wait for it forever. */
+private const val OUTFIT_TIMEOUT_MS = 5_000L
+
+/**
+ * How many light phases fit RemoteViews' bitmap budget ([limitBytes], ~1.5 screens of ARGB) for a [wPx]×[hPx] widget, and
+ * the pixel scale to render them at. All three if they fit; else only the still; a still bigger than the budget (huge
+ * tablet widget) renders smaller and the ImageView scales it up. 10% headroom.
+ */
+internal fun frameBudget(wPx: Int, hPx: Int, limitBytes: Long): Pair<Int, Float> {
+    val frame = wPx.toLong() * hPx * 4
+    val budget = limitBytes * 9 / 10
+    return when {
+        frame <= 0 || budget <= 0 -> 1 to 1f
+        frame * 3 <= budget -> 3 to 1f
+        frame <= budget -> 1 to 1f
+        else -> 1 to kotlin.math.sqrt(budget.toDouble() / frame).toFloat()
+    }
+}
 
 internal enum class WidgetSize { Mini, Square, Wide }
 
@@ -183,8 +207,11 @@ internal object LookWidgets {
     suspend fun load(context: Context): Data {
         debugOverride?.let { return it }
         val entry = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
-        val tone = entry.content().toneOrNull(entry.preferences().preferences.first().myToneId)?.takeIf { it.bestColors.isNotEmpty() }
-        val outfit = if (tone == null) null else runCatching { entry.outfitSource().orElse(null)?.today() }.getOrNull()
+        val tone = runCatching { entry.content().toneOrNull(entry.preferences().preferences.first().myToneId) }
+            .onFailure { Log.w(TAG, "tone", it) }.getOrNull()?.takeIf { it.bestColors.isNotEmpty() }
+        val outfit = if (tone == null) null else runCatching {
+            withTimeoutOrNull(OUTFIT_TIMEOUT_MS) { entry.outfitSource().orElse(null)?.today() }
+        }.getOrNull()
         return Data(tone, outfit, ourLiveWallpaperOn(context), false, brightWallpaper(context))
     }
 
@@ -238,10 +265,10 @@ internal object LookWidgets {
     }
 
 
-    /** The widget at [wDp]×[hDp] for light [phase]. */
-    fun render(context: Context, look: WidgetLook, wDp: Int, hDp: Int, phase: Int): Bitmap {
-        val d = context.resources.displayMetrics.density
-        val w = (wDp * d).toInt(); val h = (hDp * d).toInt()
+    /** The widget at [wDp]×[hDp] for light [phase]; [scale] < 1 renders fewer pixels (see [frameBudget]). */
+    fun render(context: Context, look: WidgetLook, wDp: Int, hDp: Int, phase: Int, scale: Float = 1f): Bitmap {
+        val d = context.resources.displayMetrics.density * scale
+        val w = (wDp * d).toInt().coerceAtLeast(1); val h = (hDp * d).toInt().coerceAtLeast(1)
         return when (val size = sizeOf(wDp, hDp)) {
             WidgetSize.Wide -> SceneWall.render(context, if (look.locked) emptyList() else look.pieces.orEmpty(),
                 look.weather, look.line, look.caption, w, h, phase, look.locked, bgAlpha = SCENE_ALPHA)
@@ -257,9 +284,12 @@ internal object LookWidgets {
     private suspend fun build(context: Context, data: Data, wDp: Int, hDp: Int): Pair<RemoteViews, RemoteViews> {
         val t0 = System.currentTimeMillis()
         val (look, description) = look(data)
-        val frames = withContext(Dispatchers.Default) { (0..2).map { render(context, look, wDp, hDp, it) } }
-        val rv = shell(context, data, description, frames)
+        val d = context.resources.displayMetrics.density
+        val (count, scale) = frameBudget((wDp * d).toInt(), (hDp * d).toInt(), bitmapLimit(context))
+        val frames = withContext(Dispatchers.Default) { (0 until count).map { render(context, look, wDp, hDp, it, scale) } }
         val still = shell(context, data, description, listOf(frames[0]))
+        // Over budget the light doesn't breathe: the still alone always goes through.
+        val rv = if (frames.size > 1) shell(context, data, description, frames) else still
         logMemory(context, frames, wDp, hDp, System.currentTimeMillis() - t0)
         return rv to still
     }
@@ -289,11 +319,14 @@ internal object LookWidgets {
         return rv
     }
 
-    /** RemoteViews refuses bitmaps over ~1.5× the screen's ARGB size; log what one update holds. */
+    /** RemoteViews refuses bitmaps over ~1.5× the screen's ARGB size (AppWidgetServiceImpl). */
+    private fun bitmapLimit(context: Context): Long =
+        context.resources.displayMetrics.let { it.widthPixels.toLong() * it.heightPixels * 4 * 3 / 2 }
+
+    /** Logs what one update holds against [bitmapLimit]. */
     private fun logMemory(context: Context, frames: List<Bitmap>, wDp: Int, hDp: Int, ms: Long) {
         val bytes = frames.sumOf { it.byteCount.toLong() }
-        val dm = context.resources.displayMetrics
-        val limit = dm.widthPixels.toLong() * dm.heightPixels * 4 * 3 / 2
+        val limit = bitmapLimit(context)
         Log.i(TAG, "${wDp}x${hDp}dp ${sizeOf(wDp, hDp)}: ${frames.size} frames ${frames[0].width}x${frames[0].height}, " +
             "${bytes / 1024} KB of ${limit / 1024} KB limit, rendered in $ms ms")
     }
