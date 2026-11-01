@@ -46,19 +46,20 @@ object ColorMatcher {
     fun evaluate(rgb: Rgb, tone: Tone, allTones: List<Tone>): ColorVerdict {
         val lab = ColorMath.rgbToLab(rgb)
         val good = goodColors(tone).map { (label, c) -> Triple(label, c, deltaE2000(lab, labOf(c.hex))) }
-        val nearGood = good.minBy { it.third }
+        // A tone with no palette (bad content) can't be judged; treat it as neutral rather than crash.
+        val nearGood = good.minByOrNull { it.third }
         val nearWorst = tone.worstColors.minByOrNull { deltaE2000(lab, labOf(it.hex)) }
-        val dGood = nearGood.third
+        val dGood = nearGood?.third ?: Double.MAX_VALUE
         val dWorst = nearWorst?.let { deltaE2000(lab, labOf(it.hex)) } ?: Double.MAX_VALUE
 
         val level = when {
-            dGood <= GOOD_MAX && dGood < dWorst -> MatchLevel.GOOD
-            dWorst < dGood && dWorst <= AVOID_MAX -> MatchLevel.AVOID
+            nearGood != null && dGood <= GOOD_MAX && dGood < dWorst -> MatchLevel.GOOD
+            nearWorst != null && dWorst < dGood && dWorst <= AVOID_MAX -> MatchLevel.AVOID
             else -> MatchLevel.NEUTRAL
         }
         val reason = when (level) {
-            MatchLevel.GOOD -> "${nearGood.first} '${nearGood.second.name}'${gwa(nearGood.second.name)} ${if (dGood <= VERY_CLOSE) "아주 " else ""}비슷해요"
-            MatchLevel.AVOID -> "WORST 컬러 '${nearWorst!!.name}'에 가까워요"
+            MatchLevel.GOOD -> nearGood?.let { (label, c) -> "$label '${c.name}'${gwa(c.name)} ${if (dGood <= VERY_CLOSE) "아주 " else ""}비슷해요" }.orEmpty()
+            MatchLevel.AVOID -> nearWorst?.let { "WORST 컬러 '${it.name}'에 가까워요" }.orEmpty()
             MatchLevel.NEUTRAL -> neutralHint(lab, tone)
         }
 
@@ -74,11 +75,12 @@ object ColorMatcher {
 
         val nearestBest = tone.bestColors.sortedBy { deltaE2000(lab, labOf(it.hex)) }.take(3)
         val topTones = allTones
+            .filter { it.bestColors.isNotEmpty() }
             .map { t -> ToneMatch(t, t.bestColors.minOf { deltaE2000(lab, labOf(it.hex)) }) }
             .sortedBy { it.deltaE }.take(3)
         val nameHint = when (level) {
-            MatchLevel.GOOD -> nearGood.second.name
-            MatchLevel.AVOID -> nearWorst!!.name
+            MatchLevel.GOOD -> nearGood?.second?.name
+            MatchLevel.AVOID -> nearWorst?.name
             // Neutral: name it after the closest named color in any tone's palette (e.g. "네이비"), not a hex code.
             MatchLevel.NEUTRAL -> allTones.flatMap { it.bestColors + it.worstColors }
                 .minByOrNull { deltaE2000(lab, labOf(it.hex)) }?.name
@@ -118,10 +120,16 @@ object ColorMatcher {
     }
 }
 
+/** Grey for anything unparsable (corrupt saved data must never crash a screen). */
 fun hexToRgb(hex: String): Rgb {
-    val v = hex.removePrefix("#").toLong(16).toInt()
+    val v = hex.trim().removePrefix("#").toLongOrNull(16)?.toInt() ?: 0x808080
     return Rgb((v shr 16) and 0xFF, (v shr 8) and 0xFF, v and 0xFF)
 }
+
+private val HEX = Regex("#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?")
+
+/** [hex] if `Color.parseColor` accepts it as #RRGGBB / #AARRGGBB, else grey. */
+internal fun safeHex(hex: String): String = if (HEX.matches(hex)) hex else "#808080"
 
 fun Rgb.toHex(): String = "#%02X%02X%02X".format(r, g, b)
 

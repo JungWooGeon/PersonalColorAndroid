@@ -5,7 +5,6 @@ import com.gun.personalcolor.core.designsystem.tintyEntrance
 import com.gun.personalcolor.core.designsystem.TintyProp
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,8 +46,6 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material.icons.rounded.TouchApp
-import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -64,10 +61,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,25 +77,20 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analysis.Rgb
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.Muted
-import com.gun.personalcolor.core.designsystem.IconTile
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcCard
 import com.gun.personalcolor.core.designsystem.PcSnackbarHost
@@ -140,7 +132,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.rememberCoroutineScope
 import com.gun.personalcolor.core.model.CLOSET_CATEGORIES
 import kotlinx.coroutines.launch
-import java.io.File
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -148,7 +139,6 @@ import kotlin.math.roundToInt
 fun ColorMatchRoute(onTone: (String) -> Unit, onAnalyze: () -> Unit, onTones: () -> Unit, onCloset: () -> Unit, vm: ColorMatchViewModel = hiltViewModel()) {
     TrackScreen("color_match")
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val analytics = LocalAnalytics.current
 
     // One event per final pick, never per drag frame.
@@ -158,19 +148,17 @@ fun ColorMatchRoute(onTone: (String) -> Unit, onAnalyze: () -> Unit, onTones: ()
     }
 
     val album = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(vm::loadPhoto) }
-    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) cameraUri?.let(vm::loadPhoto) }
+    val camera = rememberCameraCapture("color_check.jpg", vm::loadPhoto, vm::showError)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     ColorMatchScreen(
         state = state,
-        onCamera = {
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(context.cacheDir, "color_check.jpg"))
-            cameraUri = uri
-            try { camera.launch(uri) } catch (_: ActivityNotFoundException) { vm.showError("카메라 앱이 없어요. 앨범에서 골라 주세요.") }
+        onCamera = camera,
+        onAlbum = {
+            try { album.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+            catch (_: ActivityNotFoundException) { vm.showError("사진을 고를 앱이 없어요.") }
         },
-        onAlbum = { album.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onManual = vm::startManual,
         onBackToPhoto = vm::backToPhoto,
         onPick = vm::pick,

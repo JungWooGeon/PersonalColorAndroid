@@ -9,7 +9,6 @@ import com.gun.personalcolor.core.ui.mood.moodBackdrop
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.util.LruCache
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -60,10 +59,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,20 +74,16 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gun.personalcolor.core.analytics.LocalAnalytics
 import com.gun.personalcolor.core.analytics.TrackScreen
 import com.gun.personalcolor.core.designsystem.BottomActions
-import com.gun.personalcolor.core.designsystem.IconTile
 import com.gun.personalcolor.core.designsystem.colors
-import androidx.compose.material.icons.rounded.Checkroom
 import androidx.compose.foundation.layout.height
 import com.gun.personalcolor.core.designsystem.Muted
 import com.gun.personalcolor.core.designsystem.PcButton
@@ -117,9 +112,10 @@ import kotlin.math.roundToInt
 internal fun ClosetAddRoute(onClose: () -> Unit, vm: ClosetAddViewModel = hiltViewModel()) {
     TrackScreen("closet_add")
     val state by vm.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val analytics = LocalAnalytics.current
-    LaunchedEffect(Unit) { vm.reset() }
+    // Reset once per opening, not again on rotation (that would wipe the photo being added).
+    var opened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { if (!opened) { vm.reset(); opened = true } }
     LaunchedEffect(state.saved) {
         if (state.saved) {
             analytics?.log("closet_add", "mode" to state.mode.name, "kind" to state.kind.orEmpty(), "verdict" to state.verdict?.level?.name.orEmpty())
@@ -129,19 +125,17 @@ internal fun ClosetAddRoute(onClose: () -> Unit, vm: ClosetAddViewModel = hiltVi
     BackHandler(onBack = onClose)
 
     val album = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(vm::loadPhoto) }
-    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) cameraUri?.let(vm::loadPhoto) }
+    val camera = rememberCameraCapture("closet_photo.jpg", vm::loadPhoto, vm::showError)
 
     ClosetAddScreen(
         state = state,
         onClose = onClose,
         onMode = vm::setMode,
-        onCamera = {
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(context.cacheDir, "closet_photo.jpg"))
-            cameraUri = uri
-            try { camera.launch(uri) } catch (_: ActivityNotFoundException) { vm.showError("카메라 앱이 없어요. 앨범에서 골라 주세요.") }
+        onCamera = camera,
+        onAlbum = {
+            try { album.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+            catch (_: ActivityNotFoundException) { vm.showError("사진을 고를 앱이 없어요.") }
         },
-        onAlbum = { album.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onPickPoint = vm::pickPoint,
         onAutoColor = vm::autoColor,
         onHsv = vm::setHsv,
@@ -388,8 +382,7 @@ internal fun KindChips(selected: String?, onSelect: (String) -> Unit) {
 internal fun GarmentThumb(item: ClosetItem, photo: File?, modifier: Modifier = Modifier, maxSide: Int = 512) {
     val bmp = photo?.let { rememberClosetImage(it, maxSide) }
     if (bmp != null) Image(bmp, item.name, modifier, contentScale = ContentScale.Fit)
-    else if (item.kind != null) ShadowedGarment(item.kind!!, hexColor(item.hex), modifier)
-    else Swatch(item.hex, modifier, MaterialTheme.shapes.small)
+    else item.kind?.let { ShadowedGarment(it, hexColor(safeHex(item.hex)), modifier) } ?: Swatch(safeHex(item.hex), modifier, MaterialTheme.shapes.small)
 }
 
 // ponytail: small in-memory cache so grid scrolling doesn't re-decode; bounded at ~32 MB.

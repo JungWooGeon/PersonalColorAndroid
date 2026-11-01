@@ -14,6 +14,7 @@ import com.gun.personalcolor.core.model.Tone
 import com.gun.personalcolor.core.vision.BitmapLoader
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,7 +61,7 @@ class ColorMatchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val tones = withContext(Dispatchers.IO) { content.tones }
+            val tones = withContext(Dispatchers.IO) { content.safeTones() }
             prefs.preferences.collect { p ->
                 _state.update { it.copy(ready = true, tones = tones, myToneId = p.myToneId) }
                 refreshTone()
@@ -91,7 +92,9 @@ class ColorMatchViewModel @Inject constructor(
     fun loadPhoto(uri: Uri) {
         _state.update { it.copy(photoLoading = true, error = null) }
         viewModelScope.launch {
-            val bmp = withContext(Dispatchers.Default) { BitmapLoader.load(context, uri, 1600) }
+            val bmp = withContext(Dispatchers.Default) {
+                try { BitmapLoader.load(context, uri, 1600)?.let { scaleDown(it, 1600) } } catch (e: OutOfMemoryError) { null }
+            }
             if (bmp == null) {
                 _state.update { it.copy(photoLoading = false, error = "사진을 불러오지 못했어요. 다른 사진을 골라 주세요.") }
                 return@launch
@@ -112,7 +115,9 @@ class ColorMatchViewModel @Inject constructor(
         viewModelScope.launch {
             // Prefill the kind only where the category alone says enough (원피스 → dress).
             val kind = if (category == "원피스") "dress" else null
-            closet.add(ClosetItem(System.currentTimeMillis(), color.toHex(), name.trim(), category, tone.id, v.level.verdict, v.score, kind = kind))
+            try {
+                closet.add(ClosetItem(System.currentTimeMillis(), color.toHex(), name.trim(), category, tone.id, v.level.verdict, v.score, kind = kind))
+            } catch (e: CancellationException) { throw e } catch (e: Exception) { android.util.Log.w("ColorMatch", "closet save failed", e) }
         }
     }
 

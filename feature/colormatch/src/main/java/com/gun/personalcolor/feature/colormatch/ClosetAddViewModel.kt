@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import android.util.Log
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -66,7 +69,7 @@ class ClosetAddViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val tones = withContext(Dispatchers.IO) { content.tones }
+            val tones = withContext(Dispatchers.IO) { content.safeTones() }
             prefs.preferences.collect { p ->
                 _state.update { it.copy(tones = tones, tone = tones.firstOrNull { t -> t.id == p.myToneId }) }
                 refresh()
@@ -74,19 +77,32 @@ class ClosetAddViewModel @Inject constructor(
         }
     }
 
-    /** Fresh form each time the add screen opens (the VM outlives it). */
-    fun reset() = _state.update { ClosetAddUiState(tones = it.tones, tone = it.tone) }.also { refresh() }
+    private var loadJob: Job? = null
+
+    /** Fresh form each time the add screen opens (the VM outlives it). Drops a load still running from last time. */
+    fun reset() {
+        loadJob?.cancel()
+        _state.update { ClosetAddUiState(tones = it.tones, tone = it.tone) }
+        refresh()
+    }
 
     fun setMode(m: AddMode) { _state.update { it.copy(mode = m, error = null) }; refresh() }
 
     fun loadPhoto(uri: Uri) {
         _state.update { it.copy(processing = true, error = null, mode = AddMode.PHOTO) }
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val result = withContext(Dispatchers.Default) {
-                val bmp = BitmapLoader.load(context, uri, 1600) ?: return@withContext null
-                val cut = cutter.cutout(bmp)
-                val shown = cut ?: scaleDown(bmp, 1024)
-                Triple(shown, cut == null, cutter.dominantColor(shown))
+                try {
+                    // Bound the decode (BitmapLoader may return up to 2× maxSide) before ML Kit sees it.
+                    val bmp = scaleDown(BitmapLoader.load(context, uri, 1600) ?: return@withContext null, 1600)
+                    // Offline, model install failure or no subject → null: show the uncut photo instead.
+                    val cut = try { cutter.cutout(bmp) } catch (e: CancellationException) { throw e } catch (e: Throwable) { Log.w(TAG, "cut-out failed", e); null }
+                    val shown = cut ?: scaleDown(bmp, 1024)
+                    Triple(shown, cut == null, cutter.dominantColor(shown))
+                } catch (e: CancellationException) { throw e } catch (e: Throwable) { // incl. OutOfMemoryError on huge photos
+                    Log.w(TAG, "photo load failed", e); null
+                }
             }
             if (result == null) {
                 _state.update { it.copy(processing = false, error = "사진을 불러오지 못했어요. 다른 사진으로 해 볼까요?") }
@@ -110,7 +126,7 @@ class ClosetAddViewModel @Inject constructor(
     fun autoColor() {
         val bmp = _state.value.photo ?: return
         viewModelScope.launch {
-            val c = withContext(Dispatchers.Default) { cutter.dominantColor(bmp) }
+            val c = withContext(Dispatchers.Default) { runCatching { cutter.dominantColor(bmp) }.getOrNull() } ?: return@launch
             _state.update { it.copy(point = null, photoColor = c) }
             refresh()
         }
@@ -137,16 +153,17 @@ class ClosetAddViewModel @Inject constructor(
         _state.update { it.copy(saved = true) }
         viewModelScope.launch {
             val id = System.currentTimeMillis()
-            val file = if (s.mode == AddMode.PHOTO) s.photo?.let { closet.saveImage(it, id) } else null
+            // The screen has already closed; a failed photo write still keeps the color item.
+            val file = if (s.mode == AddMode.PHOTO) s.photo?.let { runCatching { closet.saveImage(it, id) }.onFailure { e -> Log.w(TAG, "image save failed", e) }.getOrNull() } else null
             val v = s.verdict
-            closet.add(
+            try { closet.add(
                 ClosetItem(
                     id = id, hex = color.toHex(), name = s.name.trim().ifBlank { defaultName(s) },
                     category = CLOTHING_KINDS[kind]?.second ?: "기타", toneId = s.tone?.id.orEmpty(),
                     verdict = v?.level?.verdict ?: Verdict.OK, score = v?.score ?: 50,
                     imageFile = file, kind = kind,
                 ),
-            )
+            ) } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w(TAG, "closet add failed", e) }
         }
     }
 
@@ -180,11 +197,18 @@ class ClosetAddViewModel @Inject constructor(
         return if (n == 0) null else Rgb((rs / n).toInt(), (gs / n).toInt(), (bs / n).toInt())
     }
 
-    private fun scaleDown(b: Bitmap, maxSide: Int): Bitmap {
-        val s = maxSide.toFloat() / max(b.width, b.height)
-        return if (s >= 1f) b else Bitmap.createScaledBitmap(b, (b.width * s).roundToInt(), (b.height * s).roundToInt(), true)
-    }
 }
+
+private const val TAG = "ClosetAdd"
+
+/** [b] shrunk so its long side is at most [maxSide] (never to 0 px, e.g. a panorama). */
+internal fun scaleDown(b: Bitmap, maxSide: Int): Bitmap {
+    val s = maxSide.toFloat() / max(b.width, b.height)
+    return if (s >= 1f) b
+    else Bitmap.createScaledBitmap(b, scaledSide(b.width, s), scaledSide(b.height, s), true)
+}
+
+internal fun scaledSide(side: Int, scale: Float) = (side * scale).roundToInt().coerceAtLeast(1)
 
 internal fun hsvToRgb(hsv: List<Float>): Rgb {
     val c = android.graphics.Color.HSVToColor(hsv.toFloatArray())
