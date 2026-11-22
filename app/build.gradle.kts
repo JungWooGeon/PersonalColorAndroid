@@ -11,8 +11,8 @@ android {
     namespace = "com.gun.personalcolor"
     defaultConfig {
         applicationId = "com.gun.personalcolor"
-        versionCode = 26
-        versionName = "2.0.0"
+        versionCode = 27
+        versionName = "2.0.1"
         buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoKey\"")
         manifestPlaceholders["kakaoScheme"] = if (kakaoKey.isBlank()) "kakaonokey" else "kakao$kakaoKey"
     }
