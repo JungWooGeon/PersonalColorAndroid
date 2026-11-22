@@ -95,6 +95,9 @@ import com.gun.personalcolor.core.data.UserPreferencesRepository
 import com.gun.personalcolor.core.designsystem.DropShape
 import com.gun.personalcolor.core.designsystem.Eyebrow
 import com.gun.personalcolor.core.designsystem.ListRow
+import com.gun.personalcolor.core.ads.OnDiaryPromo
+import com.gun.personalcolor.core.analytics.LocalAnalytics
+import androidx.compose.material.icons.outlined.Lightbulb
 import com.gun.personalcolor.core.designsystem.PcButton
 import com.gun.personalcolor.core.designsystem.PcCard
 import com.gun.personalcolor.core.designsystem.PcSnackbarHost
@@ -295,6 +298,13 @@ internal fun SettingsScreen(
                         ListRow("앱 평가하기", icon = Icons.Outlined.StarOutline, onClick = actions.onRate)
                         ListRow("친구에게 앱 공유하기", icon = Icons.Outlined.Share, onClick = actions.onShare)
                         ListRow("문의하기", subtitle = CONTACT_EMAIL, icon = Icons.Outlined.Mail, onClick = actions.onContact)
+                    }
+                }
+                item {
+                    Group("다른 앱") {
+                        val analytics = LocalAnalytics.current
+                        ListRow(OnDiaryPromo.TITLE, subtitle = "기분이 빛이 되는 일기장", icon = Icons.Outlined.Lightbulb,
+                            onClick = { OnDiaryPromo.open(context, "settings_row", analytics) })
                     }
                 }
                 item {

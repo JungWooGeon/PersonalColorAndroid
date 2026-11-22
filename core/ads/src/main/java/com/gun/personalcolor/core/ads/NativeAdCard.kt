@@ -39,26 +39,35 @@ import com.google.android.gms.ads.nativead.NativeAdView
 /**
  * In-feed native ad styled like the app's content cards, clearly labelled "광고".
  * Put at most one per screen, inside the content flow (end of an article, between list sections).
- * Takes no space until an ad loads; never shown to ad-free users.
+ * Takes no space while loading; if no ad is available (failed, offline, ads not allowed) shows [HouseCard] instead.
+ * Never shown to ad-free users (neither the ad nor the house card).
  */
 @Composable
 fun NativeAdCard(modifier: Modifier = Modifier) {
     val ads = LocalAdManager.current ?: return
     val adFree by ads.billing.adFree.collectAsState()
-    if (adFree || !ads.ready) return
+    if (adFree) return
     val context = LocalContext.current
     var ad by remember { mutableStateOf<NativeAd?>(null) }
+    // Ads SDK not up when the slot appears (no consent / still starting): settle on the house card, don't swap later.
+    var failed by remember { mutableStateOf(!ads.ready) }
     DisposableEffect(Unit) {
+        if (failed) return@DisposableEffect onDispose {}
         var disposed = false
         AdLoader.Builder(context, BuildConfig.NATIVE_AD_UNIT_ID)
             .forNativeAd { if (disposed) it.destroy() else ad = it }
             .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(e: LoadAdError) { Log.w("Ads", "native: ${e.message}") }
+                override fun onAdFailedToLoad(e: LoadAdError) { Log.w("Ads", "native: ${e.message}"); if (!disposed) failed = true }
             })
             .withNativeAdOptions(NativeAdOptions.Builder().setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT).build())
             .build()
             .loadAd(AdRequest.Builder().build())
         onDispose { disposed = true; ad?.destroy() }
+    }
+    when (adSlot(adFree, loaded = ad != null, failed = failed)) {
+        AdSlot.NOTHING -> return
+        AdSlot.HOUSE -> return HouseCard(modifier)
+        AdSlot.AD -> Unit
     }
     val loaded = ad ?: return
     val c = MaterialTheme.colorScheme

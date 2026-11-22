@@ -43,4 +43,5 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(project(":core:designsystem"))
+    implementation(project(":core:analytics"))
 }
